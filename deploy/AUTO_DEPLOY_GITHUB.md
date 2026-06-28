@@ -7,7 +7,7 @@ Khi push lên nhánh `main`, GitHub Actions sẽ:
 1. Cài dependency bằng `npm ci`.
 2. Build frontend bằng `npm run build`.
 3. Đóng gói `dist/` và `backend/`.
-4. Upload lên VPS qua SSH/rsync.
+4. Upload lên VPS qua SSH bằng tar stream.
 5. Giữ nguyên `backend/config/config.php` và `backend/uploads/` trên server.
 6. Gọi `https://sodovanphuc.vn/api/svp/health` để smoke test.
 
