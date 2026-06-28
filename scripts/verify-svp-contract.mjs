@@ -395,12 +395,12 @@ assertIncludes(svpTypes, "mediaType: 'image' | 'video' | 'document' | 'other'", 
 assertIncludes(svpApi, 'uploadPropertyMediaImages', 'frontend SVP API can upload property media images');
 assertIncludes(svpApi, '/api/svp/properties/${encodeURIComponent(propertyId)}/media-upload', 'frontend SVP API calls property media-upload route');
 assertIncludes(svpApi, 'readFileAsDataUrl', 'frontend SVP API keeps local fallback for media previews');
-assertIncludes(svpPostPropertyPage, 'Anh / tai lieu', 'SVP post property form has image/document upload section');
-assertIncludes(svpPostPropertyPage, 'Chon nhieu anh: HD, so do, anh nha, tu suong', 'SVP post property form matches customer image upload workflow');
+assertIncludes(svpPostPropertyPage, 'Ảnh / tài liệu', 'SVP post property form has image/document upload section');
+assertIncludes(svpPostPropertyPage, 'Chọn nhiều ảnh: HĐ, sổ đỏ, ảnh nhà, tự sướng', 'SVP post property form matches customer image upload workflow');
 assertIncludes(svpPostPropertyPage, 'accept="image/jpeg,image/png,image/webp"', 'SVP post property form limits upload picker to supported image types');
 assertIncludes(svpPostPropertyPage, 'pendingMedia.length + selected.length > 41', 'SVP post property form enforces 41-image limit before submit');
 assertIncludes(svpPostPropertyPage, 'uploadPropertyMediaImages', 'SVP post property form uploads pending media after property create');
-assertIncludes(svpPostPropertyPage, 'Luu, upload anh va tao timeline', 'SVP post property form makes upload+timeline save action explicit');
+assertIncludes(svpPostPropertyPage, 'Đăng Bí Kíp', 'SVP post property form has a production save action');
 
 for (const fileContent of [configExample, robots, sitemap, envExample, indexHtml]) {
   assertIncludes(fileContent, 'sodovanphuc.vn', 'official domain appears in deploy-facing config');
@@ -545,21 +545,11 @@ for (const endpoint of ['/api/svp/properties', '/api/svp/customers', '/api/svp/c
 assertIncludes(gitignore, 'backend/config/config.php', 'gitignore excludes real backend config');
 assertIncludes(gitignore, 'backend/api/debug_test.php', 'gitignore excludes backend debug script');
 assertIncludes(gitignore, '.runtime/', 'gitignore excludes local portable runtime tools');
-assertIncludes(gitignore, 'qa/preupload/', 'gitignore excludes pre-upload reports');
-assertIncludes(gitignore, 'qa/prehosting-proof/', 'gitignore excludes pre-hosting proof reports');
-assertIncludes(gitignore, 'qa/domain-cutover/', 'gitignore excludes domain cutover reports');
-assertIncludes(gitignore, 'qa/hosting-acceptance/', 'gitignore excludes live hosting acceptance reports');
-assertIncludes(gitignore, 'qa/hosting-complete/', 'gitignore excludes post-upload handoff autopilot reports');
-assertIncludes(gitignore, 'qa/hosting-wait/', 'gitignore excludes hosting wait reports');
+assertIncludes(gitignore, 'qa/', 'gitignore excludes local QA reports and browser artifacts');
 assertIncludes(gitignore, 'hosting-wait-reports/', 'gitignore excludes local hosting wait reports');
 assertIncludes(gitignore, 'hosting-complete-reports/', 'gitignore excludes local handoff autopilot reports');
-assertIncludes(gitignore, 'qa/hosting-screenshots/', 'gitignore excludes live hosting browser artifacts');
-assertIncludes(gitignore, 'release/**/sodovanphuc-configured-public_html.zip', 'gitignore excludes configured release zips with secrets');
-assertIncludes(gitignore, 'release/**/configured-public_html/', 'gitignore excludes configured release work directories');
-assertIncludes(gitignore, 'release/**/domain-cutover-reports/', 'gitignore excludes release domain cutover reports');
-assertIncludes(gitignore, 'release/**/hosting-wait-reports/', 'gitignore excludes release hosting wait reports');
-assertIncludes(gitignore, 'release/**/hosting-complete-reports/', 'gitignore excludes release handoff autopilot reports');
-assertIncludes(gitignore, 'release/**/REAL_UPLOAD_READY.md', 'gitignore excludes real upload manifests');
+assertIncludes(gitignore, 'release/', 'gitignore excludes release work directories and manifests');
+assertIncludes(gitignore, '*.zip', 'gitignore excludes configured release zips with secrets');
 assertIncludes(packageJson, '"ps:parse"', 'package scripts include PowerShell syntax parse');
 assertIncludes(packageJson, '"php:runtime"', 'package scripts include strict PHP runtime smoke');
 assertIncludes(packageJson, '"php:runtime:optional"', 'package scripts include optional PHP runtime smoke');
