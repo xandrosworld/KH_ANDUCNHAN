@@ -1,0 +1,46 @@
+Options -Indexes
+Options -MultiViews
+
+RewriteEngine On
+
+# Keep Authorization available to PHP on shared hosting / CGI setups.
+SetEnvIfNoCase Authorization "(.+)" HTTP_AUTHORIZATION=$1
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Block direct access to backend internals.
+RewriteRule ^config(/|$) - [F,L]
+RewriteRule ^lib(/|$) - [F,L]
+RewriteRule ^sql(/|$) - [F,L]
+
+<FilesMatch "(^config\.php$|\.sql$|\.env$|composer\.(json|lock)$)">
+    Require all denied
+</FilesMatch>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "(^config\.php$|\.sql$|\.env$|composer\.(json|lock)$)">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, X-Admin-Key, Authorization, Accept"
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Max-Age "86400"
+</IfModule>
+
+# Serve real files/directories such as uploaded media directly.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Route all API requests to the PHP router.
+RewriteRule ^api(/.*)?$ api/index.php [QSA,L]
+
+# If this backend folder is used as an API document root, route everything here.
+RewriteRule ^.*$ api/index.php [QSA,L]

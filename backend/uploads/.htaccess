@@ -1,0 +1,19 @@
+# Do not execute scripts from uploaded files.
+# Keep this file shared-hosting friendly: php_flag/php_value can cause 500s.
+Options -Indexes
+
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .php3 .php4 .php5 .phps .cgi .pl .py .sh .bash
+    RemoveType .php .phtml .php3 .php4 .php5 .phps .cgi .pl .py .sh .bash
+</IfModule>
+
+<FilesMatch "\.(php|phtml|php3|php4|php5|phps|cgi|pl|py|sh|bash)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|phps|cgi|pl|py|sh|bash)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>

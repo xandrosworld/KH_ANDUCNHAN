@@ -1,0 +1,102 @@
+name: Deploy Sổ Đỏ Vạn Phúc
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sodovanphuc-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy to Mắt Bão VPS
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.MATBAO_SSH_HOST }}
+      SSH_PORT: ${{ secrets.MATBAO_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.MATBAO_SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.MATBAO_SSH_PRIVATE_KEY }}
+      REMOTE_WEBROOT: ${{ secrets.MATBAO_WEBROOT || '/var/www/vanphuc/public_html' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Prepare deploy package
+        run: |
+          set -euo pipefail
+          rm -rf .deploy-package
+          mkdir -p .deploy-package/public_html/backend/uploads
+
+          cp -a dist/. .deploy-package/public_html/
+
+          rsync -a \
+            --exclude 'config/config.php' \
+            --exclude 'api/debug_test.php' \
+            --exclude 'uploads/*' \
+            backend/ .deploy-package/public_html/backend/
+
+          if [ -f backend/uploads/.htaccess ]; then
+            cp backend/uploads/.htaccess .deploy-package/public_html/backend/uploads/.htaccess
+          fi
+          touch .deploy-package/public_html/backend/uploads/.gitkeep
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          test -n "$SSH_HOST"
+          test -n "$SSH_USER"
+          test -n "$SSH_PRIVATE_KEY"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/sodovanphuc_deploy_key
+          chmod 600 ~/.ssh/sodovanphuc_deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Verify remote config is present
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+            set -e
+            mkdir -p '$REMOTE_WEBROOT/backend/config' '$REMOTE_WEBROOT/backend/uploads'
+            test -f '$REMOTE_WEBROOT/backend/config/config.php'
+          "
+
+      - name: Upload files
+        run: |
+          set -euo pipefail
+          rsync -az \
+            -e "ssh -i ~/.ssh/sodovanphuc_deploy_key -p $SSH_PORT" \
+            --exclude '/backend/config/config.php' \
+            --exclude '/backend/uploads/***' \
+            --exclude '/backend/api/debug_test.php' \
+            .deploy-package/public_html/ "$SSH_USER@$SSH_HOST:$REMOTE_WEBROOT/"
+
+      - name: Fix permissions and smoke test
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+            set -e
+            find '$REMOTE_WEBROOT' -type d -exec chmod 755 {} \; || true
+            find '$REMOTE_WEBROOT' -type f -exec chmod 644 {} \; || true
+            chmod 755 '$REMOTE_WEBROOT/backend/uploads' || true
+            chown -R apache:apache '$REMOTE_WEBROOT' 2>/dev/null || true
+          "
+          curl -fsS https://sodovanphuc.vn/api/svp/health
