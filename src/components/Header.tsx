@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { CSSProperties, MouseEvent, FormEvent } from 'react';
-import { ChevronDown, Menu, X, LogOut, LayoutDashboard, User, Globe, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Bot, ChevronDown, Menu, X, LogOut, LayoutDashboard, User, Globe, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoImg from '../assets/logo-new.png';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -160,17 +160,12 @@ const Header = () => {
     { label: 'Đăng Bí Kíp', path: '/post-property' },
     { label: 'Khách hàng', path: '/khach-hang' },
     { label: 'Referral', path: '/referral' },
+    { label: 'Trợ lý AI', path: '/ai' },
     { label: 'Cấu hình', path: '/admin/config' },
-  ];
-
-  const rightNav = [
-    { label: 'Audit', path: '/audit' },
-    { label: 'Module', path: '/module' },
   ];
 
   const mobileMenuItems = [
     ...leftNav.map((item) => ({ ...item, expandable: true })),
-    ...rightNav.map((item) => ({ ...item, expandable: false })),
   ];
 
   const mobileToggles = (
@@ -263,17 +258,8 @@ const Header = () => {
             />
           </Link>
 
-          {/* Right nav */}
+          {/* Right actions */}
           <nav className="flex items-center justify-self-end" style={{ gap: '2px', fontSize: '13.5px', fontWeight: 500, color: '#F5F0E6' }}>
-            {rightNav.map((item) => (
-              <Link
-                key={item.label}
-                to={item.path}
-                className="px-2.5 py-1 rounded hover:text-[#F6D37A] hover:bg-white/[0.055] transition-colors whitespace-nowrap"
-              >
-                {item.label}
-              </Link>
-            ))}
             {/* Language Toggle */}
             <div className="flex items-center gap-1 ml-1">
               <button
@@ -315,6 +301,9 @@ const Header = () => {
                     </Link>
                     <Link to="/post-property" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#D7DAE3] hover:bg-white/[0.06] transition-colors">
                       <User className="h-4 w-4" /> Đăng nhà
+                    </Link>
+                    <Link to="/ai" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#D7DAE3] hover:bg-white/[0.06] transition-colors">
+                      <Bot className="h-4 w-4" /> Trợ lý AI
                     </Link>
                     <button onClick={openChangePass} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[13px] text-[#D7DAE3] hover:bg-white/[0.06] transition-colors">
                       <KeyRound className="h-4 w-4" /> {t('auth.changePassword')}
@@ -388,6 +377,9 @@ const Header = () => {
                   </Link>
                   <Link to="/post-property" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#D7DAE3] hover:bg-white/[0.06] transition-colors">
                     <User className="h-4 w-4" /> Đăng nhà
+                  </Link>
+                  <Link to="/ai" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#D7DAE3] hover:bg-white/[0.06] transition-colors">
+                    <Bot className="h-4 w-4" /> Trợ lý AI
                   </Link>
                   <button onClick={openChangePass} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[13px] text-[#D7DAE3] hover:bg-white/[0.06] transition-colors">
                     <KeyRound className="h-4 w-4" /> {t('auth.changePassword')}

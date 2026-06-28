@@ -2325,19 +2325,32 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         Response::error('AI description service is not configured', 503);
     }
 
-    // Build prompt from input
-    $propertyType = $input['propertyType'] ?? $input['property_type'] ?? 'property';
-    $listingType  = $input['listingType'] ?? $input['listing_type'] ?? 'sale';
-    $price        = $input['price'] ?? '0';
-    $bedrooms     = $input['bedrooms'] ?? '0';
-    $bathrooms    = $input['bathrooms'] ?? '0';
-    $sqft         = $input['sqft'] ?? '0';
-    $address      = $input['address'] ?? '';
-    $city         = $input['city'] ?? '';
-    $state        = $input['state'] ?? '';
+    // Build a Vietnamese prompt for the local real-estate workflow.
+    $propertyType = trim((string)($input['propertyType'] ?? $input['property_type'] ?? 'nhà đất'));
+    $listingType  = trim((string)($input['listingType'] ?? $input['listing_type'] ?? 'sale'));
+    $title        = trim((string)($input['title'] ?? ''));
+    $price        = trim((string)($input['price'] ?? '0'));
+    $bedrooms     = trim((string)($input['bedrooms'] ?? '0'));
+    $bathrooms    = trim((string)($input['bathrooms'] ?? '0'));
+    $sqft         = trim((string)($input['sqft'] ?? '0'));
+    $address      = trim((string)($input['address'] ?? ''));
+    $city         = trim((string)($input['city'] ?? ''));
+    $state        = trim((string)($input['state'] ?? ''));
+    $amenities    = trim((string)($input['amenities'] ?? ''));
+    $notes        = trim((string)($input['notes'] ?? ''));
 
-    $action = $listingType === 'rent' ? 'for rent' : 'for sale';
-    $prompt = "Write a compelling real estate listing description for a {$propertyType} {$action} at {$address}, {$city}, {$state}. Price: \${$price}. Specs: {$bedrooms} beds, {$bathrooms} baths, {$sqft} sqft. Keep it professional, 2-3 paragraphs. Do not use markdown formatting.";
+    $action = $listingType === 'rent' ? 'cho thuê' : 'bán';
+    $prompt = "Bạn là trợ lý nội dung bất động sản của Sổ Đỏ Vạn Phúc. "
+        . "Hãy viết mô tả tiếng Việt cho nguồn {$propertyType} {$action}. "
+        . "Không dùng markdown, không phóng đại quá mức, không cam kết pháp lý/tài chính. "
+        . "Viết 2-3 đoạn ngắn, giọng chuyên nghiệp, dễ đọc cho môi giới nội bộ.\n\n"
+        . "Tiêu đề: {$title}\n"
+        . "Giá: {$price} VND\n"
+        . "Diện tích: {$sqft} m2\n"
+        . "Phòng ngủ: {$bedrooms}; Phòng tắm: {$bathrooms}\n"
+        . "Khu vực: {$address}, {$city}, {$state}\n"
+        . "Đặc điểm/tag: {$amenities}\n"
+        . "Ghi chú thêm: {$notes}";
 
     // Try Gemini API
     $models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];

@@ -32,13 +32,9 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     title: 'Referral SVP ID QR | Sổ Đỏ Vạn Phúc',
     description: 'Tạo mã gioi thieu, link va QR cho he thong referral Sổ Đỏ Vạn Phúc.',
   },
-  '/module': {
-    title: 'Module nội bộ | Sổ Đỏ Vạn Phúc',
-    description: 'Roadmap module API, AI ready, referral, KPI, thong bao, dao tao va diem uy tin.',
-  },
-  '/audit': {
-    title: 'Audit log | Sổ Đỏ Vạn Phúc',
-    description: 'Nhàt ky hanh dong he thong de truy vet va phuc vu AI/KPI.',
+  '/ai': {
+    title: 'Trợ lý AI | Sổ Đỏ Vạn Phúc',
+    description: 'Trợ lý hỗ trợ viết mô tả, gợi ý nội dung và tra cứu thông tin bất động sản nội bộ.',
   },
   '/admin': {
     title: 'Admin | Sổ Đỏ Vạn Phúc',

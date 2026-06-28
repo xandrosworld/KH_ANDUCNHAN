@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ArrowUpRight, Home, Loader2, MapPin, Plus, RefreshCcw, Search } from 'lucide-react';
+import { ArrowUpRight, Home, Loader2, MapPin, Phone, Plus, RefreshCcw, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageShell from '../components/PageShell';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -229,7 +229,84 @@ const SvpPropertiesPage = () => {
           </div>
         )}
 
-        <section className="overflow-hidden rounded-lg border border-white/10 bg-[#08090C]">
+        <section className="space-y-3 lg:hidden">
+          {loading ? (
+            <div className="rounded-lg border border-white/10 bg-[#08090C] px-4 py-12 text-center text-[#A7ABB6]">
+              <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-[#F6D37A]" />
+              Đang tải danh sách nhà...
+            </div>
+          ) : filteredProperties.length === 0 ? (
+            <div className="rounded-lg border border-white/10 bg-[#08090C] px-4 py-10 text-center">
+              <div className="text-lg font-bold text-[#F5F0E6]">Chưa có nhà phù hợp</div>
+              <p className="mt-2 text-[14px] leading-6 text-[#A7ABB6]">Tạo nhà đầu tiên hoặc đổi bộ lọc để xem dữ liệu khác.</p>
+              <Link to="/post-property" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md bg-[#F6D37A] px-4 text-[14px] font-black text-[#101114]">
+                <Plus className="h-4 w-4" />
+                Đăng nhà đầu tiên
+              </Link>
+            </div>
+          ) : (
+            filteredProperties.map((property) => {
+              const tags = optionLabels(groups, 'property_tags', property.tagIds).slice(0, 4);
+              return (
+                <article key={property.id} className="rounded-lg border border-white/10 bg-[#08090C] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link to={`/nha/${property.id}`} className="text-[15px] font-bold leading-6 text-[#F5F0E6] hover:text-[#F6D37A]">
+                        {property.title || 'Chưa có tiêu đề'}
+                      </Link>
+                      <div className="mt-1 text-[12px] font-black text-[#F6D37A]">{property.code}</div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[#D7DAE3]">
+                      {optionLabel(groups, 'property_statuses', property.statusId)}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 rounded-md bg-white/[0.035] p-3 text-[13px]">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.08em] text-[#8A8F98]">Giá</div>
+                      <div className="mt-1 font-black text-[#F5F0E6]">{formatVnd(property.price)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.08em] text-[#8A8F98]">Diện tích</div>
+                      <div className="mt-1 font-black text-[#F5F0E6]">{property.areaM2 ? `${property.areaM2} m2` : '-'}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-[13px] text-[#D7DAE3]">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F6D37A]" />
+                      <span>{[property.address, property.ward, property.district].filter(Boolean).join(', ') || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 shrink-0 text-[#F6D37A]" />
+                      <span>{property.ownerName || 'Chủ nhà'} - {property.ownerPhone || 'Chưa có SĐT'}</span>
+                    </div>
+                  </div>
+
+                  {tags.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {tags.map((label) => (
+                        <span key={label} className="rounded-full bg-[#F6D37A]/10 px-2 py-1 text-[11px] font-semibold text-[#F6D37A]">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <Link
+                    to={`/nha/${property.id}`}
+                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-white/10 text-[13px] font-bold text-[#F5F0E6] transition-colors hover:border-[#F6D37A]/50 hover:text-[#F6D37A]"
+                  >
+                    Xem chi tiết
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                </article>
+              );
+            })
+          )}
+        </section>
+
+        <section className="hidden overflow-hidden rounded-lg border border-white/10 bg-[#08090C] lg:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] border-collapse">
               <thead>

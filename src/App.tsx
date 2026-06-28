@@ -14,9 +14,8 @@ const SvpPropertyDetailPage = lazy(() => import('./pages/SvpPropertyDetailPage')
 const SvpPostPropertyPage = lazy(() => import('./pages/SvpPostPropertyPage'));
 const SvpAdminConfigPage = lazy(() => import('./pages/SvpAdminConfigPage'));
 const SvpCustomersPage = lazy(() => import('./pages/SvpCustomersPage'));
-const SvpModulesPage = lazy(() => import('./pages/SvpModulesPage'));
 const SvpReferralPage = lazy(() => import('./pages/SvpReferralPage'));
-const SvpAuditPage = lazy(() => import('./pages/SvpAuditPage'));
+const SvpAiAssistantPage = lazy(() => import('./pages/SvpAiAssistantPage'));
 
 function App() {
   return (
@@ -32,10 +31,11 @@ function App() {
             <Route path="/post-property" element={<SvpPostPropertyPage />} />
             <Route path="/khach-hang" element={<SvpCustomersPage />} />
             <Route path="/referral" element={<SvpReferralPage />} />
+            <Route path="/ai" element={<SvpAiAssistantPage />} />
             <Route path="/admin" element={<Navigate to="/admin/config" replace />} />
             <Route path="/admin/config" element={<SvpAdminConfigPage />} />
-            <Route path="/module" element={<SvpModulesPage />} />
-            <Route path="/audit" element={<SvpAuditPage />} />
+            <Route path="/module" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/audit" element={<Navigate to="/dashboard" replace />} />
             <Route path="/sign-in" element={<SignInPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />

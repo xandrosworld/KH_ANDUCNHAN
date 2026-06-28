@@ -328,7 +328,7 @@ const SvpAdminConfigPage = () => {
                     <tr>
                       <td colSpan={columns.length} className="px-5 py-12 text-center text-[#A7ABB6]">
                         <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-[#F6D37A]" />
-                        Đăng tai cau hinh...
+                        Đang tải cấu hình...
                       </td>
                     </tr>
                   ) : table.getRowModel().rows.length === 0 ? (
@@ -358,7 +358,7 @@ const SvpAdminConfigPage = () => {
           <div className="flex items-start gap-3">
             <Save className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#F6D37A]" />
             <p className="text-[13px] leading-6 text-[#D7DAE3]">
-              Mỗi lựa chọn mới sẽ được dùng ngay trong form đăng nhà và bộ lọc. Với backend PHP/MySQL, thay đổi này sẽ ghi vào bảng cấu hình; với local dev, dữ liệu được giữ trong localStorage để test nhanh.
+              Mỗi lựa chọn mới sẽ được dùng ngay trong form đăng nhà và bộ lọc. Thay đổi được lưu lại để đội vận hành dùng thống nhất trên toàn hệ thống.
             </p>
           </div>
         </section>

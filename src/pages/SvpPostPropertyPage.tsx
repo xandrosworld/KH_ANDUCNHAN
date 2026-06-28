@@ -7,6 +7,7 @@ import { ArrowLeft, Building2, CheckCircle2, ImagePlus, Loader2, Save, Sparkles,
 import { Link, useNavigate } from 'react-router-dom';
 import PageShell from '../components/PageShell';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { generateAiDescription } from '../services/propertyApi';
 import { svpApi } from '../services/svpApi';
 import type { SvpConfigGroup, SvpConfigOption, SvpProperty } from '../types/svp';
 import { activeOptions } from '../utils/svpDisplay';
@@ -82,6 +83,8 @@ const SvpPostPropertyPage = () => {
   const [mediaCategory, setMediaCategory] = useState<PendingMediaCategory>('house_image');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiNotice, setAiNotice] = useState('');
   const [error, setError] = useState('');
   const pendingMediaRef = useRef<PendingMediaFile[]>([]);
 
@@ -253,6 +256,62 @@ const SvpPostPropertyPage = () => {
     },
   });
 
+  const handleAiDescription = async () => {
+    if (aiGenerating) return;
+    setAiNotice('');
+    setError('');
+
+    const hasEnoughContext = Boolean(
+      formData.title.trim()
+      || formData.address.trim()
+      || formData.district.trim()
+      || Number(formData.price || 0) > 0
+      || Number(formData.areaM2 || 0) > 0,
+    );
+
+    if (!hasEnoughContext) {
+      setAiNotice('Nhập trước tiêu đề, khu vực, giá hoặc diện tích để AI viết mô tả sát hơn.');
+      return;
+    }
+
+    const selectedTags = tagOptions
+      .filter((option) => tagIds.includes(option.id))
+      .map((option) => option.label);
+
+    setAiGenerating(true);
+    try {
+      const result = await generateAiDescription({
+        propertyType: 'nhà đất',
+        listingType: 'sale',
+        title: formData.title,
+        price: formData.price,
+        sqft: formData.areaM2 || 0,
+        bedrooms: 0,
+        bathrooms: 0,
+        address: [formData.address, formData.ward, formData.district].filter(Boolean).join(', '),
+        city: 'Việt Nam',
+        state: '',
+        amenities: selectedTags.join(', '),
+        notes: formData.hiddenAddress,
+      });
+
+      if (!result.ok || !result.data?.description) {
+        throw new Error(result.error || 'AI chưa viết được mô tả.');
+      }
+
+      const description = result.data.description.trim();
+      setFormData((current) => ({
+        ...current,
+        description,
+      }));
+      setAiNotice('AI đã viết mô tả. Anh/chị có thể chỉnh lại vài câu cho đúng giọng của đội mình.');
+    } catch {
+      setAiNotice('AI chưa viết được mô tả lúc này. Vui lòng thử lại sau ít phút.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const handleSubmit = async (event: IChangeEvent<SvpPropertyFormData>) => {
     setSaving(true);
     setError('');
@@ -322,35 +381,57 @@ const SvpPostPropertyPage = () => {
             {loading ? (
               <div className="flex min-h-[420px] flex-col items-center justify-center text-[#A7ABB6]">
                 <Loader2 className="mb-3 h-7 w-7 animate-spin text-[#F6D37A]" />
-                Đăng tai cau hinh form...
+                Đang tải cấu hình form...
               </div>
             ) : (
-              <Form<SvpPropertyFormData>
-                className="svp-rjsf"
-                schema={schema}
-                uiSchema={uiSchema}
-                validator={svpValidator}
-                formData={formData}
-                noHtml5Validate
-                onChange={(event) => {
-                  if (event.formData) setFormData(event.formData);
-                }}
-                onSubmit={(event) => void handleSubmit(event)}
-              >
-                <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-[13px] text-[#8A8F98]">
-                    {selectedTagCount} đặc điểm, {selectedVisibilityCount} quyền xem, {criteriaIds.length} tiêu chí ký nhà, {pendingMedia.length} ảnh/tài liệu
+              <>
+                <div className="mb-5 rounded-lg border border-[#F6D37A]/20 bg-[#F6D37A]/8 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-[14px] font-bold text-[#F5F0E6]">AI viết mô tả nguồn nhà</div>
+                      <p className="mt-1 text-[13px] leading-5 text-[#A7ABB6]">
+                        Nhập trước thông tin chính, AI sẽ soạn phần mô tả để đội môi giới chỉnh và dùng ngay.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleAiDescription()}
+                      disabled={aiGenerating || saving}
+                      className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-[#F6D37A]/35 bg-[#F6D37A] px-4 text-[14px] font-black text-[#101114] transition-colors hover:bg-[#FFE8A3] disabled:cursor-wait disabled:opacity-70"
+                    >
+                      {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      AI viết mô tả
+                    </button>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#F6D37A] px-5 text-[14px] font-black text-[#101114] transition-colors hover:bg-[#FFE8A3] disabled:cursor-wait disabled:opacity-70"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {pendingMedia.length > 0 ? 'Đăng Bí Kíp' : 'Đăng Bí Kíp'}
-                  </button>
+                  {aiNotice && <div className="mt-3 text-[13px] leading-5 text-[#F6D37A]">{aiNotice}</div>}
                 </div>
-              </Form>
+                <Form<SvpPropertyFormData>
+                  className="svp-rjsf"
+                  schema={schema}
+                  uiSchema={uiSchema}
+                  validator={svpValidator}
+                  formData={formData}
+                  noHtml5Validate
+                  onChange={(event) => {
+                    if (event.formData) setFormData(event.formData);
+                  }}
+                  onSubmit={(event) => void handleSubmit(event)}
+                >
+                  <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-[13px] text-[#8A8F98]">
+                      {selectedTagCount} đặc điểm, {selectedVisibilityCount} quyền xem, {criteriaIds.length} tiêu chí ký nhà, {pendingMedia.length} ảnh/tài liệu
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#F6D37A] px-5 text-[14px] font-black text-[#101114] transition-colors hover:bg-[#FFE8A3] disabled:cursor-wait disabled:opacity-70"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Đăng Bí Kíp
+                    </button>
+                  </div>
+                </Form>
+              </>
             )}
           </section>
 
