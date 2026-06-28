@@ -77,9 +77,9 @@ define('UPLOAD_AVATAR_ALLOWED_TYPES', [
     'image/webp',
 ]);
 
-// AI description endpoint, optional.
-// Leave empty for the first production release unless the client buys AI quota.
-define('AI_GEMINI_KEY', '');
+// AI description/chat endpoints, optional.
+// Leave empty here and set AI_GEMINI_KEY in the environment/.env, or paste the key here on hosting.
+define('AI_GEMINI_KEY', getenv('AI_GEMINI_KEY') ?: '');
 
 // Email notifications
 define('MAIL_FROM', 'contact@sodovanphuc.vn');

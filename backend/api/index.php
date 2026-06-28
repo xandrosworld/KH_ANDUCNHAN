@@ -11,6 +11,48 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
+function gfz_load_env_file(string $path): void
+{
+    if (!is_readable($path)) {
+        return;
+    }
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || strpos($line, '=') === false) {
+            continue;
+        }
+
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        if ($key === '') {
+            continue;
+        }
+
+        $value = trim($value);
+        if (
+            strlen($value) >= 2 &&
+            (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        if (getenv($key) === false) {
+            putenv($key . '=' . $value);
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
+    }
+}
+
+gfz_load_env_file(__DIR__ . '/../../.env');
+gfz_load_env_file(__DIR__ . '/../.env');
+
 // ─── Load Config ─────────────────────────────────────────────────────────────
 $configPath = __DIR__ . '/../config/config.php';
 if (!file_exists($configPath)) {
@@ -23,6 +65,19 @@ if (!file_exists($configPath)) {
     exit;
 }
 require_once $configPath;
+
+function gfz_config_string(string $constantName, ?string $envName = null): string
+{
+    if (defined($constantName)) {
+        $constantValue = constant($constantName);
+        if (is_string($constantValue) && trim($constantValue) !== '') {
+            return trim($constantValue);
+        }
+    }
+
+    $envValue = getenv($envName ?: $constantName);
+    return is_string($envValue) ? trim($envValue) : '';
+}
 
 // ─── Load Libraries ──────────────────────────────────────────────────────────
 require_once __DIR__ . '/../lib/Response.php';
@@ -2265,7 +2320,8 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
     }
     touch($rateLimitFile);
 
-    if (!defined('AI_GEMINI_KEY') || empty(AI_GEMINI_KEY)) {
+    $aiGeminiKey = gfz_config_string('AI_GEMINI_KEY');
+    if ($aiGeminiKey === '') {
         Response::error('AI description service is not configured', 503);
     }
 
@@ -2288,7 +2344,7 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
     $description = null;
 
     foreach ($models as $model) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . AI_GEMINI_KEY;
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . rawurlencode($aiGeminiKey);
         $body = json_encode([
             'contents' => [['parts' => [['text' => $prompt]]]],
         ]);
@@ -2336,7 +2392,8 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
     }
     touch($rateLimitFile);
 
-    if (!defined('AI_GEMINI_KEY') || empty(AI_GEMINI_KEY)) {
+    $aiGeminiKey = gfz_config_string('AI_GEMINI_KEY');
+    if ($aiGeminiKey === '') {
         Response::error('AI chat service is not configured', 503);
     }
 
@@ -2392,7 +2449,7 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
     $models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
     $reply = null;
     foreach ($models as $model) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . AI_GEMINI_KEY;
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . rawurlencode($aiGeminiKey);
         $body = json_encode(['contents' => $contents]);
         $opts = [
             'http' => [
