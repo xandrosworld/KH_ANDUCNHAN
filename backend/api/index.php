@@ -2342,6 +2342,7 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
     $action = $listingType === 'rent' ? 'cho thuê' : 'bán';
     $prompt = "Bạn là trợ lý nội dung bất động sản của Sổ Đỏ Vạn Phúc. "
         . "Hãy viết mô tả tiếng Việt cho nguồn {$propertyType} {$action}. "
+        . "Bắt buộc dùng tiếng Việt có dấu đầy đủ, không viết tiếng Việt không dấu. "
         . "Không dùng markdown, không phóng đại quá mức, không cam kết pháp lý/tài chính. "
         . "Viết 2-3 đoạn ngắn, giọng chuyên nghiệp, dễ đọc cho môi giới nội bộ.\n\n"
         . "Tiêu đề: {$title}\n"
@@ -2421,14 +2422,16 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
     $contents[] = [
         'role' => 'user',
         'parts' => [[
-            'text' => 'You are So Do Van Phuc AI Assistant, a concise and helpful real estate advisor. Help with property search, market context, mortgage basics, platform usage and listing guidance. For legal or financial decisions, recommend a licensed professional. Always respond in ' . ($lang === 'vi' ? 'Vietnamese.' : 'English.'),
+            'text' => $lang === 'vi'
+                ? 'Bạn là Trợ lý AI Sổ Đỏ Vạn Phúc, hỗ trợ ngắn gọn và thực tế về bất động sản, tìm kiếm nguồn nhà, gợi ý nội dung đăng tin, chăm sóc khách và cách dùng hệ thống. Luôn trả lời bằng tiếng Việt có dấu đầy đủ. Không viết tiếng Việt không dấu. Với quyết định pháp lý hoặc tài chính, hãy khuyên người dùng hỏi chuyên gia có giấy phép.'
+                : 'You are So Do Van Phuc AI Assistant, a concise and helpful real estate advisor. Help with property search, market context, mortgage basics, platform usage and listing guidance. For legal or financial decisions, recommend a licensed professional. Always respond in English.',
         ]],
     ];
     $contents[] = [
         'role' => 'model',
         'parts' => [[
             'text' => $lang === 'vi'
-                ? 'Da hieu. Toi la So Do Van Phuc AI Assistant va san sang ho tro.'
+                ? 'Đã hiểu. Tôi là Trợ lý AI Sổ Đỏ Vạn Phúc và sẵn sàng hỗ trợ.'
                 : 'Understood. I am So Do Van Phuc AI Assistant and ready to help.',
         ]],
     ];
