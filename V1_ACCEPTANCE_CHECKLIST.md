@@ -7,7 +7,7 @@ Ngay 29/06/2026
 - Build frontend: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run build`)
 - PHP syntax: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run php:parse`)
 - Visual/mobile/desktop smoke: PASS 100/100 29/06/2026 sau dot bo sung workflow admin cau hinh duyet tai khoan/ten truong (`npm run test:visual`)
-- Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `54fd642` (`npm run hosting:smoke`)
+- Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `fc73dfd` (`npm run hosting:smoke`)
 - Live browser smoke domain `https://sodovanphuc.vn`: PASS 32/32, skip 4 case write/admin do chua set `SVP_LIVE_ADMIN_PASSWORD` local (`npm run hosting:browser`)
 
 ## V1 dang dap ung
