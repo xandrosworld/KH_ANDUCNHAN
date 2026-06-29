@@ -1013,7 +1013,7 @@ const PostPropertyPage = () => {
               <p className="text-[#7D8291] text-[12px] mt-3 break-words">
                 {isApiConfigured()
                   ? <><span className="text-emerald-400">{t('post.apiMode')}</span> {t('post.apiModeDesc')}</>
-                  : <><span className="text-[#B88717]">{t('post.demoNote')}</span> {t('post.demoModeDesc')}</>}
+                  : <><span className="text-emerald-400">{t('post.demoNote')}</span> {t('post.demoModeDesc')}</>}
               </p>
             </div>
 
