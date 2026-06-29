@@ -1,16 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, User, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, ShieldCheck, User } from 'lucide-react';
 import logoImg from '../assets/logo-new.png';
 import { login } from '../services/authService';
 import { isApiConfigured, getApiBase } from '../services/apiClient';
-import { useLanguage } from '../contexts/LanguageContext';
 import { migrateUserStorage } from '../utils/userStorage';
 
 export default function SignInPage() {
-  const { t } = useLanguage();
-  usePageTitle(t('auth.signIn'));
+  usePageTitle('Đăng nhập | Sổ Đỏ Vạn Phúc');
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -22,13 +20,13 @@ export default function SignInPage() {
     const newErrors: { identifier?: string; password?: string } = {};
 
     if (!identifier.trim()) {
-      newErrors.identifier = t('auth.emailUsernameRequired');
+      newErrors.identifier = 'Vui lòng nhập email hoặc tài khoản.';
     }
 
     if (!password) {
-      newErrors.password = t('auth.passwordRequired');
+      newErrors.password = 'Vui lòng nhập mật khẩu.';
     } else if (password.length < 6) {
-      newErrors.password = t('auth.passwordMin');
+      newErrors.password = 'Mật khẩu tối thiểu 6 ký tự.';
     }
 
     setErrors(newErrors);
@@ -53,14 +51,14 @@ export default function SignInPage() {
           // Store admin user info
           localStorage.setItem(
             'gf_user',
-            JSON.stringify({ id: 'admin', email: value, name: 'Admin', loggedIn: true, role: 'admin' })
+            JSON.stringify({ id: 'admin', email: value, name: 'Quản trị', loggedIn: true, role: 'admin' })
           );
           migrateUserStorage();
           navigate('/admin');
           return;
         }
         // If admin login failed, show error
-        setErrors({ general: result.error || t('auth.invalidCredentials') });
+        setErrors({ general: result.error || 'Thông tin đăng nhập chưa đúng.' });
         setLoading(false);
         return;
       }
@@ -102,12 +100,12 @@ export default function SignInPage() {
           }
 
           // API returned error
-          setErrors({ general: json.error || t('auth.invalidEmailPassword') });
+          setErrors({ general: json.error || 'Email hoặc mật khẩu chưa đúng.' });
           setLoading(false);
           return;
         } catch {
           // API unreachable
-          setErrors({ general: t('auth.connectFailed') });
+          setErrors({ general: 'Chưa kết nối được hệ thống. Vui lòng thử lại.' });
           setLoading(false);
           return;
         }
@@ -127,36 +125,48 @@ export default function SignInPage() {
         return;
       }
 
-      setErrors({ general: t('auth.invalidEmailPassword') });
+      setErrors({ general: 'Email hoặc mật khẩu chưa đúng.' });
     } catch {
-      setErrors({ general: t('auth.connectionFailed') });
+      setErrors({ general: 'Kết nối gián đoạn. Vui lòng thử lại.' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#030405] flex items-center justify-center px-4 py-10 sm:py-14 font-sans">
-      <div className="w-full max-w-[420px]">
-        {/* Logo */}
-        <Link to="/" className="flex justify-center mb-10">
-          <img
-            src={logoImg}
-            alt="So Do Van Phuc"
-            className="h-32 w-auto object-contain drop-shadow-[0_0_28px_rgba(212,160,32,0.28)] sm:h-40 md:h-44"
-          />
-        </Link>
-
-        {/* Form Card */}
-        <div className="bg-[#15151D] rounded-2xl border border-white/[0.085] p-6 sm:p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#B88717]/10 flex items-center justify-center">
-              <LogIn className="w-5 h-5 text-[#B88717]" />
-            </div>
+    <main className="min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
+      <div className="mx-auto flex min-h-[calc(100vh-48px)] w-full max-w-[1040px] flex-col justify-center gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+        <section className="hidden lg:block">
+          <Link to="/" className="inline-flex items-center gap-4">
+            <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="h-24 w-auto object-contain" />
             <div>
-              <h1 className="text-xl font-bold text-[#F6D37A]">{t('auth.signIn')}</h1>
-              <p className="text-sm text-[#7D8291]">{t('auth.signInDesc')}</p>
+              <div className="text-3xl font-black text-[#F6D37A]">Sổ Đỏ Vạn Phúc</div>
+              <div className="mt-2 text-[15px] leading-6 text-[#A7ABB6]">Hệ thống quản lý nguồn nhà, khách hàng và lịch xem nội bộ.</div>
             </div>
+          </Link>
+          <div className="mt-8 grid max-w-xl gap-3">
+            {['Quản lý nguồn nhà và trạng thái xử lý', 'Theo dõi khách hàng, nhu cầu và lịch xem', 'AI hỗ trợ viết mô tả và chuẩn hóa nội dung'].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.035] px-4 py-3 text-[14px] text-[#D7DAE3]">
+                <ShieldCheck className="h-4 w-4 text-[#F6D37A]" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="w-full">
+          <Link to="/" className="mb-5 flex justify-center lg:hidden">
+            <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="h-24 w-auto object-contain" />
+          </Link>
+
+          <div className="rounded-lg border border-white/10 bg-[#08090C] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em] text-[#F6D37A]">
+              <ShieldCheck className="h-4 w-4" />
+              Khu vực nội bộ
+            </div>
+            <h1 className="mt-3 text-2xl font-black text-[#F5F0E6]">Đăng nhập</h1>
+            <p className="mt-2 text-[14px] leading-6 text-[#A7ABB6]">Vào hệ thống Sổ Đỏ Vạn Phúc để quản lý nguồn nhà và khách hàng.</p>
           </div>
 
           {/* General error */}
@@ -170,7 +180,7 @@ export default function SignInPage() {
             {/* Email / Username */}
             <div>
               <label htmlFor="identifier" className="block text-sm font-medium text-[#F6D37A] mb-1.5">
-                {t('auth.email')}
+                Tài khoản
               </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D8291] pointer-events-none" />
@@ -179,7 +189,7 @@ export default function SignInPage() {
                   type="text"
                   value={identifier}
                   onChange={(e) => { setIdentifier(e.target.value); setErrors((prev) => ({ ...prev, identifier: undefined, general: undefined })); }}
-                  placeholder={t('auth.emailUsernamePlaceholder')}
+                  placeholder="Email hoặc tài khoản quản trị"
                   className="w-full bg-[#0c0c12] border border-white/[0.085] rounded-xl text-[#F5F0E6] placeholder-[#7D8291] pl-10 pr-4 py-3 text-sm focus:border-[#B88717]/50 focus:outline-none transition-colors"
                 />
               </div>
@@ -189,7 +199,7 @@ export default function SignInPage() {
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-[#F6D37A] mb-1.5">
-                {t('auth.password')}
+                Mật khẩu
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D8291] pointer-events-none" />
@@ -198,7 +208,7 @@ export default function SignInPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setErrors((prev) => ({ ...prev, password: undefined, general: undefined })); }}
-                  placeholder="••••••••"
+                  placeholder="Nhập mật khẩu"
                   className="w-full bg-[#0c0c12] border border-white/[0.085] rounded-xl text-[#F5F0E6] placeholder-[#7D8291] pl-10 pr-11 py-3 text-sm focus:border-[#B88717]/50 focus:outline-none transition-colors"
                 />
                 <button
@@ -218,7 +228,7 @@ export default function SignInPage() {
                 to="/forgot-password"
                 className="text-sm text-[#F6D37A] hover:text-[#FFE8A3] transition-colors"
               >
-                {t('auth.forgotPassword')}
+                Quên mật khẩu?
               </Link>
             </div>
 
@@ -231,23 +241,27 @@ export default function SignInPage() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {t('auth.signingIn')}
+                  Đang đăng nhập...
                 </>
               ) : (
-                  t('auth.signIn')
+                <>
+                  Đăng nhập
+                  <ArrowRight className="h-4 w-4" />
+                </>
               )}
             </button>
           </form>
 
           {/* Register Link */}
           <p className="mt-6 text-center text-sm text-[#7D8291]">
-            {t('auth.noAccount')}{' '}
+            Chưa có tài khoản?{' '}
             <Link to="/register" className="text-[#F6D37A] hover:text-[#FFE8A3] font-medium transition-colors">
-              {t('auth.register')}
+              Tạo tài khoản
             </Link>
           </p>
-        </div>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
