@@ -1066,7 +1066,8 @@ foreach ($route in $htmlRoutes) {
     if ($route -eq '/') {
         Assert-SecurityHeaders $response.Headers 'HTML root'
     }
-    Assert-Contains $response.Content 'Sổ Đỏ Vạn Phúc' "HTML route $route renders SVP shell"
+    Assert-Contains $response.Content 'lang="vi"' "HTML route $route declares Vietnamese locale"
+    Assert-Contains $response.Content 'sodovanphuc.vn' "HTML route $route renders official domain shell"
     Assert-NoLegacyText $response.Content "HTML route $route"
 }
 
