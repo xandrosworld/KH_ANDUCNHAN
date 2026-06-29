@@ -67,16 +67,16 @@ function Resolve-ToolPath {
         [string]$AppRoot
     )
 
-    $releaseTool = Join-Path $ReleaseRoot "tools\$ToolName"
-    if (Test-Path -LiteralPath $releaseTool) {
-        return $releaseTool
-    }
-
     if ($AppRoot) {
         $deployTool = Join-Path $AppRoot "deploy\$ToolName"
         if (Test-Path -LiteralPath $deployTool) {
             return $deployTool
         }
+    }
+
+    $releaseTool = Join-Path $ReleaseRoot "tools\$ToolName"
+    if (Test-Path -LiteralPath $releaseTool) {
+        return $releaseTool
     }
 
     throw "Missing tool: $ToolName"

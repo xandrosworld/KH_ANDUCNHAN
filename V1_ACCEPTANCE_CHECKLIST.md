@@ -8,8 +8,10 @@ Ngay 29/06/2026
 - PHP syntax: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run php:parse`)
 - Visual/mobile/desktop smoke: PASS 100/100 29/06/2026 sau dot bo sung workflow admin cau hinh duyet tai khoan/ten truong (`npm run test:visual`)
 - Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `fc73dfd` (`npm run hosting:smoke`)
-- Live write workflow smoke domain `https://sodovanphuc.vn`: PASS 29/06/2026 (`npm run hosting:smoke:write`) - da tao va tu don property, media, customer, customer need, viewing schedule, referral, audit; upload/admin auth van skip do chua set `SVP_LIVE_ADMIN_PASSWORD`.
-- Live browser smoke domain `https://sodovanphuc.vn`: PASS 32/32, skip 4 case write/admin do chua set `SVP_LIVE_ADMIN_PASSWORD` local (`npm run hosting:browser`)
+- Live write workflow smoke domain `https://sodovanphuc.vn`: PASS 30/06/2026 (`npm run hosting:smoke:write`) - da test admin auth, upload live, tao/xoa inquiry/report/schedule, tao/cap nhat/xoa property, media, customer, customer need, viewing schedule, referral, audit va cleanup thanh cong.
+- Live browser smoke domain `https://sodovanphuc.vn`: PASS 36/36 tren mobile + desktop 30/06/2026 (`npm run hosting:browser`) - dang nhap admin live, redirect route bao ve, public routes, khong runtime/HTTP failure.
+- Hosting acceptance domain `https://sodovanphuc.vn`: PASS 30/06/2026 (`npm run hosting:acceptance`) - report tai `qa/hosting-acceptance/20260630-003032/ACCEPTANCE_REPORT.md`.
+- Temp admin live da duoc tao rieng de test, da cleanup bang workflow, da xoa GitHub secret va file mat khau local sau khi test.
 
 ## V1 dang dap ung
 
@@ -35,7 +37,9 @@ Ngay 29/06/2026
 - Da sua loi CSS global ep mau heading lam chu banner mobile bi toi tren nen toi; heading hien tai lay mau theo component.
 - Workflow visual da test: dang nhap vao dung dashboard, Chuyen gia dung AI mo ta va dang nha, Chuyen vien tao khach mua, Profile doi mat khau/xin them vai tro.
 - Workflow visual Chuyen gia da test theo luong moi: nhap nguon, ghi ghi chu xu ly trung, bam kiem tra trung, tick checklist xac minh, dung AI viet mo ta, gui duyet.
-- Live write smoke da test API nghiep vu that tren hosting: tao nha, doc chi tiet, cap nhat nha, tao media, kiem timeline/version, tao khach, nhu cau, lich xem, referral, audit va cleanup thanh cong.
+- Live write smoke da test API nghiep vu that tren hosting: tao nha, doc chi tiet, cap nhat nha, upload/tao media, kiem timeline/version, tao khach, nhu cau, lich xem, referral, audit va cleanup thanh cong.
+- Admin live dashboard/API da test qua browser sau dang nhap; endpoint `/api/svp/admin/dashboard` da sua de chay dung voi schema live.
+- Deploy GitHub Actions da them reset PHP OPcache sau moi lan upload de tranh server chay PHP cache cu.
 
 ## Yeu cau moi 29/06/2026 19:28
 
@@ -47,8 +51,7 @@ Ngay 29/06/2026
 
 ## Can tiep tuc truoc ban giao chinh thuc
 
-- Test live sau khi deploy commit moi nhat: hosting smoke PASS, write workflow smoke PASS; dang nhap admin live va upload live co token con phu thuoc bien mat khau `SVP_LIVE_ADMIN_PASSWORD`.
 - Tao user that cho cac vai tro chinh va test luong tren live: Chu nha, Khach mua, Nguoi gioi thieu, CTV, Chuyen vien, Chuyen gia, Admin.
-- Lam sach du lieu smoke/demo tren live va seed du lieu mau co hon.
+- Seed du lieu mau co hon neu muon demo cho khach bang data dep thay vi so lieu rong.
 - Rasoat tiep UI theo anh khach gui cho tung dashboard mobile.
 - Doi logo/asset cuoi cung neu khach gui ban chinh thuc.

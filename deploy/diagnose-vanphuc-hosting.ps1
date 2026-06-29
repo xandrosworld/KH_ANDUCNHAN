@@ -334,11 +334,11 @@ Invoke-Diagnostic 'www canonical redirect' {
 }
 
 Invoke-Diagnostic 'SVP app shell' {
-    $response = Invoke-StrictGet "$BaseUrl/dashboard"
-    if (-not $response.Content.Contains('So Do Van Phuc')) {
-        throw '/dashboard did not render the So Do Van Phuc app shell'
+    $response = Invoke-StrictGet "$BaseUrl/sign-in"
+    if (-not ($response.Content.Contains('sodovanphuc.vn') -and $response.Content -match '<html[^>]+lang="vi"')) {
+        throw '/sign-in did not render the So Do Van Phuc V1 app shell'
     }
-    Add-Result 'SVP app shell' 'PASS' '/dashboard renders the production app shell'
+    Add-Result 'SVP app shell' 'PASS' '/sign-in renders the production V1 app shell'
 }
 
 Invoke-Diagnostic 'robots and sitemap' {
@@ -348,8 +348,10 @@ Invoke-Diagnostic 'robots and sitemap' {
     }
 
     $sitemap = Invoke-StrictGet "$BaseUrl/sitemap.xml"
-    if (-not $sitemap.Content.Contains("$BaseUrl/dashboard") -or -not $sitemap.Content.Contains("$BaseUrl/nha")) {
-        throw 'sitemap.xml does not contain core SVP routes'
+    foreach ($route in @('/register', '/chu-nha', '/chuyen-gia')) {
+        if (-not $sitemap.Content.Contains("$BaseUrl$route")) {
+            throw "sitemap.xml does not contain core SVP route $route"
+        }
     }
 
     Add-Result 'robots and sitemap' 'PASS' 'robots.txt and sitemap.xml use the official domain'
