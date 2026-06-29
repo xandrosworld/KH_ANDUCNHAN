@@ -196,21 +196,57 @@ function svp_build_login_response(array $user, array $roles): array {
     ];
 }
 
+function svp_strip_property_sensitive_fields(array $property, bool $hideExactLocation = false, bool $hideLegalIdentifiers = false): array {
+    $sensitive = [
+        'ownerName',
+        'ownerPhone',
+        'commission',
+        'commissionNote',
+        'internalNote',
+        'contractMedia',
+        'owner_name',
+        'owner_phone',
+        'internal_note',
+        'hiddenAddress',
+        'hidden_address',
+    ];
+
+    foreach ($sensitive as $key) unset($property[$key]);
+
+    $extra = is_array($property['extra'] ?? null) ? $property['extra'] : [];
+    foreach (['ownerCccd', 'ownerNote', 'commission', 'commissionNote', 'internalNote'] as $key) unset($extra[$key]);
+
+    if ($hideLegalIdentifiers) {
+        foreach (['bookSerial', 'book_serial'] as $key) unset($property[$key]);
+        foreach (['bookSerial', 'bookSheet', 'bookParcel'] as $key) unset($extra[$key]);
+    }
+
+    if ($hideExactLocation) {
+        foreach (['address', 'street', 'gps_lat', 'gps_lng'] as $key) unset($property[$key]);
+        unset($extra['gpsCoordinates']);
+    }
+
+    $property['extra'] = $extra;
+    return $property;
+}
+
 function svp_filter_property_by_role(array $property, ?string $activeRole, ?string $userId): array {
-    $full = ['admin', 'giam_doc', 'truong_phong'];
+    $full = function_exists('svp_management_role_slugs') ? svp_management_role_slugs() : ['admin', 'giam_doc', 'truong_phong'];
     if (in_array($activeRole, $full)) return $property;
 
-    $sensitive = ['ownerName', 'ownerPhone', 'bookSerial', 'commission', 'commissionNote', 'internalNote', 'contractMedia', 'owner_name', 'owner_phone', 'book_serial', 'internal_note'];
+    if (!$activeRole) {
+        $status = $property['status_id'] ?? $property['statusId'] ?? '';
+        if (!in_array($status, ['active', 'st_active'], true)) return [];
+        return svp_strip_property_sensitive_fields($property, true, true);
+    }
 
     if ($activeRole === 'chuyen_gia') {
         if (($property['created_by'] ?? $property['createdBy'] ?? '') === $userId) return $property;
-        foreach ($sensitive as $k) unset($property[$k]);
-        return $property;
+        return svp_strip_property_sensitive_fields($property);
     }
 
     if (in_array($activeRole, ['chuyen_vien', 'ctv_khach'])) {
-        foreach ($sensitive as $k) unset($property[$k]);
-        return $property;
+        return svp_strip_property_sensitive_fields($property);
     }
 
     if ($activeRole === 'ctv_nguon') {
@@ -225,8 +261,7 @@ function svp_filter_property_by_role(array $property, ?string $activeRole, ?stri
     if ($activeRole === 'khach_mua') {
         $status = $property['status_id'] ?? $property['statusId'] ?? '';
         if (!in_array($status, ['active', 'st_active'], true)) return [];
-        foreach (array_merge($sensitive, ['address', 'street', 'gps_lat', 'gps_lng']) as $k) unset($property[$k]);
-        return $property;
+        return svp_strip_property_sensitive_fields($property, true, true);
     }
 
     // nguoi_gioi_thieu, doi_tac - no property access
@@ -730,7 +765,10 @@ $router->add('POST', '/api/svp/properties/check-duplicate', function () {
 
     $address = trim($input['address'] ?? '');
     $bookSerial = trim($input['bookSerial'] ?? '');
+    $bookSheet = trim($input['bookSheet'] ?? '');
+    $bookParcel = trim($input['bookParcel'] ?? '');
     $ownerPhone = trim($input['ownerPhone'] ?? '');
+    $gpsCoordinates = trim($input['gpsCoordinates'] ?? '');
 
     $conditions = [];
     $params = [];
@@ -743,9 +781,21 @@ $router->add('POST', '/api/svp/properties/check-duplicate', function () {
         $conditions[] = "book_serial = :bs";
         $params['bs'] = $bookSerial;
     }
+    if ($bookSheet) {
+        $conditions[] = "extra_json LIKE :book_sheet";
+        $params['book_sheet'] = '%' . $bookSheet . '%';
+    }
+    if ($bookParcel) {
+        $conditions[] = "extra_json LIKE :book_parcel";
+        $params['book_parcel'] = '%' . $bookParcel . '%';
+    }
     if ($ownerPhone) {
         $conditions[] = "owner_phone = :op";
         $params['op'] = $ownerPhone;
+    }
+    if ($gpsCoordinates) {
+        $conditions[] = "extra_json LIKE :gps";
+        $params['gps'] = '%' . $gpsCoordinates . '%';
     }
 
     if (empty($conditions)) {

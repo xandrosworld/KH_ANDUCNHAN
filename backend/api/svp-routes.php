@@ -26,6 +26,35 @@ function svp_actor_id(): ?string
     return (string) ($payload['sub'] ?? $payload['id'] ?? $payload['email'] ?? '');
 }
 
+function svp_access_context(): array
+{
+    $payload = Auth::getPayload();
+    if (!$payload) {
+        return [null, null];
+    }
+
+    $activeRole = (string) ($payload['role'] ?? $payload['activeRole'] ?? '');
+    if ($activeRole === '' && !empty($payload['roles']) && is_array($payload['roles'])) {
+        foreach ($payload['roles'] as $role) {
+            if (($role['status'] ?? '') === 'approved') {
+                $activeRole = (string) ($role['slug'] ?? '');
+                break;
+            }
+        }
+    }
+
+    return [$activeRole ?: null, (string) ($payload['sub'] ?? $payload['id'] ?? '')];
+}
+
+function svp_apply_property_access_filter(array $property): array
+{
+    [$activeRole, $userId] = svp_access_context();
+    if (function_exists('svp_filter_property_by_role')) {
+        return svp_filter_property_by_role($property, $activeRole, $userId);
+    }
+    return $property;
+}
+
 function svp_uid(string $prefix): string
 {
     return $prefix . '_' . date('ymdHis') . '_' . bin2hex(random_bytes(4));
@@ -131,6 +160,106 @@ function svp_role_requires_approval_from_config(PDO $db, string $roleSlug): bool
     }
 
     return svp_role_approval_default_for($roleSlug);
+}
+
+function svp_property_field_label_definitions(): array
+{
+    return [
+        ['key' => 'ownerName', 'label' => 'Tên chủ nhà', 'sortOrder' => 10],
+        ['key' => 'ownerPhone', 'label' => 'SĐT chủ nhà', 'sortOrder' => 20],
+        ['key' => 'ownerCccd', 'label' => 'CCCD/CMND chủ nhà', 'sortOrder' => 30],
+        ['key' => 'ownerNote', 'label' => 'Ghi chú về chủ nhà', 'sortOrder' => 40],
+        ['key' => 'title', 'label' => 'Tiêu đề tin', 'sortOrder' => 50],
+        ['key' => 'propertyType', 'label' => 'Loại bất động sản', 'sortOrder' => 60],
+        ['key' => 'street', 'label' => 'Số nhà + Tên đường', 'sortOrder' => 70],
+        ['key' => 'ward', 'label' => 'Phường/Xã', 'sortOrder' => 80],
+        ['key' => 'district', 'label' => 'Quận/Huyện', 'sortOrder' => 90],
+        ['key' => 'gpsCoordinates', 'label' => 'Tọa độ/GPS', 'sortOrder' => 100],
+        ['key' => 'area', 'label' => 'Diện tích (m²)', 'sortOrder' => 110],
+        ['key' => 'bedrooms', 'label' => 'Phòng ngủ', 'sortOrder' => 120],
+        ['key' => 'bathrooms', 'label' => 'WC', 'sortOrder' => 130],
+        ['key' => 'floors', 'label' => 'Số tầng', 'sortOrder' => 140],
+        ['key' => 'direction', 'label' => 'Hướng nhà', 'sortOrder' => 150],
+        ['key' => 'bookSerial', 'label' => 'Số sổ/Seri sổ', 'sortOrder' => 160],
+        ['key' => 'bookSheet', 'label' => 'Số tờ', 'sortOrder' => 170],
+        ['key' => 'bookParcel', 'label' => 'Thửa đất', 'sortOrder' => 180],
+        ['key' => 'legalStatus', 'label' => 'Tình trạng pháp lý', 'sortOrder' => 190],
+        ['key' => 'planningStatus', 'label' => 'Thông tin quy hoạch', 'sortOrder' => 200],
+        ['key' => 'price', 'label' => 'Giá chào (VNĐ)', 'sortOrder' => 210],
+        ['key' => 'commission', 'label' => 'Hoa hồng', 'sortOrder' => 220],
+        ['key' => 'commissionNote', 'label' => 'Ghi chú hoa hồng', 'sortOrder' => 230],
+        ['key' => 'internalNote', 'label' => 'Ghi chú nội bộ', 'sortOrder' => 240],
+        ['key' => 'description', 'label' => 'Mô tả thêm về nhà', 'sortOrder' => 250],
+        ['key' => 'houseImages', 'label' => 'Ảnh nhà', 'sortOrder' => 260],
+        ['key' => 'bookImages', 'label' => 'Ảnh sổ đỏ/sổ hồng', 'sortOrder' => 270],
+        ['key' => 'contractImages', 'label' => 'Hợp đồng/tài liệu', 'sortOrder' => 280],
+        ['key' => 'ownerSelfie', 'label' => 'Ảnh selfie với chủ nhà', 'sortOrder' => 290],
+    ];
+}
+
+function svp_ensure_property_field_label_config(PDO $db): void
+{
+    $db->prepare(
+        "INSERT INTO svp_config_groups (id, name, description, sort_order, is_system)
+         VALUES ('property_field_labels', 'Tên trường nhập liệu nhà', 'Admin đổi tên các trường quan trọng trong form đăng nhà mà không cần sửa chương trình', 6, 1)
+         ON DUPLICATE KEY UPDATE
+           description = VALUES(description),
+           sort_order = VALUES(sort_order),
+           is_system = VALUES(is_system)"
+    )->execute();
+
+    $stmt = $db->prepare(
+        "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
+         VALUES (:id, 'property_field_labels', :label, :value, :metadata_json, :sort_order, 1)
+         ON DUPLICATE KEY UPDATE
+           sort_order = VALUES(sort_order),
+           is_active = 1,
+           metadata_json = CASE
+             WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
+             ELSE metadata_json
+           END"
+    );
+
+    foreach (svp_property_field_label_definitions() as $field) {
+        $stmt->execute([
+            'id' => 'field_label_' . $field['key'],
+            'label' => $field['label'],
+            'value' => $field['key'],
+            'metadata_json' => svp_json_encode([
+                'scope' => 'property',
+                'editableLabel' => true,
+            ]),
+            'sort_order' => (int) $field['sortOrder'],
+        ]);
+    }
+}
+
+function svp_ensure_v1_visibility_labels(PDO $db): void
+{
+    $updates = [
+        'vl_dau_khach_duoi_lop4' => ['label' => 'Công khai cho khách mua', 'value' => 'public_buyer'],
+        'vl_lop4' => ['label' => 'Chuyên viên/CTV khách', 'value' => 'specialist_collaborator'],
+        'vl_lop8' => ['label' => 'CTV nguồn', 'value' => 'source_collaborator'],
+        'vl_tot_nghiep' => ['label' => 'Chuyên gia phụ trách', 'value' => 'assigned_expert'],
+        'vl_vinh_danh' => ['label' => 'Quản lý/Admin', 'value' => 'management_admin'],
+        'vl_chuyen_gia' => ['label' => 'Chuyên gia toàn hệ thống', 'value' => 'expert_network'],
+    ];
+
+    $stmt = $db->prepare(
+        "UPDATE svp_config_options
+         SET label = :label, value = :value
+         WHERE id = :id
+           AND group_id = 'visibility_levels'
+           AND (label LIKE '%Lớp%' OR label LIKE '%VINH DANH%' OR value IN ('dau_khach_duoi_lop4', 'lop4', 'lop8', 'tot_nghiep', 'vinh_danh', 'chuyen_gia'))"
+    );
+
+    foreach ($updates as $id => $item) {
+        $stmt->execute([
+            'id' => $id,
+            'label' => $item['label'],
+            'value' => $item['value'],
+        ]);
+    }
 }
 
 function svp_next_property_code(PDO $db): string
@@ -272,6 +401,8 @@ function svp_insert_property_timeline(PDO $db, string $propertyId, string $event
 $router->add('GET', '/api/svp/config', function () {
     $db = Database::getInstance();
     svp_ensure_role_approval_config($db);
+    svp_ensure_property_field_label_config($db);
+    svp_ensure_v1_visibility_labels($db);
     $groups = $db->query('SELECT * FROM svp_config_groups ORDER BY sort_order ASC, name ASC')->fetchAll(PDO::FETCH_ASSOC);
     $options = $db->query('SELECT * FROM svp_config_options ORDER BY sort_order ASC, label ASC')->fetchAll(PDO::FETCH_ASSOC);
 
@@ -419,7 +550,9 @@ $router->add('GET', '/api/svp/properties', function () {
     $whereSql = 'WHERE ' . implode(' AND ', $where);
     $stmt = $db->prepare("SELECT * FROM svp_properties {$whereSql} ORDER BY updated_at DESC LIMIT 200");
     $stmt->execute($params);
-    $items = array_map('svp_property_to_response', $stmt->fetchAll(PDO::FETCH_ASSOC));
+    $items = array_values(array_filter(array_map(function ($row) {
+        return svp_apply_property_access_filter(svp_property_to_response($row));
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC))));
     Response::json(['items' => $items, 'total' => count($items)]);
 });
 
@@ -488,7 +621,9 @@ $router->add('GET', '/api/svp/properties/{id}', function ($params) {
     $stmt->execute(['id' => $params['id'], 'code' => $params['id']]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) Response::notFound('Property not found');
-    Response::json(['item' => svp_property_to_response($row)]);
+    $item = svp_apply_property_access_filter(svp_property_to_response($row));
+    if (empty($item)) Response::notFound('Property not found');
+    Response::json(['item' => $item]);
 });
 
 $router->add('PUT', '/api/svp/properties/{id}', function ($params) use ($input) {
@@ -606,6 +741,18 @@ $router->add('GET', '/api/svp/properties/{id}/versions', function ($params) {
 
 $router->add('GET', '/api/svp/properties/{id}/media', function ($params) {
     $db = Database::getInstance();
+    [$activeRole, $userId] = svp_access_context();
+    $canSeeSensitiveMedia = false;
+    $fullRoles = function_exists('svp_management_role_slugs') ? svp_management_role_slugs() : ['admin'];
+    if ($activeRole && in_array($activeRole, $fullRoles, true)) {
+        $canSeeSensitiveMedia = true;
+    } elseif ($activeRole === 'chuyen_gia') {
+        $propertyStmt = $db->prepare('SELECT created_by, expert_id FROM svp_properties WHERE id = :id OR code = :id LIMIT 1');
+        $propertyStmt->execute(['id' => $params['id']]);
+        $propertyRow = $propertyStmt->fetch(PDO::FETCH_ASSOC);
+        $canSeeSensitiveMedia = $propertyRow && in_array($userId, [(string) ($propertyRow['created_by'] ?? ''), (string) ($propertyRow['expert_id'] ?? '')], true);
+    }
+
     $stmt = $db->prepare('SELECT * FROM svp_property_media WHERE property_id = :id ORDER BY sort_order ASC, created_at DESC LIMIT 100');
     $stmt->execute(['id' => $params['id']]);
     $items = array_map(function ($row) {
@@ -759,6 +906,14 @@ $router->add('GET', '/api/svp/customers', function () {
             'createdAt' => (string) ($row['created_at'] ?? ''),
         ];
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    if (!$canSeeSensitiveMedia) {
+        $sensitiveCaptions = ['approval_document', 'red_book', 'contract_document', 'owner_selfie', 'Ảnh duyệt hồ sơ', 'Sổ đỏ / giấy tờ', 'Hợp đồng / tài liệu', 'Ảnh selfie với chủ nhà'];
+        $items = array_values(array_filter($items, function ($item) use ($sensitiveCaptions) {
+            return !in_array((string) ($item['caption'] ?? ''), $sensitiveCaptions, true);
+        }));
+    }
+
     Response::json(['items' => $items, 'total' => count($items)]);
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, Loader2, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Pencil, Save, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 
 interface ConfigOption {
@@ -38,6 +38,9 @@ export default function AdminConfigPage() {
   const [roleSettings, setRoleSettings] = useState<RoleApprovalSetting[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [savingSlug, setSavingSlug] = useState('');
+  const [editingOptionId, setEditingOptionId] = useState('');
+  const [editingLabel, setEditingLabel] = useState('');
+  const [savingOptionId, setSavingOptionId] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
@@ -102,6 +105,69 @@ export default function AdminConfigPage() {
       setMessage('Chưa lưu được cấu hình. Vui lòng thử lại.');
     } finally {
       setSavingSlug('');
+    }
+  };
+
+  const updateGroupOption = (updated: ConfigOption) => {
+    setGroups((current) =>
+      current.map((group) => ({
+        ...group,
+        options: (group.options || []).map((option) => (option.id === updated.id ? updated : option)),
+      })),
+    );
+  };
+
+  const startEditOption = (option: ConfigOption) => {
+    setEditingOptionId(option.id);
+    setEditingLabel(option.label);
+  };
+
+  const cancelEditOption = () => {
+    setEditingOptionId('');
+    setEditingLabel('');
+  };
+
+  const saveOptionLabel = async (option: ConfigOption) => {
+    const nextLabel = editingLabel.trim();
+    if (!nextLabel || savingOptionId) return;
+    setSavingOptionId(option.id);
+    setMessage('');
+    try {
+      const response = await api.put(`/config/options/${encodeURIComponent(option.id)}`, {
+        label: nextLabel,
+        value: option.value,
+        metadata: option.metadata || null,
+        isActive: option.isActive !== false,
+      });
+      const updated = response.data?.item as ConfigOption | undefined;
+      if (updated) updateGroupOption(updated);
+      setMessage('Đã lưu tên hiển thị.');
+      cancelEditOption();
+    } catch {
+      setMessage('Chưa lưu được tên hiển thị. Vui lòng thử lại.');
+    } finally {
+      setSavingOptionId('');
+    }
+  };
+
+  const toggleOptionActive = async (option: ConfigOption) => {
+    if (savingOptionId) return;
+    setSavingOptionId(option.id);
+    setMessage('');
+    try {
+      const response = await api.put(`/config/options/${encodeURIComponent(option.id)}`, {
+        label: option.label,
+        value: option.value,
+        metadata: option.metadata || null,
+        isActive: option.isActive === false,
+      });
+      const updated = response.data?.item as ConfigOption | undefined;
+      if (updated) updateGroupOption(updated);
+      setMessage(option.isActive === false ? 'Đã bật lại lựa chọn.' : 'Đã tạm ẩn lựa chọn.');
+    } catch {
+      setMessage('Chưa cập nhật được lựa chọn. Vui lòng thử lại.');
+    } finally {
+      setSavingOptionId('');
     }
   };
 
@@ -219,13 +285,62 @@ export default function AdminConfigPage() {
                 <div className="border-t border-gray-100 px-4 pb-3">
                   {(group.options || []).map((option) => (
                     <div key={option.id} className="flex items-center justify-between gap-3 border-b border-gray-50 py-3 last:border-0">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-[#25202a]">{option.label}</p>
-                        <p className="truncate text-xs font-medium text-[#8a919e]">{option.value}</p>
+                      <div className="min-w-0 flex-1">
+                        {editingOptionId === option.id ? (
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <input
+                              value={editingLabel}
+                              onChange={(event) => setEditingLabel(event.target.value)}
+                              className="min-h-10 min-w-0 flex-1 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold text-[#25202a] outline-none focus:border-[#c40012]"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => saveOptionLabel(option)}
+                                disabled={savingOptionId === option.id}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-[#c40012] px-3 text-xs font-black text-white disabled:opacity-60"
+                              >
+                                {savingOptionId === option.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                Lưu
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEditOption}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#667085]"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                                Hủy
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="truncate text-sm font-bold text-[#25202a]">{option.label}</p>
+                            <p className="truncate text-xs font-medium text-[#8a919e]">{option.value}</p>
+                          </>
+                        )}
                       </div>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-black ${option.isActive === false ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'}`}>
-                        {option.isActive === false ? 'Tạm ẩn' : 'Đang dùng'}
-                      </span>
+                      {editingOptionId !== option.id && (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startEditOption(option)}
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 text-xs font-black text-[#667085]"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleOptionActive(option)}
+                            disabled={savingOptionId === option.id}
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black disabled:opacity-60 ${option.isActive === false ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'}`}
+                          >
+                            {savingOptionId === option.id ? 'Đang lưu...' : option.isActive === false ? 'Tạm ẩn' : 'Đang dùng'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

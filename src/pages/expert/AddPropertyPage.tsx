@@ -1,32 +1,79 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Upload, Sparkles, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Sparkles, Upload } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { apiPost } from '../../services/apiClient';
+import { svpApi } from '../../services/svpApi';
+import type { SvpConfigGroup } from '../../types/svp';
+import { propertyFieldLabel } from '../../utils/fieldLabels';
 
 const STEPS = ['Chủ nhà', 'Thông tin nhà', 'Pháp lý & Giá', 'Hình ảnh', 'Xác nhận'];
+
+const emptyForm = {
+  ownerName: '',
+  ownerPhone: '',
+  ownerCccd: '',
+  ownerNote: '',
+  title: '',
+  propertyType: '',
+  street: '',
+  ward: '',
+  district: '',
+  gpsCoordinates: '',
+  area: '',
+  bedrooms: '',
+  bathrooms: '',
+  floors: '',
+  direction: '',
+  bookSerial: '',
+  bookSheet: '',
+  bookParcel: '',
+  legalStatus: '',
+  planningStatus: '',
+  price: '',
+  commission: '',
+  commissionNote: '',
+  hiddenAddress: '',
+  internalNote: '',
+  description: '',
+};
+
+type FileBucket = 'house' | 'book' | 'contract' | 'selfie';
 
 export default function ExpertAddPropertyPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [groups, setGroups] = useState<SvpConfigGroup[]>([]);
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [duplicates, setDuplicates] = useState<any[]>([]);
   const [aiDesc, setAiDesc] = useState('');
   const [message, setMessage] = useState('');
-  const [form, setForm] = useState({
-    ownerName: '', ownerPhone: '', ownerCccd: '', ownerNote: '',
-    title: '', propertyType: '', street: '', ward: '', district: '', area: '', bedrooms: '', bathrooms: '', floors: '', direction: '',
-    bookSerial: '', legalStatus: '', price: '', commission: '', commissionNote: '', internalNote: '',
-    description: '',
-  });
-  const [files, setFiles] = useState<{ house: File[]; book: File[]; contract: File[]; selfie: File[] }>({ house: [], book: [], contract: [], selfie: [] });
+  const [form, setForm] = useState(emptyForm);
+  const [files, setFiles] = useState<Record<FileBucket, File[]>>({ house: [], book: [], contract: [], selfie: [] });
 
-  const u = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  useEffect(() => {
+    svpApi.getConfig().then(setGroups).catch(() => setGroups([]));
+  }, []);
+
+  const fieldLabel = (key: string, fallback: string) => propertyFieldLabel(groups, key, fallback);
+  const u = (key: keyof typeof emptyForm, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   const checkDuplicate = async () => {
-    try { const r = await api.post('/properties/check-duplicate', { address: `${form.street} ${form.ward} ${form.district}`, bookSerial: form.bookSerial, ownerPhone: form.ownerPhone }); setDuplicates(r.data?.matches || []); } catch { setDuplicates([]); }
+    try {
+      const response = await api.post('/properties/check-duplicate', {
+        address: [form.street, form.ward, form.district].filter(Boolean).join(', '),
+        bookSerial: form.bookSerial,
+        bookSheet: form.bookSheet,
+        bookParcel: form.bookParcel,
+        ownerPhone: form.ownerPhone,
+        gpsCoordinates: form.gpsCoordinates,
+      });
+      setDuplicates(response.data?.matches || []);
+    } catch {
+      setDuplicates([]);
+    }
   };
 
   const generateAiDesc = async () => {
@@ -40,7 +87,7 @@ export default function ExpertAddPropertyPage() {
         bathrooms: form.bathrooms,
         address: [form.street, form.ward].filter(Boolean).join(', '),
         city: form.district,
-        amenities: [form.direction, form.legalStatus].filter(Boolean).join(', '),
+        amenities: [form.direction, form.legalStatus, form.planningStatus].filter(Boolean).join(', '),
         notes: form.internalNote || form.ownerNote,
       });
       const description = result.ok ? result.data?.description || '' : '';
@@ -53,7 +100,8 @@ export default function ExpertAddPropertyPage() {
 
   const handleSubmit = async (isDraft: boolean) => {
     if (!form.ownerName || !form.ownerPhone || !form.title || !form.street || !form.district) {
-      setMessage('Vui lòng nhập chủ nhà, số điện thoại, tiêu đề, đường và quận/huyện.');
+      setMessage('Vui lòng nhập chủ nhà, số điện thoại, tiêu đề, số nhà/tên đường và quận/huyện.');
+      setStep(0);
       return;
     }
     setSubmitting(true);
@@ -64,13 +112,14 @@ export default function ExpertAddPropertyPage() {
         description: form.description,
         ownerName: form.ownerName,
         ownerPhone: form.ownerPhone,
-        bookSerial: form.bookSerial,
+        bookSerial: [form.bookSerial, form.bookSheet ? `Tờ ${form.bookSheet}` : '', form.bookParcel ? `Thửa ${form.bookParcel}` : ''].filter(Boolean).join(' - '),
         price: form.price ? Number(form.price) : 0,
         areaM2: form.area ? Number(form.area) : null,
         district: form.district,
         ward: form.ward,
         address: [form.street, form.ward, form.district].filter(Boolean).join(', '),
-        statusId: 'st_new',
+        hiddenAddress: form.hiddenAddress,
+        statusId: isDraft ? 'st_new' : 'st_new',
         expertId: user?.id,
         extra: {
           ownerCccd: form.ownerCccd,
@@ -80,7 +129,12 @@ export default function ExpertAddPropertyPage() {
           bathrooms: form.bathrooms,
           floors: form.floors,
           direction: form.direction,
+          gpsCoordinates: form.gpsCoordinates,
+          bookSerial: form.bookSerial,
+          bookSheet: form.bookSheet,
+          bookParcel: form.bookParcel,
           legalStatus: form.legalStatus,
+          planningStatus: form.planningStatus,
           commission: form.commission,
           commissionNote: form.commissionNote,
           internalNote: form.internalNote,
@@ -88,106 +142,188 @@ export default function ExpertAddPropertyPage() {
           saveMode: isDraft ? 'draft' : 'submit',
         },
       };
-      const r = await api.post('/properties', payload);
-      const id = r.data?.item?.id;
-      if (id) { for (const [cat, list] of Object.entries(files)) { for (const f of list) { const fd = new FormData(); fd.append('file', f); fd.append('category', cat); await api.post(`/properties/${id}/media-upload`, fd); } } }
+      const response = await api.post('/properties', payload);
+      const id = response.data?.item?.id;
+      if (id) {
+        const categoryMap: Record<FileBucket, string> = {
+          house: 'house_image',
+          book: 'red_book',
+          contract: 'contract_document',
+          selfie: 'owner_selfie',
+        };
+        for (const [category, list] of Object.entries(files) as Array<[FileBucket, File[]]>) {
+          for (const file of list) {
+            const fd = new FormData();
+            fd.append('images', file);
+            fd.append('category', categoryMap[category]);
+            await api.post(`/properties/${id}/media-upload`, fd);
+          }
+        }
+      }
       navigate('/chuyen-gia/kho-nha');
-    } catch { setMessage('Không lưu được nhà. Vui lòng kiểm tra lại dữ liệu.'); }
+    } catch {
+      setMessage('Không lưu được nhà. Vui lòng kiểm tra lại dữ liệu.');
+    }
     setSubmitting(false);
   };
 
-  const addFiles = (cat: keyof typeof files, newFiles: FileList | null) => { if (newFiles) setFiles(f => ({ ...f, [cat]: [...f[cat], ...Array.from(newFiles)] })); };
+  const addFiles = (bucket: FileBucket, newFiles: FileList | null) => {
+    if (newFiles) setFiles((current) => ({ ...current, [bucket]: [...current[bucket], ...Array.from(newFiles)] }));
+  };
 
   return (
-    <div className="p-4 pb-20 max-w-lg mx-auto">
-      <h1 className="text-xl font-bold mb-4">Đăng nhà mới</h1>
-      {message && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div>}
-      <div className="flex items-center justify-center mb-6 overflow-x-auto">
-        {STEPS.map((s, i) => (<div key={s} className="flex items-center"><div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i <= step ? 'bg-[#D32F2F] text-white' : 'bg-gray-200 text-gray-500'}`}>{i + 1}</div>{i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${i < step ? 'bg-[#D32F2F]' : 'bg-gray-200'}`} />}</div>))}
-      </div>
-      <p className="text-center text-sm text-[#757575] mb-6">{STEPS[step]}</p>
+    <div className="mx-auto max-w-lg px-4 pb-24 pt-4">
+      <h1 className="mb-2 text-xl font-black text-[#25202a]">Đăng nhà mới</h1>
+      <p className="mb-4 text-sm font-medium leading-6 text-[#667085]">
+        Nhập đủ thông tin để hệ thống kiểm tra trùng, lưu pháp lý và phân quyền hiển thị về sau.
+      </p>
+      {message && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{message}</div>}
 
-      {step === 0 && (<div className="space-y-4">
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Tên chủ nhà *" value={form.ownerName} onChange={e => u('ownerName', e.target.value)} />
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="SĐT chủ nhà *" value={form.ownerPhone} onChange={e => u('ownerPhone', e.target.value)} />
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="CCCD/CMND" value={form.ownerCccd} onChange={e => u('ownerCccd', e.target.value)} />
-        <textarea className="w-full border rounded-lg px-3 py-2.5 h-20" placeholder="Ghi chú về chủ nhà" value={form.ownerNote} onChange={e => u('ownerNote', e.target.value)} />
-      </div>)}
-
-      {step === 1 && (<div className="space-y-4">
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Tiêu đề tin *" value={form.title} onChange={e => u('title', e.target.value)} />
-        <select className="w-full border rounded-lg px-3 py-2.5" value={form.propertyType} onChange={e => u('propertyType', e.target.value)}>
-          <option value="">Loại BĐS</option><option value="nha_pho">Nhà phố</option><option value="biet_thu">Biệt thự</option><option value="can_ho">Căn hộ</option><option value="dat_nen">Đất nền</option><option value="nha_xuong">Nhà xưởng</option>
-        </select>
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Số nhà + Tên đường" value={form.street} onChange={e => u('street', e.target.value)} />
-        <div className="grid grid-cols-2 gap-3">
-          <input className="border rounded-lg px-3 py-2.5" placeholder="Phường/Xã" value={form.ward} onChange={e => u('ward', e.target.value)} />
-          <input className="border rounded-lg px-3 py-2.5" placeholder="Quận/Huyện" value={form.district} onChange={e => u('district', e.target.value)} />
-        </div>
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Diện tích (m²)" type="number" value={form.area} onChange={e => u('area', e.target.value)} />
-        <div className="grid grid-cols-3 gap-3">
-          <input className="border rounded-lg px-3 py-2.5" placeholder="PN" type="number" value={form.bedrooms} onChange={e => u('bedrooms', e.target.value)} />
-          <input className="border rounded-lg px-3 py-2.5" placeholder="WC" type="number" value={form.bathrooms} onChange={e => u('bathrooms', e.target.value)} />
-          <input className="border rounded-lg px-3 py-2.5" placeholder="Tầng" type="number" value={form.floors} onChange={e => u('floors', e.target.value)} />
-        </div>
-        <select className="w-full border rounded-lg px-3 py-2.5" value={form.direction} onChange={e => u('direction', e.target.value)}>
-          <option value="">Hướng nhà</option><option value="dong">Đông</option><option value="tay">Tây</option><option value="nam">Nam</option><option value="bac">Bắc</option><option value="dong_bac">Đông Bắc</option><option value="dong_nam">Đông Nam</option><option value="tay_bac">Tây Bắc</option><option value="tay_nam">Tây Nam</option>
-        </select>
-      </div>)}
-
-      {step === 2 && (<div className="space-y-4">
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Số tờ / Số thửa" value={form.bookSerial} onChange={e => u('bookSerial', e.target.value)} />
-        <select className="w-full border rounded-lg px-3 py-2.5" value={form.legalStatus} onChange={e => u('legalStatus', e.target.value)}>
-          <option value="">Tình trạng pháp lý</option><option value="so_do">Sổ đỏ</option><option value="so_hong">Sổ hồng</option><option value="gpxd">GPXD</option><option value="hop_dong">Hợp đồng</option><option value="chua_co">Chưa có sổ</option>
-        </select>
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Giá chào (VNĐ)" type="number" value={form.price} onChange={e => u('price', e.target.value)} />
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Hoa hồng (%)" type="number" value={form.commission} onChange={e => u('commission', e.target.value)} />
-        <input className="w-full border rounded-lg px-3 py-2.5" placeholder="Ghi chú hoa hồng" value={form.commissionNote} onChange={e => u('commissionNote', e.target.value)} />
-        <textarea className="w-full border rounded-lg px-3 py-2.5 h-20" placeholder="Ghi chú nội bộ" value={form.internalNote} onChange={e => u('internalNote', e.target.value)} />
-      </div>)}
-
-      {step === 3 && (<div className="space-y-4">
-        {(['house', 'book', 'contract', 'selfie'] as const).map(cat => (
-          <div key={cat}>
-            <p className="font-medium mb-2">{cat === 'house' ? 'Ảnh nhà' : cat === 'book' ? 'Ảnh sổ (đỏ/hồng)' : cat === 'contract' ? 'Hợp đồng' : 'Ảnh selfie với chủ nhà'}</p>
-            <label className="block border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer hover:border-[#D32F2F]">
-              <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" /><span className="text-sm text-[#757575]">Chọn ảnh</span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={e => addFiles(cat, e.target.files)} />
-            </label>
-            {files[cat].length > 0 && <p className="text-xs text-[#757575] mt-1">Đã chọn {files[cat].length} ảnh</p>}
+      <div className="mb-6 flex items-center justify-start overflow-x-auto pb-1">
+        {STEPS.map((item, index) => (
+          <div key={item} className="flex shrink-0 items-center">
+            <div className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black ${index <= step ? 'bg-[#c40012] text-white' : 'bg-gray-200 text-gray-500'}`}>{index + 1}</div>
+            {index < STEPS.length - 1 && <div className={`h-0.5 w-7 ${index < step ? 'bg-[#c40012]' : 'bg-gray-200'}`} />}
           </div>
         ))}
-      </div>)}
+      </div>
+      <p className="mb-6 text-center text-sm font-bold text-[#757575]">{STEPS[step]}</p>
 
-      {step === 4 && (<div className="space-y-4">
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-semibold mb-3">Tóm tắt thông tin</h3>
-          <div className="space-y-2 text-sm">
-            <p><span className="text-[#757575]">Chủ nhà:</span> {form.ownerName} - {form.ownerPhone}</p>
-            <p><span className="text-[#757575]">Tiêu đề:</span> {form.title}</p>
-            <p><span className="text-[#757575]">Địa chỉ:</span> {form.street}, {form.ward}, {form.district}</p>
-            <p><span className="text-[#757575]">DT:</span> {form.area}m² · {form.bedrooms}PN · {form.bathrooms}WC</p>
-            <p><span className="text-[#757575]">Giá:</span> {form.price ? Number(form.price).toLocaleString() + ' VNĐ' : '—'}</p>
-            <p><span className="text-[#757575]">Pháp lý:</span> {form.legalStatus || '—'}</p>
-          </div>
+      {step === 0 && (
+        <div className="space-y-4">
+          <Field placeholder={`${fieldLabel('ownerName', 'Tên chủ nhà')} *`} value={form.ownerName} onChange={(value) => u('ownerName', value)} />
+          <Field placeholder={`${fieldLabel('ownerPhone', 'SĐT chủ nhà')} *`} value={form.ownerPhone} onChange={(value) => u('ownerPhone', value)} />
+          <Field placeholder={fieldLabel('ownerCccd', 'CCCD/CMND chủ nhà')} value={form.ownerCccd} onChange={(value) => u('ownerCccd', value)} />
+          <textarea className="h-24 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold outline-none focus:border-[#c40012]" placeholder={fieldLabel('ownerNote', 'Ghi chú về chủ nhà')} value={form.ownerNote} onChange={(event) => u('ownerNote', event.target.value)} />
         </div>
-        <button onClick={checkDuplicate} className="w-full border border-amber-500 text-amber-700 rounded-lg py-2.5 font-medium flex items-center justify-center gap-2"><AlertTriangle className="w-4 h-4" />Kiểm tra trùng</button>
-        {duplicates.length > 0 && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">Tìm thấy {duplicates.length} nhà trùng khớp!</div>}
-        <button onClick={generateAiDesc} className="w-full border border-[#D32F2F] text-[#D32F2F] rounded-lg py-2.5 font-medium flex items-center justify-center gap-2"><Sparkles className="w-4 h-4" />AI viết mô tả</button>
-        {aiDesc && <textarea className="w-full border rounded-lg px-3 py-2.5 h-24" value={form.description} onChange={e => u('description', e.target.value)} />}
-      </div>)}
+      )}
 
-      <div className="flex gap-3 mt-6">
-        {step > 0 && <button onClick={() => setStep(s => s - 1)} className="flex-1 flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-2.5"><ArrowLeft className="w-4 h-4" />Quay lại</button>}
+      {step === 1 && (
+        <div className="space-y-4">
+          <Field placeholder={`${fieldLabel('title', 'Tiêu đề tin')} *`} value={form.title} onChange={(value) => u('title', value)} />
+          <select className="w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" value={form.propertyType} onChange={(event) => u('propertyType', event.target.value)}>
+            <option value="">{fieldLabel('propertyType', 'Loại bất động sản')}</option>
+            <option value="nha_pho">Nhà phố</option>
+            <option value="biet_thu">Biệt thự</option>
+            <option value="can_ho">Căn hộ</option>
+            <option value="dat_nen">Đất nền</option>
+            <option value="nha_xuong">Nhà xưởng</option>
+          </select>
+          <Field placeholder={`${fieldLabel('street', 'Số nhà + Tên đường')} *`} value={form.street} onChange={(value) => u('street', value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field placeholder={fieldLabel('ward', 'Phường/Xã')} value={form.ward} onChange={(value) => u('ward', value)} />
+            <Field placeholder={`${fieldLabel('district', 'Quận/Huyện')} *`} value={form.district} onChange={(value) => u('district', value)} />
+          </div>
+          <Field placeholder={fieldLabel('gpsCoordinates', 'Tọa độ/GPS')} value={form.gpsCoordinates} onChange={(value) => u('gpsCoordinates', value)} />
+          <Field placeholder={fieldLabel('area', 'Diện tích (m²)')} type="number" value={form.area} onChange={(value) => u('area', value)} />
+          <div className="grid grid-cols-3 gap-3">
+            <Field placeholder={fieldLabel('bedrooms', 'PN')} type="number" value={form.bedrooms} onChange={(value) => u('bedrooms', value)} />
+            <Field placeholder={fieldLabel('bathrooms', 'WC')} type="number" value={form.bathrooms} onChange={(value) => u('bathrooms', value)} />
+            <Field placeholder={fieldLabel('floors', 'Tầng')} type="number" value={form.floors} onChange={(value) => u('floors', value)} />
+          </div>
+          <select className="w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" value={form.direction} onChange={(event) => u('direction', event.target.value)}>
+            <option value="">{fieldLabel('direction', 'Hướng nhà')}</option>
+            <option value="dong">Đông</option>
+            <option value="tay">Tây</option>
+            <option value="nam">Nam</option>
+            <option value="bac">Bắc</option>
+            <option value="dong_bac">Đông Bắc</option>
+            <option value="dong_nam">Đông Nam</option>
+            <option value="tay_bac">Tây Bắc</option>
+            <option value="tay_nam">Tây Nam</option>
+          </select>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Field placeholder={fieldLabel('bookSheet', 'Số tờ')} value={form.bookSheet} onChange={(value) => u('bookSheet', value)} />
+            <Field placeholder={fieldLabel('bookParcel', 'Thửa đất')} value={form.bookParcel} onChange={(value) => u('bookParcel', value)} />
+          </div>
+          <Field placeholder={fieldLabel('bookSerial', 'Số sổ/Seri sổ')} value={form.bookSerial} onChange={(value) => u('bookSerial', value)} />
+          <select className="w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" value={form.legalStatus} onChange={(event) => u('legalStatus', event.target.value)}>
+            <option value="">{fieldLabel('legalStatus', 'Tình trạng pháp lý')}</option>
+            <option value="so_do">Sổ đỏ</option>
+            <option value="so_hong">Sổ hồng</option>
+            <option value="gpxd">GPXD</option>
+            <option value="hop_dong">Hợp đồng</option>
+            <option value="chua_co">Chưa có sổ</option>
+          </select>
+          <Field placeholder={fieldLabel('planningStatus', 'Thông tin quy hoạch')} value={form.planningStatus} onChange={(value) => u('planningStatus', value)} />
+          <Field placeholder={fieldLabel('price', 'Giá chào (VNĐ)')} type="number" value={form.price} onChange={(value) => u('price', value)} />
+          <Field placeholder={fieldLabel('commission', 'Hoa hồng')} value={form.commission} onChange={(value) => u('commission', value)} />
+          <Field placeholder={fieldLabel('commissionNote', 'Ghi chú hoa hồng')} value={form.commissionNote} onChange={(value) => u('commissionNote', value)} />
+          <textarea className="h-20 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold outline-none focus:border-[#c40012]" placeholder="Địa chỉ chi tiết/phần cần bảo mật" value={form.hiddenAddress} onChange={(event) => u('hiddenAddress', event.target.value)} />
+          <textarea className="h-24 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold outline-none focus:border-[#c40012]" placeholder={fieldLabel('internalNote', 'Ghi chú nội bộ')} value={form.internalNote} onChange={(event) => u('internalNote', event.target.value)} />
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-4">
+          {([
+            ['house', fieldLabel('houseImages', 'Ảnh nhà')],
+            ['book', fieldLabel('bookImages', 'Ảnh sổ đỏ/sổ hồng')],
+            ['contract', fieldLabel('contractImages', 'Hợp đồng/tài liệu')],
+            ['selfie', fieldLabel('ownerSelfie', 'Ảnh selfie với chủ nhà')],
+          ] as Array<[FileBucket, string]>).map(([bucket, title]) => (
+            <div key={bucket}>
+              <p className="mb-2 font-black text-[#25202a]">{title}</p>
+              <label className="block cursor-pointer rounded-3xl border-2 border-dashed border-gray-300 p-4 text-center hover:border-[#c40012]">
+                <Upload className="mx-auto mb-1 h-6 w-6 text-gray-400" />
+                <span className="text-sm font-bold text-[#757575]">Chọn ảnh</span>
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => addFiles(bucket, event.target.files)} />
+              </label>
+              {files[bucket].length > 0 && <p className="mt-1 text-xs font-bold text-[#757575]">Đã chọn {files[bucket].length} ảnh</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-4">
+          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+            <h3 className="mb-3 font-black text-[#25202a]">Tóm tắt thông tin</h3>
+            <div className="space-y-2 text-sm font-semibold text-[#25202a]">
+              <p><span className="text-[#757575]">Chủ nhà:</span> {form.ownerName} - {form.ownerPhone}</p>
+              <p><span className="text-[#757575]">Tiêu đề:</span> {form.title}</p>
+              <p><span className="text-[#757575]">Địa chỉ:</span> {form.street}, {form.ward}, {form.district}</p>
+              <p><span className="text-[#757575]">Sổ:</span> {[form.bookSerial, form.bookSheet && `Tờ ${form.bookSheet}`, form.bookParcel && `Thửa ${form.bookParcel}`].filter(Boolean).join(' - ') || 'Chưa nhập'}</p>
+              <p><span className="text-[#757575]">DT:</span> {form.area || '-'}m² · {form.bedrooms || '-'}PN · {form.bathrooms || '-'}WC</p>
+              <p><span className="text-[#757575]">Giá:</span> {form.price ? `${Number(form.price).toLocaleString()} VNĐ` : '-'}</p>
+              <p><span className="text-[#757575]">Pháp lý:</span> {form.legalStatus || '-'}</p>
+            </div>
+          </div>
+          <button type="button" onClick={checkDuplicate} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500 py-3 font-black text-amber-700"><AlertTriangle className="h-4 w-4" />Kiểm tra trùng</button>
+          {duplicates.length > 0 && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-700">Tìm thấy {duplicates.length} nhà trùng khớp!</div>}
+          <button type="button" onClick={generateAiDesc} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#c40012] py-3 font-black text-[#c40012]"><Sparkles className="h-4 w-4" />AI viết mô tả</button>
+          {(aiDesc || form.description) && <textarea className="h-28 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" placeholder={fieldLabel('description', 'Mô tả thêm về nhà')} value={form.description} onChange={(event) => u('description', event.target.value)} />}
+        </div>
+      )}
+
+      <div className="mt-6 flex gap-3">
+        {step > 0 && <button type="button" onClick={() => setStep((current) => current - 1)} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-gray-300 py-3 font-black"><ArrowLeft className="h-4 w-4" />Quay lại</button>}
         {step < 4 ? (
-          <button onClick={() => setStep(s => s + 1)} className="flex-1 flex items-center justify-center gap-2 bg-[#D32F2F] text-white rounded-lg py-2.5">Tiếp theo<ArrowRight className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setStep((current) => current + 1)} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#c40012] py-3 font-black text-white">Tiếp theo<ArrowRight className="h-4 w-4" /></button>
         ) : (
-          <div className="flex-1 flex gap-2">
-            <button onClick={() => handleSubmit(true)} className="flex-1 border border-gray-300 rounded-lg py-2.5">Lưu nháp</button>
-            <button onClick={() => handleSubmit(false)} disabled={submitting} className="flex-1 bg-[#D32F2F] text-white rounded-lg py-2.5 font-semibold disabled:opacity-50">{submitting ? 'Đang gửi...' : 'Gửi duyệt'}</button>
+          <div className="flex flex-1 gap-2">
+            <button type="button" onClick={() => handleSubmit(true)} className="flex-1 rounded-2xl border border-gray-300 py-3 font-black">Lưu nháp</button>
+            <button type="button" onClick={() => handleSubmit(false)} disabled={submitting} className="flex-1 rounded-2xl bg-[#c40012] py-3 font-black text-white disabled:opacity-50">{submitting ? 'Đang gửi...' : 'Gửi duyệt'}</button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function Field({ placeholder, value, onChange, type = 'text' }: { placeholder: string; value: string; onChange: (value: string) => void; type?: string }) {
+  return (
+    <input
+      className="min-h-12 min-w-0 w-full rounded-2xl border border-gray-200 px-3 font-semibold outline-none focus:border-[#c40012]"
+      placeholder={placeholder}
+      type={type}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
   );
 }

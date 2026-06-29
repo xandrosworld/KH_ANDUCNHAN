@@ -5,6 +5,7 @@ SET NAMES utf8mb4;
 
 INSERT INTO `svp_config_groups` (`id`, `name`, `description`, `sort_order`, `is_system`) VALUES
 ('account_role_approval', 'Duyệt tài khoản', 'Cấu hình loại tài khoản nào được dùng ngay hoặc cần quản trị viên duyệt', 5, 1),
+('property_field_labels', 'Tên trường nhập liệu nhà', 'Admin đổi tên các trường quan trọng trong form đăng nhà mà không cần sửa chương trình', 6, 1),
 ('company_units', 'Công ty thành viên', 'Danh sách công ty/đội nhóm thành viên', 10, 1),
 ('property_tags', 'Đặc điểm nhà', 'Tag/đặc điểm tìm kiếm nhà', 20, 1),
 ('property_statuses', 'Trạng thái nhà', 'Trạng thái xử lý nhà', 30, 1),
@@ -40,6 +41,41 @@ INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `metadata_
 ('role_approval_admin', 'account_role_approval', 'Quản trị hệ thống', 'admin', '{"requiresApproval":true,"roleGroup":"Quản trị"}', 900, 1)
 ON DUPLICATE KEY UPDATE
 `label` = VALUES(`label`),
+`sort_order` = VALUES(`sort_order`),
+`is_active` = VALUES(`is_active`),
+`metadata_json` = IF(`metadata_json` IS NULL OR `metadata_json` = '', VALUES(`metadata_json`), `metadata_json`);
+
+INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `metadata_json`, `sort_order`, `is_active`) VALUES
+('field_label_ownerName', 'property_field_labels', 'Tên chủ nhà', 'ownerName', '{"scope":"property","editableLabel":true}', 10, 1),
+('field_label_ownerPhone', 'property_field_labels', 'SĐT chủ nhà', 'ownerPhone', '{"scope":"property","editableLabel":true}', 20, 1),
+('field_label_ownerCccd', 'property_field_labels', 'CCCD/CMND chủ nhà', 'ownerCccd', '{"scope":"property","editableLabel":true}', 30, 1),
+('field_label_ownerNote', 'property_field_labels', 'Ghi chú về chủ nhà', 'ownerNote', '{"scope":"property","editableLabel":true}', 40, 1),
+('field_label_title', 'property_field_labels', 'Tiêu đề tin', 'title', '{"scope":"property","editableLabel":true}', 50, 1),
+('field_label_propertyType', 'property_field_labels', 'Loại bất động sản', 'propertyType', '{"scope":"property","editableLabel":true}', 60, 1),
+('field_label_street', 'property_field_labels', 'Số nhà + Tên đường', 'street', '{"scope":"property","editableLabel":true}', 70, 1),
+('field_label_ward', 'property_field_labels', 'Phường/Xã', 'ward', '{"scope":"property","editableLabel":true}', 80, 1),
+('field_label_district', 'property_field_labels', 'Quận/Huyện', 'district', '{"scope":"property","editableLabel":true}', 90, 1),
+('field_label_gpsCoordinates', 'property_field_labels', 'Tọa độ/GPS', 'gpsCoordinates', '{"scope":"property","editableLabel":true}', 100, 1),
+('field_label_area', 'property_field_labels', 'Diện tích (m²)', 'area', '{"scope":"property","editableLabel":true}', 110, 1),
+('field_label_bedrooms', 'property_field_labels', 'Phòng ngủ', 'bedrooms', '{"scope":"property","editableLabel":true}', 120, 1),
+('field_label_bathrooms', 'property_field_labels', 'WC', 'bathrooms', '{"scope":"property","editableLabel":true}', 130, 1),
+('field_label_floors', 'property_field_labels', 'Số tầng', 'floors', '{"scope":"property","editableLabel":true}', 140, 1),
+('field_label_direction', 'property_field_labels', 'Hướng nhà', 'direction', '{"scope":"property","editableLabel":true}', 150, 1),
+('field_label_bookSerial', 'property_field_labels', 'Số sổ/Seri sổ', 'bookSerial', '{"scope":"property","editableLabel":true}', 160, 1),
+('field_label_bookSheet', 'property_field_labels', 'Số tờ', 'bookSheet', '{"scope":"property","editableLabel":true}', 170, 1),
+('field_label_bookParcel', 'property_field_labels', 'Thửa đất', 'bookParcel', '{"scope":"property","editableLabel":true}', 180, 1),
+('field_label_legalStatus', 'property_field_labels', 'Tình trạng pháp lý', 'legalStatus', '{"scope":"property","editableLabel":true}', 190, 1),
+('field_label_planningStatus', 'property_field_labels', 'Thông tin quy hoạch', 'planningStatus', '{"scope":"property","editableLabel":true}', 200, 1),
+('field_label_price', 'property_field_labels', 'Giá chào (VNĐ)', 'price', '{"scope":"property","editableLabel":true}', 210, 1),
+('field_label_commission', 'property_field_labels', 'Hoa hồng', 'commission', '{"scope":"property","editableLabel":true}', 220, 1),
+('field_label_commissionNote', 'property_field_labels', 'Ghi chú hoa hồng', 'commissionNote', '{"scope":"property","editableLabel":true}', 230, 1),
+('field_label_internalNote', 'property_field_labels', 'Ghi chú nội bộ', 'internalNote', '{"scope":"property","editableLabel":true}', 240, 1),
+('field_label_description', 'property_field_labels', 'Mô tả thêm về nhà', 'description', '{"scope":"property","editableLabel":true}', 250, 1),
+('field_label_houseImages', 'property_field_labels', 'Ảnh nhà', 'houseImages', '{"scope":"property","editableLabel":true}', 260, 1),
+('field_label_bookImages', 'property_field_labels', 'Ảnh sổ đỏ/sổ hồng', 'bookImages', '{"scope":"property","editableLabel":true}', 270, 1),
+('field_label_contractImages', 'property_field_labels', 'Hợp đồng/tài liệu', 'contractImages', '{"scope":"property","editableLabel":true}', 280, 1),
+('field_label_ownerSelfie', 'property_field_labels', 'Ảnh selfie với chủ nhà', 'ownerSelfie', '{"scope":"property","editableLabel":true}', 290, 1)
+ON DUPLICATE KEY UPDATE
 `sort_order` = VALUES(`sort_order`),
 `is_active` = VALUES(`is_active`),
 `metadata_json` = IF(`metadata_json` IS NULL OR `metadata_json` = '', VALUES(`metadata_json`), `metadata_json`);
@@ -88,12 +124,12 @@ INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `sort_orde
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `sort_order` = VALUES(`sort_order`), `is_active` = VALUES(`is_active`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `sort_order`, `is_active`) VALUES
-('vl_dau_khach_duoi_lop4', 'visibility_levels', 'Đầu khách + Dưới Lớp 4', 'dau_khach_duoi_lop4', 10, 1),
-('vl_lop4', 'visibility_levels', 'Lớp 4', 'lop4', 20, 1),
-('vl_lop8', 'visibility_levels', 'Lớp 8', 'lop8', 30, 1),
-('vl_tot_nghiep', 'visibility_levels', 'Tốt nghiệp', 'tot_nghiep', 40, 1),
-('vl_vinh_danh', 'visibility_levels', 'VINH DANH', 'vinh_danh', 50, 1),
-('vl_chuyen_gia', 'visibility_levels', 'Chuyên gia', 'chuyen_gia', 60, 1)
+('vl_dau_khach_duoi_lop4', 'visibility_levels', 'Công khai cho khách mua', 'public_buyer', 10, 1),
+('vl_lop4', 'visibility_levels', 'Chuyên viên/CTV khách', 'specialist_collaborator', 20, 1),
+('vl_lop8', 'visibility_levels', 'CTV nguồn', 'source_collaborator', 30, 1),
+('vl_tot_nghiep', 'visibility_levels', 'Chuyên gia phụ trách', 'assigned_expert', 40, 1),
+('vl_vinh_danh', 'visibility_levels', 'Quản lý/Admin', 'management_admin', 50, 1),
+('vl_chuyen_gia', 'visibility_levels', 'Chuyên gia toàn hệ thống', 'expert_network', 60, 1)
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `sort_order` = VALUES(`sort_order`), `is_active` = VALUES(`is_active`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `score`, `sort_order`, `is_active`) VALUES
