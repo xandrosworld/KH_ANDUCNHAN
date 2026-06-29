@@ -1,26 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Home,
-  Building2,
-  Send,
   Bell,
-  User,
-  Search,
-  Heart,
-  Warehouse,
-  PlusCircle,
-  Users,
   Briefcase,
+  Building2,
   Calendar,
+  CheckSquare,
+  Heart,
+  Home,
+  PlusCircle,
+  Search,
+  Send,
+  Settings,
   Share2,
   Shield,
-  CheckSquare,
-  Settings,
+  User,
+  Users,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-
-// ─── Tab definitions per role ────────────────────────────────────────
 
 interface NavTab {
   path: string;
@@ -28,7 +26,31 @@ interface NavTab {
   icon: LucideIcon;
 }
 
+const MANAGEMENT_ROLES = new Set([
+  'admin',
+  'giam_doc',
+  'truong_phong',
+  'pho_phong',
+  'giam_doc_khoi',
+  'pho_giam_doc_khoi',
+  'pho_giam_doc_khu_vuc',
+  'giam_doc_dieu_hanh',
+  'pho_giam_doc_dieu_hanh',
+  'tro_ly',
+  'thu_ky',
+]);
+
 function getTabsForRole(role: string): NavTab[] {
+  if (MANAGEMENT_ROLES.has(role)) {
+    return [
+      { path: '/quan-tri', label: 'Trang chủ', icon: Home },
+      { path: '/quan-tri/nguoi-dung', label: 'Quản lý', icon: Shield },
+      { path: '/quan-tri/duyet-vai-tro', label: 'Duyệt', icon: CheckSquare },
+      { path: '/quan-tri/cau-hinh', label: 'Cấu hình', icon: Settings },
+      { path: '/profile', label: 'Tài khoản', icon: User },
+    ];
+  }
+
   switch (role) {
     case 'chu_nha':
       return [
@@ -38,7 +60,6 @@ function getTabsForRole(role: string): NavTab[] {
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
-
     case 'khach_mua':
       return [
         { path: '/khach-mua', label: 'Trang chủ', icon: Home },
@@ -47,7 +68,6 @@ function getTabsForRole(role: string): NavTab[] {
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
-
     case 'chuyen_gia':
       return [
         { path: '/chuyen-gia', label: 'Trang chủ', icon: Home },
@@ -56,7 +76,6 @@ function getTabsForRole(role: string): NavTab[] {
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
-
     case 'chuyen_vien':
       return [
         { path: '/chuyen-vien', label: 'Trang chủ', icon: Home },
@@ -65,7 +84,6 @@ function getTabsForRole(role: string): NavTab[] {
         { path: '/chuyen-vien/lich-xem', label: 'Lịch xem', icon: Calendar },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
-
     case 'ctv_khach':
     case 'ctv_nguon':
       return [
@@ -74,35 +92,20 @@ function getTabsForRole(role: string): NavTab[] {
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
-
     case 'nguoi_gioi_thieu':
+    case 'doi_tac':
       return [
         { path: '/gioi-thieu', label: 'Trang chủ', icon: Home },
         { path: '/gioi-thieu/ma-gioi-thieu', label: 'Giới thiệu', icon: Share2 },
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
-
-    case 'admin':
-    case 'giam_doc':
-    case 'truong_phong':
-      return [
-        { path: '/quan-tri', label: 'Trang chủ', icon: Home },
-        { path: '/quan-tri/nguoi-dung', label: 'Quản lý', icon: Shield },
-        { path: '/quan-tri/duyet-vai-tro', label: 'Duyệt', icon: CheckSquare },
-        { path: '/quan-tri/cau-hinh', label: 'Cấu hình', icon: Settings },
-        { path: '/profile', label: 'Tài khoản', icon: User },
-      ];
-
     default:
       return [
-        { path: '/', label: 'Trang chủ', icon: Home },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
   }
 }
-
-// ─── Component ──────────────────────────────────────────────────────
 
 const BottomNav = () => {
   const location = useLocation();
@@ -111,40 +114,26 @@ const BottomNav = () => {
   const tabs = getTabsForRole(activeRole);
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-      <div
-        className="grid h-16 items-center px-1"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-      >
-        {tabs.map(tab => {
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)] lg:hidden">
+      <div className="grid h-16 items-center px-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive =
-            location.pathname === tab.path ||
-            (tab.path !== '/' && location.pathname.startsWith(tab.path + '/'));
-
+          const isActive = location.pathname === tab.path || (tab.path !== '/' && location.pathname.startsWith(tab.path + '/'));
           return (
             <Link
               key={tab.path}
               to={tab.path}
               className={`relative flex h-full flex-col items-center justify-center gap-1 transition-colors ${
-                isActive ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
+                isActive ? 'text-[#c40012]' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              {isActive && (
-                <span className="absolute top-0 h-[3px] w-8 rounded-b-full bg-primary" />
-              )}
-              <Icon
-                className="h-5 w-5"
-                strokeWidth={isActive ? 2.5 : 1.8}
-              />
-              <span className="text-[10px] font-medium leading-none max-w-full truncate px-0.5">
-                {tab.label}
-              </span>
+              {isActive && <span className="absolute top-0 h-[3px] w-8 rounded-b-full bg-[#c40012]" />}
+              <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 1.8} />
+              <span className="max-w-full truncate px-0.5 text-[10px] font-bold leading-none">{tab.label}</span>
             </Link>
           );
         })}
       </div>
-      {/* Safe area padding for iOS */}
       <div className="pb-safe-bottom" />
     </nav>
   );

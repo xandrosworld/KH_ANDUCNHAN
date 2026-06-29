@@ -1,27 +1,66 @@
-import { Clock, ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, Clock, LogOut, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getRoleDisplayName } from '../data/roles';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function PendingApprovalPage() {
-  const { logout } = useAuth();
+  usePageTitle('Chờ phê duyệt | Sổ Đỏ Vạn Phúc');
+  const { logout, pendingRoles, approvedRoles } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-      <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="h-16 mb-8" />
-      <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mb-6">
-        <Clock className="w-10 h-10 text-amber-500" />
+    <main className="min-h-screen bg-[#fff8f2] px-4 py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md flex-col items-center justify-center text-center">
+        <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mb-7 h-20 w-20 rounded-full object-contain drop-shadow-lg" />
+        <div className="mb-5 grid h-20 w-20 place-items-center rounded-full bg-amber-100 text-amber-600">
+          <Clock className="h-10 w-10" />
+        </div>
+        <h1 className="text-2xl font-black text-[#25202a]">Tài khoản đang chờ phê duyệt</h1>
+        <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">
+          Các vai trò từ cấp Chuyên viên trở lên cần được quản trị viên phê duyệt trước khi mở đầy đủ tính năng.
+        </p>
+
+        {pendingRoles.length > 0 && (
+          <div className="mt-5 w-full rounded-2xl border border-amber-100 bg-white p-4 text-left shadow-sm">
+            <p className="mb-3 text-sm font-bold text-[#25202a]">Vai trò đang chờ duyệt</p>
+            <div className="space-y-2">
+              {pendingRoles.map((role) => (
+                <div key={role.slug} className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2">
+                  <span className="text-sm font-semibold text-[#5d4a19]">{getRoleDisplayName(role.slug)}</span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Chờ duyệt</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {approvedRoles.length > 0 && (
+          <button
+            onClick={() => navigate('/select-role')}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#c40012] px-6 py-3 text-sm font-bold text-white"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Vào vai trò đã được kích hoạt
+          </button>
+        )}
+
+        <button
+          onClick={() => {
+            logout();
+            navigate('/');
+          }}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#eadfd7] bg-white px-6 py-3 text-sm font-bold text-[#c40012]"
+        >
+          <LogOut className="h-4 w-4" />
+          Đăng xuất
+        </button>
+
+        <button onClick={() => navigate('/')} className="mt-4 flex items-center gap-2 text-sm font-bold text-[#c40012]">
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại đăng nhập
+        </button>
       </div>
-      <h1 className="text-2xl font-bold text-[#212121] mb-3">Tài khoản đang chờ duyệt</h1>
-      <p className="text-[#757575] mb-8 max-w-sm">
-        Yêu cầu của bạn đã được gửi. Quản trị viên sẽ xem xét và phê duyệt trong thời gian sớm nhất.
-      </p>
-      <button onClick={() => { logout(); navigate('/'); }} className="flex items-center gap-2 bg-[#D32F2F] text-white px-6 py-2.5 rounded-lg font-medium mb-4">
-        <LogOut className="w-4 h-4" /> Đăng xuất
-      </button>
-      <button onClick={() => navigate('/')} className="flex items-center gap-2 text-[#D32F2F] font-medium">
-        <ArrowLeft className="w-4 h-4" /> Quay lại trang chủ
-      </button>
-    </div>
+    </main>
   );
 }

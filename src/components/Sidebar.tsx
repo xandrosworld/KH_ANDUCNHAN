@@ -1,27 +1,25 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Home,
-  Building2,
-  Send,
   Bell,
-  User,
-  Search,
-  Heart,
-  Warehouse,
-  PlusCircle,
-  Users,
   Briefcase,
+  Building2,
   Calendar,
+  CheckSquare,
+  Heart,
+  Home,
+  LogOut,
+  PlusCircle,
+  Search,
+  Send,
+  Settings,
   Share2,
   Shield,
-  CheckSquare,
-  Settings,
-  LogOut,
+  User,
+  Users,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth, ROLE_NAMES } from '../contexts/AuthContext';
-
-// ─── Menu items per role ─────────────────────────────────────────────
 
 interface MenuItem {
   path: string;
@@ -29,7 +27,32 @@ interface MenuItem {
   icon: LucideIcon;
 }
 
+const MANAGEMENT_ROLES = new Set([
+  'admin',
+  'giam_doc',
+  'truong_phong',
+  'pho_phong',
+  'giam_doc_khoi',
+  'pho_giam_doc_khoi',
+  'pho_giam_doc_khu_vuc',
+  'giam_doc_dieu_hanh',
+  'pho_giam_doc_dieu_hanh',
+  'tro_ly',
+  'thu_ky',
+]);
+
 function getMenuForRole(role: string): MenuItem[] {
+  if (MANAGEMENT_ROLES.has(role)) {
+    return [
+      { path: '/quan-tri', label: 'Trang chủ', icon: Home },
+      { path: '/quan-tri/nguoi-dung', label: 'Người dùng', icon: Shield },
+      { path: '/quan-tri/duyet-vai-tro', label: 'Duyệt vai trò', icon: CheckSquare },
+      { path: '/quan-tri/nha', label: 'Quản lý nhà', icon: Building2 },
+      { path: '/quan-tri/khach-hang', label: 'Khách hàng', icon: Users },
+      { path: '/quan-tri/cau-hinh', label: 'Cấu hình', icon: Settings },
+    ];
+  }
+
   switch (role) {
     case 'chu_nha':
       return [
@@ -67,30 +90,16 @@ function getMenuForRole(role: string): MenuItem[] {
         { path: '/notifications', label: 'Thông báo', icon: Bell },
       ];
     case 'nguoi_gioi_thieu':
+    case 'doi_tac':
       return [
         { path: '/gioi-thieu', label: 'Trang chủ', icon: Home },
         { path: '/gioi-thieu/ma-gioi-thieu', label: 'Giới thiệu', icon: Share2 },
         { path: '/notifications', label: 'Thông báo', icon: Bell },
       ];
-    case 'admin':
-    case 'giam_doc':
-    case 'truong_phong':
-      return [
-        { path: '/quan-tri', label: 'Trang chủ', icon: Home },
-        { path: '/quan-tri/nguoi-dung', label: 'Quản lý người dùng', icon: Shield },
-        { path: '/quan-tri/duyet-vai-tro', label: 'Duyệt vai trò', icon: CheckSquare },
-        { path: '/quan-tri/nha', label: 'Quản lý nhà', icon: Building2 },
-        { path: '/quan-tri/khach-hang', label: 'Quản lý khách', icon: Users },
-        { path: '/quan-tri/cau-hinh', label: 'Cấu hình', icon: Settings },
-      ];
     default:
-      return [
-        { path: '/', label: 'Trang chủ', icon: Home },
-      ];
+      return [{ path: '/profile', label: 'Tài khoản', icon: User }];
   }
 }
-
-// ─── Component ──────────────────────────────────────────────────────
 
 const Sidebar = () => {
   const location = useLocation();
@@ -100,88 +109,65 @@ const Sidebar = () => {
   const activeRoleName = ROLE_NAMES[activeRole] || activeRole;
 
   const initials = user?.fullName
-    ? user.fullName
-        .split(' ')
-        .map(w => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : '?';
+    ? user.fullName.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
+    : 'SV';
 
   return (
-    <aside className="hidden lg:flex lg:flex-col fixed left-0 top-14 bottom-0 z-40 w-64 bg-white border-r border-gray-200">
-      {/* Logo section */}
-      <div className="px-5 py-4 border-b border-gray-100">
+    <aside className="fixed bottom-0 left-0 top-14 z-40 hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+      <div className="border-b border-gray-100 px-5 py-4">
         <Link to="/" className="flex items-center gap-3">
-          <img
-            src="/logo11.png"
-            alt="Sổ Đỏ Vạn Phúc"
-            className="h-10 w-10 rounded-full object-contain"
-          />
+          <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="h-10 w-10 rounded-full object-contain" />
           <div>
-            <div className="text-sm font-bold text-text-primary">Sổ Đỏ Vạn Phúc</div>
-            <div className="text-[11px] text-text-secondary">Nền tảng BĐS thông minh</div>
+            <div className="text-sm font-black text-[#25202a]">Sổ Đỏ Vạn Phúc</div>
+            <div className="text-[11px] font-medium text-[#667085]">Nền tảng BĐS thông minh</div>
           </div>
         </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-3">
-        {menuItems.map(item => {
+      <nav className="flex-1 overflow-y-auto px-3 py-3">
+        {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            location.pathname === item.path ||
-            (item.path !== '/' && location.pathname.startsWith(item.path + '/'));
-
+          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'));
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+              className={`mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
+                isActive ? 'bg-red-50 text-[#c40012]' : 'text-[#667085] hover:bg-gray-50 hover:text-[#25202a]'
               }`}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" strokeWidth={isActive ? 2.2 : 1.8} />
+              <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.3 : 1.9} />
               {item.label}
             </Link>
           );
         })}
 
-        {/* Profile link */}
         <Link
           to="/profile"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors ${
-            location.pathname === '/profile'
-              ? 'bg-primary/10 text-primary'
-              : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+          className={`mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
+            location.pathname === '/profile' ? 'bg-red-50 text-[#c40012]' : 'text-[#667085] hover:bg-gray-50 hover:text-[#25202a]'
           }`}
         >
-          <User className="h-5 w-5 flex-shrink-0" strokeWidth={location.pathname === '/profile' ? 2.2 : 1.8} />
+          <User className="h-5 w-5 shrink-0" />
           Tài khoản
         </Link>
       </nav>
 
-      {/* User info at bottom */}
       <div className="border-t border-gray-100 p-4">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="mb-3 flex items-center gap-3">
           {user?.avatar ? (
             <img src={user.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
           ) : (
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-primary text-sm font-bold">{initials}</span>
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-red-50">
+              <span className="text-sm font-black text-[#c40012]">{initials}</span>
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text-primary truncate">{user?.fullName}</p>
-            <p className="text-xs text-text-secondary truncate">{activeRoleName}</p>
+            <p className="truncate text-sm font-black text-[#25202a]">{user?.fullName}</p>
+            <p className="truncate text-xs font-medium text-[#667085]">{activeRoleName}</p>
           </div>
         </div>
-        <button
-          onClick={logout}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors"
-        >
+        <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[#c40012] transition-colors hover:bg-red-50">
           <LogOut className="h-4 w-4" />
           Đăng xuất
         </button>

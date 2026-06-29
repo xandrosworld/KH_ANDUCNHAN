@@ -41,6 +41,136 @@ function svp_generate_referral_code(string $svpId): string {
     return 'SVP' . str_pad(substr($digits, -6), 6, '0', STR_PAD_LEFT) . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 }
 
+function svp_public_role_slugs(): array {
+    return ['khach_mua', 'chu_nha', 'nguoi_gioi_thieu', 'ctv_khach', 'ctv_nguon', 'doi_tac'];
+}
+
+function svp_role_requires_approval(string $roleSlug): bool {
+    return !in_array($roleSlug, svp_public_role_slugs(), true);
+}
+
+function svp_role_name(string $roleSlug): string {
+    $names = [
+        'admin' => 'Quản trị',
+        'giam_doc' => 'Giám đốc Khu vực',
+        'truong_phong' => 'Trưởng phòng',
+        'chuyen_gia' => 'Chuyên gia',
+        'chuyen_vien' => 'Chuyên viên',
+        'ctv_khach' => 'CTV giới thiệu',
+        'ctv_nguon' => 'CTV giới thiệu nguồn',
+        'chu_nha' => 'Chủ nhà',
+        'khach_mua' => 'Khách mua',
+        'nguoi_gioi_thieu' => 'Người giới thiệu',
+        'doi_tac' => 'Đối tác',
+        'tro_ly' => 'Trợ lý',
+        'thu_ky' => 'Thư ký',
+        'pho_phong' => 'Phó phòng',
+        'giam_doc_khoi' => 'Giám đốc Khối',
+        'pho_giam_doc_khoi' => 'Phó Giám đốc Khối',
+        'pho_giam_doc_khu_vuc' => 'Phó Giám đốc Khu vực',
+        'giam_doc_dieu_hanh' => 'Giám đốc Điều hành',
+        'pho_giam_doc_dieu_hanh' => 'Phó Giám đốc Điều hành',
+    ];
+    return $names[$roleSlug] ?? $roleSlug;
+}
+
+function svp_normalize_role_slugs(array $input): array {
+    $roleSlugs = [];
+    if (isset($input['role_slugs']) && is_array($input['role_slugs'])) {
+        $roleSlugs = $input['role_slugs'];
+    } elseif (isset($input['roleSlugs']) && is_array($input['roleSlugs'])) {
+        $roleSlugs = $input['roleSlugs'];
+    } else {
+        $single = trim((string) ($input['roleSlug'] ?? $input['role_slug'] ?? ''));
+        if ($single !== '') $roleSlugs = [$single];
+    }
+
+    $clean = [];
+    foreach ($roleSlugs as $roleSlug) {
+        $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) $roleSlug)));
+        if ($roleSlug !== '' && !in_array($roleSlug, $clean, true)) {
+            $clean[] = $roleSlug;
+        }
+    }
+    return $clean;
+}
+
+function svp_get_user_roles(PDO $db, string $userId): array {
+    $stmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid ORDER BY id ASC");
+    $stmt->execute(['uid' => $userId]);
+    return array_map(function ($r) {
+        return [
+            'slug' => $r['role_slug'],
+            'name' => svp_role_name($r['role_slug']),
+            'status' => $r['status'],
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+
+function svp_build_user_payload(array $user, array $roles, string $activeRole = ''): array {
+    if ($activeRole === '') {
+        foreach ($roles as $role) {
+            if (($role['status'] ?? '') === 'approved') {
+                $activeRole = $role['slug'];
+                break;
+            }
+        }
+    }
+
+    return [
+        'id' => $user['id'],
+        'svpId' => $user['svp_id'] ?? '',
+        'email' => $user['email'] ?? '',
+        'phone' => $user['phone'] ?? '',
+        'fullName' => $user['full_name'] ?? '',
+        'avatar' => $user['avatar_url'] ?? '',
+        'referralCode' => $user['referral_code'] ?? '',
+        'roles' => $roles,
+        'activeRole' => $activeRole,
+    ];
+}
+
+function svp_build_login_response(array $user, array $roles): array {
+    $approved = array_values(array_filter($roles, fn($r) => ($r['status'] ?? '') === 'approved'));
+    $pending = array_values(array_filter($roles, fn($r) => ($r['status'] ?? '') === 'pending'));
+    $activeRole = $approved[0]['slug'] ?? '';
+    $userPayload = svp_build_user_payload($user, $roles, $activeRole);
+
+    if (empty($approved)) {
+        return [
+            'hasApprovedRole' => false,
+            'payload' => [
+                'error' => 'Tài khoản đang chờ phê duyệt',
+                'message' => 'Tài khoản đang chờ phê duyệt',
+                'user' => $userPayload,
+                'pendingRoles' => $pending,
+                'requiresApproval' => true,
+                'accountStatus' => 'cho_phe_duyet',
+            ],
+        ];
+    }
+
+    $token = JwtAuth::createToken([
+        'sub' => $user['id'],
+        'email' => $user['email'],
+        'fullName' => $user['full_name'],
+        'roles' => $roles,
+        'role' => $activeRole,
+    ]);
+
+    return [
+        'hasApprovedRole' => true,
+        'payload' => [
+            'token' => $token,
+            'user' => $userPayload,
+            'approvedRoles' => $approved,
+            'pendingRoles' => $pending,
+            'requiresApproval' => !empty($pending),
+            'accountStatus' => !empty($pending) ? 'duoc_dung_ngay_va_cho_duyet' : 'duoc_dung_ngay',
+        ],
+    ];
+}
+
 function svp_filter_property_by_role(array $property, ?string $activeRole, ?string $userId): array {
     $full = ['admin', 'giam_doc', 'truong_phong'];
     if (in_array($activeRole, $full)) return $property;

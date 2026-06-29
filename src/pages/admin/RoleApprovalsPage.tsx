@@ -1,29 +1,26 @@
-import { useState, useEffect } from 'react';
-import { Check, X, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Clock, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
+import { getRoleDisplayName } from '../../data/roles';
 
-const ROLE_NAMES: Record<string, string> = {
-  admin: 'Quản trị viên', giam_doc: 'Giám đốc', truong_phong: 'Trưởng phòng',
-  chuyen_gia: 'Chuyên gia', chuyen_vien: 'Chuyên viên', ctv_khach: 'CTV tìm khách',
-  ctv_nguon: 'CTV tìm nguồn', chu_nha: 'Chủ nhà', khach_mua: 'Khách mua',
-  nguoi_gioi_thieu: 'Người giới thiệu', doi_tac: 'Đối tác',
-};
-
-const TABS = ['Chờ duyệt', 'Đã duyệt', 'Từ chối'];
-const TAB_STATUS: Record<string, string> = { 'Chờ duyệt': 'pending', 'Đã duyệt': 'approved', 'Từ chối': 'rejected' };
+const TABS = [
+  { label: 'Chờ duyệt', status: 'pending' },
+  { label: 'Đã duyệt', status: 'approved' },
+  { label: 'Từ chối', status: 'rejected' },
+];
 
 export default function RoleApprovalsPage() {
-  const [tab, setTab] = useState('Chờ duyệt');
+  const [tab, setTab] = useState(TABS[0]);
   const [items, setItems] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = () => {
-    api.get('/admin/role-applications', { params: { status: TAB_STATUS[tab] } })
-      .then(r => setItems(r.data?.items || []))
-      .catch(() => {});
+    api.get('/admin/role-applications', { params: { status: tab.status } })
+      .then((response) => setItems(response.data?.items || []))
+      .catch(() => setItems([]));
   };
 
-  useEffect(load, [tab]);
+  useEffect(load, [tab.status]);
 
   const act = async (id: string, status: string) => {
     await api.patch(`/admin/role-applications/${id}`, { status, adminNotes: notes[id] || '' });
@@ -31,45 +28,73 @@ export default function RoleApprovalsPage() {
   };
 
   return (
-    <div className="p-4 pb-20">
-      <h1 className="text-xl font-bold mb-4">Duyệt vai trò</h1>
-      <div className="flex gap-2 mb-4">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-full text-sm ${tab === t ? 'bg-[#D32F2F] text-white' : 'bg-white text-[#757575] border'}`}>{t}</button>
+    <div className="pb-20">
+      <div className="mb-5">
+        <h1 className="text-xl font-black text-[#25202a]">Duyệt vai trò</h1>
+        <p className="mt-1 text-sm font-medium text-[#667085]">Xem xét các vai trò cần phê duyệt trước khi mở đầy đủ tính năng.</p>
+      </div>
+
+      <div className="mb-4 flex gap-2 overflow-x-auto">
+        {TABS.map((item) => (
+          <button
+            key={item.status}
+            onClick={() => setTab(item)}
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${
+              tab.status === item.status ? 'bg-[#c40012] text-white' : 'border border-gray-200 bg-white text-[#667085]'
+            }`}
+          >
+            {item.label}
+          </button>
         ))}
       </div>
+
       {items.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-[#757575]">Không có yêu cầu nào</p>
+        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <Clock className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+          <p className="font-semibold text-[#667085]">Không có yêu cầu nào</p>
         </div>
-      ) : items.map((a: any) => (
-        <div key={a.id} className="bg-white rounded-xl shadow-sm p-4 mb-3">
-          <div className="flex justify-between mb-2">
-            <div>
-              <p className="font-medium">{a.userName || a.userEmail || '—'}</p>
-              <p className="text-sm text-[#757575]">{a.userEmail} · {a.userPhone || ''}</p>
-            </div>
-          </div>
-          <p className="text-sm mb-1">
-            <span className="text-[#757575]">Vai trò:</span> {ROLE_NAMES[a.roleSlug] || a.roleSlug}
-          </p>
-          {a.reason && <p className="text-sm text-[#757575] mb-2">Lý do: {a.reason}</p>}
-          {tab === 'Chờ duyệt' && (
-            <div>
-              <input className="w-full border rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ghi chú..." value={notes[a.id] || ''} onChange={e => setNotes(n => ({ ...n, [a.id]: e.target.value }))} />
-              <div className="flex gap-2">
-                <button onClick={() => act(a.id, 'approved')} className="flex-1 bg-green-500 text-white rounded-lg py-2 flex items-center justify-center gap-1">
-                  <Check className="w-4 h-4" /> Duyệt
-                </button>
-                <button onClick={() => act(a.id, 'rejected')} className="flex-1 border border-red-500 text-red-500 rounded-lg py-2 flex items-center justify-center gap-1">
-                  <X className="w-4 h-4" /> Từ chối
-                </button>
+      ) : (
+        <div className="space-y-3">
+          {items.map((application: any) => (
+            <div key={application.id} className="rounded-2xl bg-white p-4 shadow-sm">
+              <div className="mb-3 flex justify-between gap-3">
+                <div>
+                  <p className="font-black text-[#25202a]">{application.userName || application.userEmail || 'Người dùng mới'}</p>
+                  <p className="text-sm font-medium text-[#667085]">{application.userEmail} · {application.userPhone || 'Chưa có SĐT'}</p>
+                </div>
               </div>
+
+              <div className="mb-3 rounded-xl bg-[#fff8f2] px-3 py-2 text-sm">
+                <span className="font-medium text-[#667085]">Vai trò: </span>
+                <span className="font-black text-[#25202a]">{getRoleDisplayName(application.roleSlug)}</span>
+              </div>
+
+              {application.reason && <p className="mb-3 text-sm font-medium text-[#667085]">Lý do: {application.reason}</p>}
+
+              {tab.status === 'pending' && (
+                <div>
+                  <input
+                    className="svp-input mb-2"
+                    placeholder="Ghi chú khi duyệt hoặc từ chối"
+                    value={notes[application.id] || ''}
+                    onChange={(event) => setNotes((current) => ({ ...current, [application.id]: event.target.value }))}
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => act(application.id, 'approved')} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-bold text-white">
+                      <Check className="h-4 w-4" />
+                      Duyệt
+                    </button>
+                    <button onClick={() => act(application.id, 'rejected')} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-red-200 py-2.5 text-sm font-bold text-[#c40012]">
+                      <X className="h-4 w-4" />
+                      Từ chối
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

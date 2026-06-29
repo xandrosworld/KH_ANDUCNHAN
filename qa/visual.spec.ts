@@ -342,7 +342,7 @@ test.describe('V1 core workflows', () => {
     await page.goto('/', { waitUntil: 'networkidle' });
     await page.locator('#identifier').fill('chuyen_gia@sodovanphuc.vn');
     await page.locator('#password').fill('123456');
-    await page.locator('button[type="submit"]').click();
+    await page.getByRole('button', { name: /^Đăng nhập$/ }).click();
     await page.waitForURL(/\/chuyen-gia$/);
     await expectUsablePage(page, testInfo, 'workflow-login');
   });

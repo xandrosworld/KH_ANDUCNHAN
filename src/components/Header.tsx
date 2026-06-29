@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, ChevronDown, LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { useAuth, ROLE_NAMES } from '../contexts/AuthContext';
 
 const Header = () => {
@@ -8,11 +8,10 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on click outside
   useEffect(() => {
     if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    const handler = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
     };
@@ -21,107 +20,65 @@ const Header = () => {
   }, [menuOpen]);
 
   const initials = user?.fullName
-    ? user.fullName
-        .split(' ')
-        .map(w => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : '?';
+    ? user.fullName.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
+    : 'SV';
 
-  const activeRoleName = user?.activeRole
-    ? ROLE_NAMES[user.activeRole] || user.activeRole
-    : '';
+  const activeRoleName = user?.activeRole ? ROLE_NAMES[user.activeRole] || user.activeRole : '';
 
   return (
-    <header className="sticky top-0 z-50 h-14 bg-primary flex items-center px-4 lg:px-6 shadow-md">
-      {/* Left: Logo + Name */}
-      <Link to="/" className="flex items-center gap-2.5 min-w-0">
-        <img
-          src="/logo11.png"
-          alt="Sổ Đỏ Vạn Phúc"
-          className="h-8 w-8 rounded-full object-contain flex-shrink-0 bg-white/10"
-        />
-        <span className="text-white font-bold text-[15px] whitespace-nowrap hidden sm:block">
-          Sổ Đỏ Vạn Phúc
-        </span>
+    <header className="sticky top-0 z-50 flex h-14 items-center bg-[#c40012] px-4 shadow-md lg:px-6">
+      <Link to="/" className="flex min-w-0 items-center gap-2.5">
+        <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="h-8 w-8 shrink-0 rounded-full object-contain bg-white/10" />
+        <span className="hidden whitespace-nowrap text-[15px] font-black text-white sm:block">Sổ Đỏ Vạn Phúc</span>
       </Link>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Right: Bell + Avatar */}
       <div className="flex items-center gap-2">
-        {/* Bell */}
         <Link
           to="/notifications"
-          className="relative h-9 w-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+          className="relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-white/10"
           aria-label="Thông báo"
         >
           <Bell className="h-5 w-5 text-white" />
-          {/* Notification dot */}
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-yellow-400 rounded-full" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-yellow-300" />
         </Link>
 
-        {/* Avatar + Menu */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-white/10 transition-colors"
+            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-white/10"
           >
-            {/* Avatar */}
             {user?.avatar ? (
-              <img
-                src={user.avatar}
-                alt=""
-                className="h-8 w-8 rounded-full object-cover border-2 border-white/30"
-              />
+              <img src={user.avatar} alt="" className="h-8 w-8 rounded-full border-2 border-white/30 object-cover" />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/30">
-                <span className="text-white text-xs font-bold">{initials}</span>
+              <div className="grid h-8 w-8 place-items-center rounded-full border-2 border-white/30 bg-white/20">
+                <span className="text-xs font-black text-white">{initials}</span>
               </div>
             )}
-
-            {/* Role badge - desktop only */}
-            <span className="hidden lg:block text-white/80 text-xs font-medium max-w-[120px] truncate">
-              {activeRoleName}
-            </span>
-            <ChevronDown className={`h-3.5 w-3.5 text-white/60 transition-transform hidden lg:block ${menuOpen ? 'rotate-180' : ''}`} />
+            <span className="hidden max-w-[130px] truncate text-xs font-bold text-white/85 lg:block">{activeRoleName}</span>
+            <ChevronDown className={`hidden h-3.5 w-3.5 text-white/65 transition-transform lg:block ${menuOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Dropdown */}
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
-              {/* User info */}
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-text-primary truncate">
-                  {user?.fullName}
-                </p>
-                <p className="text-xs text-text-secondary truncate mt-0.5">
-                  {user?.email}
-                </p>
+            <div className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
+              <div className="border-b border-gray-100 px-4 py-3">
+                <p className="truncate text-sm font-black text-[#25202a]">{user?.fullName}</p>
+                <p className="mt-0.5 truncate text-xs font-medium text-[#667085]">{user?.email}</p>
                 {activeRoleName && (
-                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-primary-50 text-primary text-[11px] font-medium rounded-full">
+                  <span className="mt-2 inline-block rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-[#c40012]">
                     {activeRoleName}
                   </span>
                 )}
               </div>
 
-              <Link
-                to="/profile"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50 transition-colors"
-              >
-                <UserIcon className="h-4 w-4 text-text-secondary" />
+              <Link to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-bold text-[#25202a] hover:bg-gray-50">
+                <UserIcon className="h-4 w-4 text-[#667085]" />
                 Tài khoản
               </Link>
 
-              <Link
-                to="/select-role"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50 transition-colors"
-              >
-                <Settings className="h-4 w-4 text-text-secondary" />
+              <Link to="/select-role" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-bold text-[#25202a] hover:bg-gray-50">
+                <Settings className="h-4 w-4 text-[#667085]" />
                 Chuyển vai trò
               </Link>
 
@@ -130,7 +87,7 @@ const Header = () => {
                   setMenuOpen(false);
                   logout();
                 }}
-                className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
+                className="flex w-full items-center gap-2.5 border-t border-gray-100 px-4 py-3 text-left text-sm font-bold text-[#c40012] hover:bg-red-50"
               >
                 <LogOut className="h-4 w-4" />
                 Đăng xuất

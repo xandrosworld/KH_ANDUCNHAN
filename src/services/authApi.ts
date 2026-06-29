@@ -1,18 +1,12 @@
-/**
- * Auth API service for Sổ Đỏ Vạn Phúc.
- * All auth-related API calls are centralized here.
- */
-
 import { getApiBase } from './apiClient';
+import type { RoleStatus } from '../data/roles';
 
 const AUTH_BASE = () => `${getApiBase()}/api/svp/auth`;
-
-// ─── Types ──────────────────────────────────────────────────────────
 
 export interface UserRole {
   slug: string;
   name?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'disabled';
+  status: RoleStatus;
 }
 
 export interface AuthUser {
@@ -32,34 +26,40 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
+export interface RegisterResponse {
+  message: string;
+  token?: string;
+  user?: AuthUser;
+  approvedRoles?: UserRole[];
+  pendingRoles?: UserRole[];
+  requiresApproval?: boolean;
+  accountStatus?: string;
+}
+
 export interface RegisterData {
   fullName: string;
   phone: string;
   email: string;
   password: string;
-  roleSlug: string;
+  roleSlug?: string;
+  roleSlugs?: string[];
   referralCode?: string;
 }
 
 export interface RegisterRoleData {
   roleSlug: string;
+  reason?: string;
 }
 
-// ─── Helper ─────────────────────────────────────────────────────────
-
-async function authFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${AUTH_BASE()}${path}`;
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  // Attach token if available
   const token = localStorage.getItem('svp_token');
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   if (!(options.body instanceof FormData)) {
@@ -67,7 +67,7 @@ async function authFetch<T>(
   }
 
   const response = await fetch(url, { ...options, headers });
-  const json = await response.json();
+  const json = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     const error = new Error(json.error || json.message || `HTTP ${response.status}`);
@@ -79,39 +79,35 @@ async function authFetch<T>(
   return json.data ?? json;
 }
 
-// ─── API Functions ──────────────────────────────────────────────────
-
 export const authApi = {
-  /** POST /login - authenticate user */
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(identifier: string, password: string): Promise<LoginResponse> {
     return authFetch<LoginResponse>('/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: identifier, identifier, password }),
     });
   },
 
-  /** POST /register - create new account with role */
-  async register(data: RegisterData): Promise<{ message: string }> {
-    return authFetch<{ message: string }>('/register', {
+  async register(data: RegisterData): Promise<RegisterResponse> {
+    const roleSlugs = data.roleSlugs?.length ? data.roleSlugs : data.roleSlug ? [data.roleSlug] : [];
+    return authFetch<RegisterResponse>('/register', {
       method: 'POST',
       body: JSON.stringify({
         full_name: data.fullName,
         phone: data.phone,
         email: data.email,
         password: data.password,
-        role_slug: data.roleSlug,
+        role_slug: roleSlugs[0],
+        role_slugs: roleSlugs,
         referral_code: data.referralCode || undefined,
       }),
     });
   },
 
-  /** GET /me - get current user profile */
   async getMe(): Promise<AuthUser> {
     const response = await authFetch<{ user: AuthUser }>('/me', { method: 'GET' });
     return response.user;
   },
 
-  /** POST /forgot-password */
   async forgotPassword(email: string): Promise<{ message: string }> {
     return authFetch<{ message: string }>('/forgot-password', {
       method: 'POST',
@@ -119,7 +115,6 @@ export const authApi = {
     });
   },
 
-  /** POST /reset-password */
   async resetPassword(token: string, email: string, password: string): Promise<{ message: string }> {
     return authFetch<{ message: string }>('/reset-password', {
       method: 'POST',
@@ -127,7 +122,6 @@ export const authApi = {
     });
   },
 
-  /** POST /change-password */
   async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
     return authFetch<{ message: string }>('/change-password', {
       method: 'POST',
@@ -138,7 +132,6 @@ export const authApi = {
     });
   },
 
-  /** POST /avatar (multipart form) */
   async uploadAvatar(file: File): Promise<{ avatar: string }> {
     const formData = new FormData();
     formData.append('avatar', file);
@@ -148,11 +141,10 @@ export const authApi = {
     });
   },
 
-  /** POST /register-role - add additional role to existing user */
   async registerRole(data: RegisterRoleData): Promise<{ message: string }> {
     return authFetch<{ message: string }>('/register-role', {
       method: 'POST',
-      body: JSON.stringify({ role_slug: data.roleSlug }),
+      body: JSON.stringify({ role_slug: data.roleSlug, reason: data.reason || '' }),
     });
   },
 };
