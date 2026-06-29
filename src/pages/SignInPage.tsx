@@ -134,7 +134,7 @@ export default function SignInPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
+    <main className="svp-auth-shell min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
       <div className="mx-auto flex min-h-[calc(100vh-48px)] w-full max-w-[1040px] flex-col justify-center gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
         <section className="hidden lg:block">
           <Link to="/" className="inline-flex items-center gap-4">
@@ -163,7 +163,7 @@ export default function SignInPage() {
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em] text-[#F6D37A]">
               <ShieldCheck className="h-4 w-4" />
-              Khu vực nội bộ
+              Sổ Đỏ Vạn Phúc
             </div>
             <h1 className="mt-3 text-2xl font-black text-[#F5F0E6]">Đăng nhập</h1>
             <p className="mt-2 text-[14px] leading-6 text-[#A7ABB6]">Vào hệ thống Sổ Đỏ Vạn Phúc để quản lý nguồn nhà và khách hàng.</p>

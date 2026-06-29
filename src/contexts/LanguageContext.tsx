@@ -890,7 +890,7 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType>({
-  lang: 'en',
+  lang: 'vi',
   setLang: () => {},
   t: (key: string) => key,
 });
@@ -901,7 +901,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem('gf_language');
       if (stored === 'vi' || stored === 'en') return stored;
     } catch { /* ignore */ }
-    return 'en';
+    return 'vi';
   });
 
   const setLang = useCallback((l: Language) => {

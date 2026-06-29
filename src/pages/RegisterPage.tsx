@@ -137,7 +137,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
+    <main className="svp-auth-shell min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
       <div className="mx-auto flex min-h-[calc(100vh-48px)] w-full max-w-[960px] flex-col justify-center">
         <Link to="/" className="mb-5 flex justify-center">
           <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="h-24 w-auto object-contain" />
@@ -152,7 +152,7 @@ export default function RegisterPage() {
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em] text-[#F6D37A]">
               <ShieldCheck className="h-4 w-4" />
-              Tài khoản nội bộ
+              Sổ Đỏ Vạn Phúc
             </div>
             <h1 className="mt-3 text-2xl font-black text-[#F5F0E6]">Tạo tài khoản</h1>
             <p className="mt-2 text-[14px] leading-6 text-[#A7ABB6]">Dành cho nhân sự/đối tác được phân quyền sử dụng hệ thống.</p>

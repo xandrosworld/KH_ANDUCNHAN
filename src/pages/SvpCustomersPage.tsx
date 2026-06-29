@@ -138,7 +138,7 @@ const SvpCustomersPage = () => {
 
   const handleCreate = async () => {
     if (!draft.fullName.trim() || !draft.phone.trim()) {
-      setError('Nhàp ten va so dien thoai khach truoc khi luu');
+      setError('Nhập tên và số điện thoại khách trước khi lưu');
       return;
     }
 
@@ -301,7 +301,7 @@ const SvpCustomersPage = () => {
               {loading ? (
                 <div className="flex min-h-[320px] flex-col items-center justify-center text-[#A7ABB6]">
                   <Loader2 className="mb-3 h-7 w-7 animate-spin text-[#F6D37A]" />
-                  Đăng tai khach hang...
+                  Đang tải khách hàng...
                 </div>
               ) : filteredCustomers.length === 0 ? (
                 <div className="px-5 py-16 text-center">
@@ -342,9 +342,9 @@ const SvpCustomersPage = () => {
               <SelectCustomer customers={customers} value={needDraft.customerId} onChange={(value) => updateNeedDraft('customerId', value)} />
               <Field label="Khu vực" value={needDraft.districts} onChange={(value) => updateNeedDraft('districts', value)} placeholder="Bình Thạnh, Gò Vấp..." />
               <Field label="Ngân sách từ" value={needDraft.budgetMin} onChange={(value) => updateNeedDraft('budgetMin', value)} placeholder="5000000000" />
-              <Field label="Den" value={needDraft.budgetMax} onChange={(value) => updateNeedDraft('budgetMax', value)} placeholder="7000000000" />
+              <Field label="Đến" value={needDraft.budgetMax} onChange={(value) => updateNeedDraft('budgetMax', value)} placeholder="7000000000" />
               <Field label="Diện tích từ" value={needDraft.areaMin} onChange={(value) => updateNeedDraft('areaMin', value)} placeholder="50" />
-              <Field label="Den" value={needDraft.areaMax} onChange={(value) => updateNeedDraft('areaMax', value)} placeholder="90" />
+              <Field label="Đến" value={needDraft.areaMax} onChange={(value) => updateNeedDraft('areaMax', value)} placeholder="90" />
             </div>
             <label className="mt-3 block">
               <span className="mb-2 block text-[13px] font-bold text-[#D7DAE3]">Mô tả nhu cầu</span>
@@ -391,7 +391,7 @@ const SvpCustomersPage = () => {
               <SelectCustomer customers={customers} value={viewingDraft.customerId} onChange={(value) => updateViewingDraft('customerId', value)} />
               <Field label="Mã nhà" value={viewingDraft.propertyId} onChange={(value) => updateViewingDraft('propertyId', value)} placeholder="SVP000001 hoặc ID nhà" />
               <label className="block md:col-span-2">
-                <span className="mb-2 block text-[13px] font-bold text-[#D7DAE3]">Thoi gian xem</span>
+                <span className="mb-2 block text-[13px] font-bold text-[#D7DAE3]">Thời gian xem</span>
                 <input
                   type="datetime-local"
                   value={viewingDraft.scheduledAt}

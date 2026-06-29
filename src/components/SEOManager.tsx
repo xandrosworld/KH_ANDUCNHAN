@@ -10,15 +10,15 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
   '/nha': {
     title: 'Danh sách nhà | Sổ Đỏ Vạn Phúc',
-    description: 'Danh sach nguon nha voi tag, trang thai, quyền xem va du lieu cau truc.',
+    description: 'Danh sách nguồn nhà với tag, trạng thái, quyền xem và dữ liệu cấu trúc.',
   },
   '/dashboard': {
     title: 'Tổng quan KPI | Sổ Đỏ Vạn Phúc',
-    description: 'Tổng quan nguon nha, khach hang, nhu cầu mua, lich xem va trang thai dieu hanh.',
+    description: 'Tổng quan nguồn nhà, khách hàng, nhu cầu mua, lịch xem và trạng thái điều hành.',
   },
   '/post-property': {
     title: 'Đăng nhà | Sổ Đỏ Vạn Phúc',
-    description: 'Thông tin cơ bản cho nguon nha Sổ Đỏ Vạn Phúc.',
+    description: 'Thông tin cơ bản cho nguồn nhà Sổ Đỏ Vạn Phúc.',
   },
   '/admin/config': {
     title: 'Cấu hình nội bộ | Sổ Đỏ Vạn Phúc',
@@ -26,11 +26,11 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
   '/khach-hang': {
     title: 'Khách hàng | Sổ Đỏ Vạn Phúc',
-    description: 'Quan ly khach hang, nguon den, trang thai cham soc va ghi chu nhu cau.',
+    description: 'Quản lý khách hàng, nguồn đến, trạng thái chăm sóc và ghi chú nhu cầu.',
   },
   '/referral': {
     title: 'Referral SVP ID QR | Sổ Đỏ Vạn Phúc',
-    description: 'Tạo mã gioi thieu, link va QR cho he thong referral Sổ Đỏ Vạn Phúc.',
+    description: 'Tạo mã giới thiệu, link và QR cho hệ thống referral Sổ Đỏ Vạn Phúc.',
   },
   '/ai': {
     title: 'Trợ lý AI | Sổ Đỏ Vạn Phúc',
@@ -38,11 +38,11 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
   '/admin': {
     title: 'Admin | Sổ Đỏ Vạn Phúc',
-    description: 'Khu vực quan tri he thong Sổ Đỏ Vạn Phúc.',
+    description: 'Khu vực quản trị hệ thống Sổ Đỏ Vạn Phúc.',
   },
   '/sign-in': {
-    title: 'Đăng nhàp | Sổ Đỏ Vạn Phúc',
-    description: 'Đăng nhàp he thong noi bo Sổ Đỏ Vạn Phúc.',
+    title: 'Đăng nhập | Sổ Đỏ Vạn Phúc',
+    description: 'Đăng nhập hệ thống Sổ Đỏ Vạn Phúc.',
   },
 };
 
@@ -76,7 +76,7 @@ const SEOManager = () => {
     const metadata = pathname.startsWith('/nha/')
       ? {
           title: 'Chi tiết nhà | Sổ Đỏ Vạn Phúc',
-          description: 'Ho so nha voi timeline, version, tag va quyền xem.',
+          description: 'Hồ sơ nhà với timeline, version, tag và quyền xem.',
         }
       : routeMetadata[pathname] || routeMetadata['/'];
 

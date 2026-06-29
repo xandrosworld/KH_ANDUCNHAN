@@ -8,6 +8,13 @@ import type { SvpReferral } from '../types/svp';
 import { formatDateTime } from '../utils/svpDisplay';
 
 const referralTypes: SvpReferral['referralType'][] = ['staff', 'owner', 'buyer', 'partner', 'other'];
+const referralTypeLabels: Record<SvpReferral['referralType'], string> = {
+  staff: 'Nhân sự',
+  owner: 'Chủ nhà',
+  buyer: 'Khách mua',
+  partner: 'Đối tác',
+  other: 'Khác',
+};
 
 function makeReferralCode(prefix = 'SVP') {
   const chunk = Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -32,7 +39,7 @@ const SvpReferralPage = () => {
       const result = await svpApi.listReferrals();
       setReferrals(result.items);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Không tải được referral');
+      setError(loadError instanceof Error ? loadError.message : 'Không tải được mã giới thiệu');
     } finally {
       setLoading(false);
     }
@@ -71,7 +78,7 @@ const SvpReferralPage = () => {
 
   const handleCreate = async () => {
     if (!referralCode.trim()) {
-      setError('Nhàp ma referral');
+      setError('Nhập mã referral');
       return;
     }
 
@@ -103,7 +110,7 @@ const SvpReferralPage = () => {
               <QrCode className="h-4 w-4" />
               SVP ID / QR
             </div>
-            <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">Referral và mã giới thiệu</h1>
+            <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">Mã giới thiệu và QR</h1>
             <p className="mt-2 max-w-3xl text-[14px] leading-6 text-[#A7ABB6]">
               Tạo mã giới thiệu, link và QR để dùng cho tuyển dụng, mời khách, đối tác và cây hệ thống sau này.
             </p>
@@ -136,7 +143,7 @@ const SvpReferralPage = () => {
             onChange={(event) => setReferralType(event.target.value as SvpReferral['referralType'])}
             className="min-h-11 rounded-md border border-white/10 bg-black/30 px-3 text-[14px] text-[#F5F0E6] outline-none focus:border-[#F6D37A]/60"
           >
-            {referralTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+            {referralTypes.map((type) => <option key={type} value={type}>{referralTypeLabels[type]}</option>)}
           </select>
           <input
             value={referralCode}
@@ -157,7 +164,7 @@ const SvpReferralPage = () => {
         {loading ? (
           <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-white/10 bg-[#08090C] text-[#A7ABB6]">
             <Loader2 className="mb-3 h-7 w-7 animate-spin text-[#F6D37A]" />
-            Đăng tai referral...
+            Đang tải mã giới thiệu...
           </div>
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -167,7 +174,7 @@ const SvpReferralPage = () => {
               <article key={item.id} className="rounded-lg border border-white/10 bg-[#08090C] p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#8A8F98]">{item.referralType}</div>
+                    <div className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#8A8F98]">{referralTypeLabels[item.referralType] || item.referralType}</div>
                     <div className="mt-2 text-xl font-black text-[#F6D37A]">{item.referralCode}</div>
                     <div className="mt-2 text-[12px] text-[#8A8F98]">{formatDateTime(item.createdAt)}</div>
                   </div>

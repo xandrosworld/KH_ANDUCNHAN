@@ -29,7 +29,7 @@ const groupHints: Record<string, string> = {
   visibility_levels: 'Nhóm được phép xem thông tin nhà hoặc số điện thoại chủ nhà.',
   signing_criteria: 'Tiêu chí tính điểm ký nhà và cảnh báo rủi ro hợp đồng.',
   price_segments: 'Phân khúc giá để lọc nhanh, thống kê và gợi ý khách.',
-  customer_statuses: 'Trạng thái cham soc khach va nhu cầu mua.',
+  customer_statuses: 'Trạng thái chăm sóc khách và nhu cầu mua.',
 };
 
 const SvpAdminConfigPage = () => {
@@ -171,7 +171,7 @@ const SvpAdminConfigPage = () => {
             : 'bg-white/[0.06] text-[#8A8F98]'
         }`}>
           {row.original.isActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-          {row.original.isActive ? 'Đăng dung' : 'Đã ẩn'}
+          {row.original.isActive ? 'Đang dùng' : 'Đã ẩn'}
         </span>
       ),
     },
@@ -206,7 +206,7 @@ const SvpAdminConfigPage = () => {
           <div>
             <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.18em] text-[#F6D37A]">
               <Settings2 className="h-4 w-4" />
-              Admin Config
+              Thiết lập dữ liệu
             </div>
             <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">Cấu hình dữ liệu Sổ Đỏ Vạn Phúc</h1>
             <p className="mt-2 max-w-3xl text-[14px] leading-6 text-[#A7ABB6]">
@@ -261,9 +261,9 @@ const SvpAdminConfigPage = () => {
             <div className="border-b border-white/10 p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-[#F5F0E6]">{activeGroup?.name || 'Đăng tai...'}</h2>
+                  <h2 className="text-xl font-bold text-[#F5F0E6]">{activeGroup?.name || 'Đang tải...'}</h2>
                   <p className="mt-1 text-[13px] leading-6 text-[#A7ABB6]">
-                    {activeGroup ? groupHints[activeGroup.id] || activeGroup.description || 'Cấu hình dùng chung cho hệ thống.' : 'Đăng tai du lieu.'}
+                    {activeGroup ? groupHints[activeGroup.id] || activeGroup.description || 'Cấu hình dùng chung cho hệ thống.' : 'Đang tải dữ liệu.'}
                   </p>
                 </div>
                 <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[12px] font-semibold text-[#A7ABB6]">

@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
+    <main className="svp-auth-shell min-h-screen bg-[#030405] px-4 py-6 font-sans text-[#F5F0E6] sm:py-10">
       <div className="mx-auto flex min-h-[calc(100vh-48px)] w-full max-w-[900px] flex-col justify-center">
         <Link to="/" className="mb-5 flex justify-center">
           <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="h-24 w-auto object-contain" />

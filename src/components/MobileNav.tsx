@@ -14,7 +14,7 @@ const MobileNav = () => {
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#060708]/95 shadow-[0_-18px_44px_rgba(0,0,0,0.34)] backdrop-blur-xl">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-[#d9e4e0] bg-white/95 shadow-[0_-14px_38px_rgba(34,83,68,0.14)] backdrop-blur-xl">
       <div className="grid h-[64px] grid-cols-5 items-center px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -26,11 +26,11 @@ const MobileNav = () => {
               to={item.path}
               className={`relative flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-md transition-colors ${
                 isActive
-                  ? 'text-[#F6D37A]'
-                  : 'text-[#A7ABB6] hover:bg-white/[0.055] hover:text-[#F5F0E6]'
+                  ? 'text-[#2f9a4b]'
+                  : 'text-[#5f706d] hover:bg-[#e8f6ec] hover:text-[#16423c]'
               }`}
             >
-              {isActive && <span className="absolute top-0 h-[3px] w-8 rounded-b-full bg-[#F6D37A]" />}
+              {isActive && <span className="absolute top-0 h-[3px] w-8 rounded-b-full bg-[#2f9a4b]" />}
               <Icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.5 : 1.9} />
               <span className="max-w-full truncate text-[10px] font-semibold leading-none">{item.label}</span>
             </Link>

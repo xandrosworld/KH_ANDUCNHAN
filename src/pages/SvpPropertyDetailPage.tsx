@@ -143,12 +143,12 @@ const SvpPropertyDetailPage = () => {
         {loading ? (
           <div className="flex min-h-[520px] flex-col items-center justify-center rounded-lg border border-white/10 bg-[#08090C] text-[#A7ABB6]">
             <Loader2 className="mb-3 h-7 w-7 animate-spin text-[#F6D37A]" />
-            Đăng tai ho so nha...
+            Đang tải hồ sơ nhà...
           </div>
         ) : !property ? (
           <div className="rounded-lg border border-white/10 bg-[#08090C] px-5 py-16 text-center">
             <div className="text-xl font-bold text-[#F5F0E6]">Không tìm thấy nhà</div>
-            <p className="mt-2 text-[14px] text-[#A7ABB6]">Mã nhà khong ton tai hoac da bi xoa.</p>
+            <p className="mt-2 text-[14px] text-[#A7ABB6]">Mã nhà không tồn tại hoặc đã bị xóa.</p>
           </div>
         ) : (
           <>
@@ -171,7 +171,7 @@ const SvpPropertyDetailPage = () => {
                 </div>
                 <div className="grid min-w-[220px] grid-cols-2 gap-3 rounded-lg border border-[#F6D37A]/20 bg-[#F6D37A]/10 p-4">
                   <div>
-                    <div className="text-[12px] font-bold text-[#F6D37A]">Điểm ky</div>
+                    <div className="text-[12px] font-bold text-[#F6D37A]">Điểm ký</div>
                     <div className="mt-1 text-2xl font-black text-[#F5F0E6]">{property.signingScore}</div>
                   </div>
                   <div>
@@ -236,7 +236,7 @@ const SvpPropertyDetailPage = () => {
                             <div className="font-bold text-[#F5F0E6]">Version {version.versionNo}</div>
                             <div className="text-[12px] text-[#8A8F98]">{formatDateTime(version.createdAt)}</div>
                           </div>
-                          <div className="mt-2 text-[13px] text-[#A7ABB6]">{version.changeNote || 'Cập nhật du lieu'}</div>
+                          <div className="mt-2 text-[13px] text-[#A7ABB6]">{version.changeNote || 'Cập nhật dữ liệu'}</div>
                           <div className="mt-3 rounded-md bg-black/25 px-3 py-2 text-[12px] text-[#D7DAE3]">
                             {String(version.snapshot.title || latestSnapshotTitle)} - {formatVnd(snapshotPrice)}
                           </div>

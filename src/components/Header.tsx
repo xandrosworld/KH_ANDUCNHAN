@@ -159,7 +159,7 @@ const Header = () => {
     { label: 'Bí Kíp', path: '/nha' },
     { label: 'Đăng Bí Kíp', path: '/post-property' },
     { label: 'Khách hàng', path: '/khach-hang' },
-    { label: 'Referral', path: '/referral' },
+    { label: 'Giới thiệu', path: '/referral' },
     { label: 'Trợ lý AI', path: '/ai' },
     { label: 'Cấu hình', path: '/admin/config' },
   ];
@@ -181,8 +181,6 @@ const Header = () => {
   );
 
   const mobileHeaderProgress = isMobileMenuOpen ? 1 : 0;
-  const isCompactMobileHeader = isMobileMenuOpen;
-  const isHomePage = location.pathname === '/dashboard' || location.pathname === '/';
   const currentMobileHeaderHeight = MOBILE_HEADER_HEIGHT;
   const mobileLogoHeight = 128;
   const mobileLogoWidth = 116;
@@ -191,16 +189,10 @@ const Header = () => {
     '--mobile-header-border': (mobileHeaderProgress * 0.1).toFixed(2),
     '--mobile-header-shadow': (mobileHeaderProgress * 0.35).toFixed(2),
   } as CSSProperties;
-  const mobilePositionClass = isHomePage
-    ? 'fixed left-0 right-0 lg:left-auto lg:right-auto'
-    : 'sticky';
+  const mobilePositionClass = 'sticky';
   const mobileHeaderClass = `gf-mobile-header ${mobilePositionClass} top-0 ${isMobileMenuOpen ? 'z-[80] backdrop-blur-xl' : 'z-[70] backdrop-blur-0'} w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-150 lg:sticky lg:top-0 lg:z-50 lg:w-full lg:backdrop-blur-xl`;
-  const mobileIconClass = isCompactMobileHeader
-    ? 'text-[#F5F0E6] hover:text-[#F6D37A]'
-    : 'text-white drop-shadow-md hover:text-[#F6D37A]';
-  const mobileActionClass = isCompactMobileHeader
-    ? 'rounded-full bg-white/[0.06] text-[#F6D37A] ring-1 ring-white/10 hover:bg-white/[0.1]'
-    : 'rounded-full bg-black/45 text-[#F6D37A] shadow-md backdrop-blur-sm hover:bg-black/60';
+  const mobileIconClass = 'text-[#16423c] hover:text-[#2f9a4b]';
+  const mobileActionClass = 'rounded-full bg-[#2f9a4b] text-white shadow-md hover:bg-[#268642]';
 
   return (
     <>
@@ -227,7 +219,7 @@ const Header = () => {
         <div className="hidden lg:grid flex-1 grid-cols-[1fr_auto_1fr] items-center max-w-[1280px] mx-auto">
 
           {/* Left nav */}
-          <nav className="flex items-center justify-self-start" style={{ gap: '2px', fontSize: '13.5px', fontWeight: 500, color: '#F5F0E6' }}>
+          <nav className="flex items-center justify-self-start" style={{ gap: '2px', fontSize: '13.5px', fontWeight: 600, color: '#16423c' }}>
             {leftNav.map((item) => (
               <Link
                 key={item.path}
@@ -259,7 +251,7 @@ const Header = () => {
           </Link>
 
           {/* Right actions */}
-          <nav className="flex items-center justify-self-end" style={{ gap: '2px', fontSize: '13.5px', fontWeight: 500, color: '#F5F0E6' }}>
+          <nav className="flex items-center justify-self-end" style={{ gap: '2px', fontSize: '13.5px', fontWeight: 600, color: '#16423c' }}>
             {/* Language Toggle */}
             <div className="flex items-center gap-1 ml-1">
               <button
@@ -401,7 +393,7 @@ const Header = () => {
       {/* Mobile dropdown */}
       {isMobileMenuOpen && (
         <div
-          className="absolute inset-x-0 z-[90] lg:hidden overflow-y-auto bg-[#060708]"
+          className="absolute inset-x-0 z-[90] min-h-[calc(100vh-104px)] lg:hidden overflow-y-auto border-t border-[#d9e4e0] bg-white shadow-[0_24px_70px_rgba(34,83,68,0.18)]"
           style={{
             top: `${currentMobileHeaderHeight}px`,
             maxHeight: `calc(100vh - ${currentMobileHeaderHeight}px)`,
@@ -409,19 +401,19 @@ const Header = () => {
           aria-label="Mobile navigation"
         >
           {mobileToggles}
-          <nav className="border-t border-white/10">
+          <nav className="border-t border-[#d9e4e0]">
             {mobileMenuItems.map((item) => (
               <Link
                 key={`${item.label}-${item.path}`}
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex h-[66px] items-center border-b border-white/10 text-[#F6D37A] transition-colors hover:bg-white/[0.04] hover:text-[#FFE8A3]"
+                className="flex h-[66px] items-center border-b border-[#d9e4e0] text-[#16423c] transition-colors hover:bg-[#e8f6ec] hover:text-[#2f9a4b]"
               >
                 <span className="flex-1 px-7 text-[24px] font-medium leading-none">
                   {item.label}
                 </span>
                 {item.expandable && (
-                  <span className="flex h-full w-[72px] items-center justify-center border-l border-white/10 bg-white/[0.025] text-[#F6D37A]">
+                  <span className="flex h-full w-[72px] items-center justify-center border-l border-[#d9e4e0] bg-[#f4faf7] text-[#2f9a4b]">
                     <ChevronDown className="h-7 w-7" strokeWidth={2.6} />
                   </span>
                 )}
