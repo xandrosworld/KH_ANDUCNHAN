@@ -225,6 +225,16 @@ CREATE TABLE IF NOT EXISTS `svp_referrals` (
   INDEX `idx_referral_code` (`referral_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `svp_favorites` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` VARCHAR(64) NOT NULL,
+  `property_id` VARCHAR(64) NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_user_property` (`user_id`, `property_id`),
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_property_id` (`property_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `svp_transactions` (
   `id` VARCHAR(64) NOT NULL,
   `property_id` VARCHAR(64) DEFAULT NULL,

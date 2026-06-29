@@ -268,6 +268,20 @@ function svp_filter_property_by_role(array $property, ?string $activeRole, ?stri
     return [];
 }
 
+function svp_ensure_favorites_table(PDO $db): void {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS svp_favorites (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(64) NOT NULL,
+          property_id VARCHAR(64) NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_user_property (user_id, property_id),
+          INDEX idx_user_id (user_id),
+          INDEX idx_property_id (property_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
 // ─── Auth Routes ──────────────────────────────────────────────────────────────
 
 $router->add('POST', '/api/svp/auth/register', function () {
@@ -866,9 +880,10 @@ $router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
 $router->add('GET', '/api/svp/favorites', function () {
     $payload = svp_auth_require();
     $db = Database::getInstance();
+    svp_ensure_favorites_table($db);
 
     $stmt = $db->prepare("
-        SELECT f.id, f.property_id, f.created_at, p.title, p.price, p.district, p.area, p.bedrooms
+        SELECT f.id, f.property_id, f.created_at, p.title, p.price, p.district, p.ward, p.area_m2, p.extra_json
         FROM svp_favorites f
         LEFT JOIN svp_properties p ON p.id = f.property_id
         WHERE f.user_id = :uid
@@ -882,8 +897,10 @@ $router->add('GET', '/api/svp/favorites', function () {
             'title' => $r['title'] ?? '',
             'price' => (float) ($r['price'] ?? 0),
             'district' => $r['district'] ?? '',
-            'area' => $r['area'] ?? '',
-            'bedrooms' => $r['bedrooms'] ?? '',
+            'ward' => $r['ward'] ?? '',
+            'area' => $r['area_m2'] ?? '',
+            'areaM2' => isset($r['area_m2']) ? (float) $r['area_m2'] : null,
+            'bedrooms' => (string) (svp_json_decode($r['extra_json'] ?? null, [])['bedrooms'] ?? ''),
             'createdAt' => $r['created_at'],
         ];
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -894,6 +911,7 @@ $router->add('GET', '/api/svp/favorites', function () {
 $router->add('POST', '/api/svp/favorites', function () {
     $payload = svp_auth_require();
     $db = Database::getInstance();
+    svp_ensure_favorites_table($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $propertyId = trim($input['propertyId'] ?? '');
     if (!$propertyId) Response::error('propertyId is required', 400);
@@ -907,6 +925,7 @@ $router->add('POST', '/api/svp/favorites', function () {
 $router->add('DELETE', '/api/svp/favorites/{id}', function ($params) {
     $payload = svp_auth_require();
     $db = Database::getInstance();
+    svp_ensure_favorites_table($db);
     $id = (int) ($params['id'] ?? 0);
 
     $db->prepare("DELETE FROM svp_favorites WHERE id = :id AND user_id = :uid")->execute(['id' => $id, 'uid' => $payload['sub']]);

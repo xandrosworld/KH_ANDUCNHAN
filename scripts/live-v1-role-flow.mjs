@@ -12,6 +12,7 @@ const PASSWORD_SEED = Math.random().toString(36).slice(2, 8);
 
 const steps = [];
 const accounts = [];
+let accountSequence = 0;
 const dataIds = {
   properties: [],
   media: [],
@@ -45,12 +46,14 @@ function fail(name, error) {
 function publicAccount(label, roleSlugs) {
   const primaryRole = roleSlugs[0];
   const safeLabel = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const tail = `${RUN_ID.slice(-8)}${String(accounts.length + 1).padStart(2, '0')}`;
+  accountSequence += 1;
+  const numericRun = RUN_ID.replace(/\D/g, '');
+  const phone = `09${numericRun.slice(-6)}${String(accountSequence).padStart(2, '0')}`;
   return {
     label,
     roleSlugs,
     email: `${safeLabel}.${RUN_TAG}@sodovanphuc.vn`,
-    phone: `09${tail}`.slice(0, 10),
+    phone,
     password: `Svp@${RUN_ID.slice(-6)}${PASSWORD_SEED}!`,
     fullName: `${label} Vạn Phúc`,
     primaryRole,
