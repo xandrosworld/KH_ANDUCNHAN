@@ -260,8 +260,8 @@ $router->add('POST', '/api/svp/auth/login', function () {
 
     if (!$identifier || !$password) Response::error('Vui lòng nhập email/số điện thoại và mật khẩu', 400);
 
-    $stmt = $db->prepare("SELECT * FROM users WHERE email = :login OR phone = :login LIMIT 1");
-    $stmt->execute(['login' => $identifier]);
+    $stmt = $db->prepare("SELECT * FROM users WHERE email = :email OR phone = :phone LIMIT 1");
+    $stmt->execute(['email' => $identifier, 'phone' => $identifier]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user || !password_verify($password, $user['password_hash'] ?? '')) {
         Response::error('Email, số điện thoại hoặc mật khẩu không đúng', 401);

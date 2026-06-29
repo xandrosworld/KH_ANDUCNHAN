@@ -750,8 +750,8 @@ $router->add('GET', '/api/svp/properties/{id}/media', function ($params) {
     if ($activeRole && in_array($activeRole, $fullRoles, true)) {
         $canSeeSensitiveMedia = true;
     } elseif ($activeRole === 'chuyen_gia') {
-        $propertyStmt = $db->prepare('SELECT created_by, expert_id FROM svp_properties WHERE id = :id OR code = :id LIMIT 1');
-        $propertyStmt->execute(['id' => $params['id']]);
+        $propertyStmt = $db->prepare('SELECT created_by, expert_id FROM svp_properties WHERE id = :id OR code = :code LIMIT 1');
+        $propertyStmt->execute(['id' => $params['id'], 'code' => $params['id']]);
         $propertyRow = $propertyStmt->fetch(PDO::FETCH_ASSOC);
         $canSeeSensitiveMedia = $propertyRow && in_array($userId, [(string) ($propertyRow['created_by'] ?? ''), (string) ($propertyRow['expert_id'] ?? '')], true);
     }
