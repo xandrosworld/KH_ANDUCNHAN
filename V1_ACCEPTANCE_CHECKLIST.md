@@ -7,7 +7,8 @@ Ngay 29/06/2026
 - Build frontend: PASS 29/06/2026 sau dot ra soat UI (`npm run build`)
 - PHP syntax: PASS 29/06/2026 sau dot ra soat UI (`npm run php:parse`)
 - Visual/mobile/desktop smoke: PASS 98/98 29/06/2026 sau dot ra soat UI (`npm run test:visual`)
-- Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `a826d9f` (`npm run hosting:smoke`)
+- Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `c763824` (`npm run hosting:smoke`)
+- Live browser smoke domain `https://sodovanphuc.vn`: PASS 32/32, skip 4 case write/admin do chua set `SVP_LIVE_ADMIN_PASSWORD` local (`npm run hosting:browser`)
 
 ## V1 dang dap ung
 
@@ -40,7 +41,7 @@ Ngay 29/06/2026
 
 ## Can tiep tuc truoc ban giao chinh thuc
 
-- Test live sau khi deploy commit moi: hosting smoke, browser smoke, dang nhap admin neu co mat khau.
+- Test live sau khi deploy commit moi: hosting smoke PASS, browser smoke PASS; dang nhap admin live con phu thuoc bien mat khau `SVP_LIVE_ADMIN_PASSWORD`.
 - Tao user that cho cac vai tro chinh va test luong tren live: Chu nha, Khach mua, Nguoi gioi thieu, CTV, Chuyen vien, Chuyen gia, Admin.
 - Lam sach du lieu smoke/demo tren live va seed du lieu mau co hon.
 - Rasoat tiep UI theo anh khach gui cho tung dashboard mobile.
