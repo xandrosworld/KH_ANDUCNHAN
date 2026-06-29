@@ -13,6 +13,7 @@ const STEPS = ['Chủ nhà', 'Thông tin nhà', 'Pháp lý & Giá', 'Hình ảnh
 const emptyForm = {
   ownerName: '',
   ownerPhone: '',
+  ownerEmail: '',
   ownerCccd: '',
   ownerNote: '',
   title: '',
@@ -34,12 +35,24 @@ const emptyForm = {
   price: '',
   commission: '',
   commissionNote: '',
+  contractStatus: '',
   hiddenAddress: '',
   internalNote: '',
+  videoUrl: '',
   description: '',
 };
 
 type FileBucket = 'house' | 'book' | 'contract' | 'selfie';
+type VerificationKey = 'ownerIdentity' | 'duplicateChecked' | 'legalDocs' | 'planningChecked' | 'commissionAgreed' | 'readyToDistribute';
+
+const VERIFICATION_ITEMS: Array<{ key: VerificationKey; label: string }> = [
+  { key: 'ownerIdentity', label: 'Đã xác minh đúng chủ nhà/người được ủy quyền' },
+  { key: 'duplicateChecked', label: 'Đã kiểm tra trùng theo SĐT, địa chỉ, GPS, số tờ/thửa' },
+  { key: 'legalDocs', label: 'Đã kiểm tra hoặc ghi nhận tình trạng giấy tờ/sổ' },
+  { key: 'planningChecked', label: 'Đã kiểm tra hoặc ghi rõ tình trạng quy hoạch' },
+  { key: 'commissionAgreed', label: 'Đã thống nhất hoa hồng/thỏa thuận trích thưởng' },
+  { key: 'readyToDistribute', label: 'Thông tin đủ điều kiện gửi duyệt/phân phối bán' },
+];
 
 export default function ExpertAddPropertyPage() {
   const { user } = useAuth();
@@ -48,9 +61,18 @@ export default function ExpertAddPropertyPage() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [duplicates, setDuplicates] = useState<any[]>([]);
+  const [duplicateChecked, setDuplicateChecked] = useState(false);
   const [aiDesc, setAiDesc] = useState('');
   const [message, setMessage] = useState('');
   const [form, setForm] = useState(emptyForm);
+  const [verification, setVerification] = useState<Record<VerificationKey, boolean>>({
+    ownerIdentity: false,
+    duplicateChecked: false,
+    legalDocs: false,
+    planningChecked: false,
+    commissionAgreed: false,
+    readyToDistribute: false,
+  });
   const [files, setFiles] = useState<Record<FileBucket, File[]>>({ house: [], book: [], contract: [], selfie: [] });
 
   useEffect(() => {
@@ -58,7 +80,15 @@ export default function ExpertAddPropertyPage() {
   }, []);
 
   const fieldLabel = (key: string, fallback: string) => propertyFieldLabel(groups, key, fallback);
-  const u = (key: keyof typeof emptyForm, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const u = (key: keyof typeof emptyForm, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    if (['ownerPhone', 'street', 'ward', 'district', 'gpsCoordinates', 'bookSerial', 'bookSheet', 'bookParcel'].includes(key)) {
+      setDuplicateChecked(false);
+      setDuplicates([]);
+      setVerification((current) => ({ ...current, duplicateChecked: false }));
+    }
+  };
+  const toggleVerification = (key: VerificationKey) => setVerification((current) => ({ ...current, [key]: !current[key] }));
 
   const checkDuplicate = async () => {
     try {
@@ -71,8 +101,11 @@ export default function ExpertAddPropertyPage() {
         gpsCoordinates: form.gpsCoordinates,
       });
       setDuplicates(response.data?.matches || []);
+      setDuplicateChecked(true);
+      setVerification((current) => ({ ...current, duplicateChecked: true }));
     } catch {
       setDuplicates([]);
+      setDuplicateChecked(false);
     }
   };
 
@@ -104,6 +137,24 @@ export default function ExpertAddPropertyPage() {
       setStep(0);
       return;
     }
+    if (!isDraft) {
+      if (!duplicateChecked) {
+        setMessage('Vui lòng bấm kiểm tra trùng trước khi gửi duyệt nguồn nhà.');
+        setStep(4);
+        return;
+      }
+      const missingChecks = VERIFICATION_ITEMS.filter((item) => !verification[item.key]).map((item) => item.label);
+      if (missingChecks.length) {
+        setMessage('Vui lòng hoàn tất checklist xác minh trước khi gửi duyệt.');
+        setStep(4);
+        return;
+      }
+      if (duplicates.length > 0 && !form.internalNote.trim()) {
+        setMessage('Nguồn có dấu hiệu trùng. Vui lòng ghi hướng xử lý trong ghi chú nội bộ trước khi gửi duyệt.');
+        setStep(2);
+        return;
+      }
+    }
     setSubmitting(true);
     setMessage('');
     try {
@@ -123,6 +174,7 @@ export default function ExpertAddPropertyPage() {
         expertId: user?.id,
         extra: {
           ownerCccd: form.ownerCccd,
+          ownerEmail: form.ownerEmail,
           ownerNote: form.ownerNote,
           propertyType: form.propertyType,
           bedrooms: form.bedrooms,
@@ -137,7 +189,12 @@ export default function ExpertAddPropertyPage() {
           planningStatus: form.planningStatus,
           commission: form.commission,
           commissionNote: form.commissionNote,
+          contractStatus: form.contractStatus,
           internalNote: form.internalNote,
+          videoUrl: form.videoUrl,
+          duplicateChecked,
+          duplicateMatches: duplicates.length,
+          verificationChecklist: verification,
           sourceRole: 'chuyen_gia',
           saveMode: isDraft ? 'draft' : 'submit',
         },
@@ -193,6 +250,7 @@ export default function ExpertAddPropertyPage() {
         <div className="space-y-4">
           <Field placeholder={`${fieldLabel('ownerName', 'Tên chủ nhà')} *`} value={form.ownerName} onChange={(value) => u('ownerName', value)} />
           <Field placeholder={`${fieldLabel('ownerPhone', 'SĐT chủ nhà')} *`} value={form.ownerPhone} onChange={(value) => u('ownerPhone', value)} />
+          <Field placeholder={fieldLabel('ownerEmail', 'Email chủ nhà nếu có')} value={form.ownerEmail} onChange={(value) => u('ownerEmail', value)} type="email" />
           <Field placeholder={fieldLabel('ownerCccd', 'CCCD/CMND chủ nhà')} value={form.ownerCccd} onChange={(value) => u('ownerCccd', value)} />
           <textarea className="h-24 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold outline-none focus:border-[#c40012]" placeholder={fieldLabel('ownerNote', 'Ghi chú về chủ nhà')} value={form.ownerNote} onChange={(event) => u('ownerNote', event.target.value)} />
         </div>
@@ -254,8 +312,10 @@ export default function ExpertAddPropertyPage() {
           <Field placeholder={fieldLabel('price', 'Giá chào (VNĐ)')} type="number" value={form.price} onChange={(value) => u('price', value)} />
           <Field placeholder={fieldLabel('commission', 'Hoa hồng')} value={form.commission} onChange={(value) => u('commission', value)} />
           <Field placeholder={fieldLabel('commissionNote', 'Ghi chú hoa hồng')} value={form.commissionNote} onChange={(value) => u('commissionNote', value)} />
+          <Field placeholder={fieldLabel('contractStatus', 'Hợp đồng trích thưởng/tình trạng ký')} value={form.contractStatus} onChange={(value) => u('contractStatus', value)} />
           <textarea className="h-20 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold outline-none focus:border-[#c40012]" placeholder="Địa chỉ chi tiết/phần cần bảo mật" value={form.hiddenAddress} onChange={(event) => u('hiddenAddress', event.target.value)} />
           <textarea className="h-24 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold outline-none focus:border-[#c40012]" placeholder={fieldLabel('internalNote', 'Ghi chú nội bộ')} value={form.internalNote} onChange={(event) => u('internalNote', event.target.value)} />
+          <Field placeholder={fieldLabel('videoUrl', 'Link video nhà nếu có')} value={form.videoUrl} onChange={(value) => u('videoUrl', value)} />
         </div>
       )}
 
@@ -295,9 +355,26 @@ export default function ExpertAddPropertyPage() {
             </div>
           </div>
           <button type="button" onClick={checkDuplicate} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500 py-3 font-black text-amber-700"><AlertTriangle className="h-4 w-4" />Kiểm tra trùng</button>
-          {duplicates.length > 0 && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-700">Tìm thấy {duplicates.length} nhà trùng khớp!</div>}
+          {duplicateChecked && duplicates.length === 0 && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">Chưa phát hiện nguồn trùng theo dữ liệu đã nhập.</div>}
+          {duplicates.length > 0 && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-700">Tìm thấy {duplicates.length} nhà trùng/gần trùng. Cần ghi hướng xử lý trong ghi chú nội bộ.</div>}
           <button type="button" onClick={generateAiDesc} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#c40012] py-3 font-black text-[#c40012]"><Sparkles className="h-4 w-4" />AI viết mô tả</button>
           {(aiDesc || form.description) && <textarea className="h-28 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" placeholder={fieldLabel('description', 'Mô tả thêm về nhà')} value={form.description} onChange={(event) => u('description', event.target.value)} />}
+          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+            <h3 className="mb-3 font-black text-[#25202a]">Checklist xác minh nguồn</h3>
+            <div className="space-y-2">
+              {VERIFICATION_ITEMS.map((item) => (
+                <label key={item.key} className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-[#fffaf7] p-3">
+                  <input
+                    type="checkbox"
+                    checked={verification[item.key]}
+                    onChange={() => toggleVerification(item.key)}
+                    className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#c40012]"
+                  />
+                  <span className="text-sm font-semibold leading-6 text-[#4a3b3b]">{item.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

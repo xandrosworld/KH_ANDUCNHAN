@@ -30,6 +30,7 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
     options: [
       ['ownerName', 'Tên chủ nhà'],
       ['ownerPhone', 'SĐT chủ nhà'],
+      ['ownerEmail', 'Email chủ nhà'],
       ['ownerCccd', 'CCCD/CMND chủ nhà'],
       ['ownerNote', 'Ghi chú về chủ nhà'],
       ['title', 'Tiêu đề tin'],
@@ -51,7 +52,9 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
       ['price', 'Giá chào (VNĐ)'],
       ['commission', 'Hoa hồng'],
       ['commissionNote', 'Ghi chú hoa hồng'],
+      ['contractStatus', 'Hợp đồng trích thưởng/tình trạng ký'],
       ['internalNote', 'Ghi chú nội bộ'],
+      ['videoUrl', 'Link video nhà'],
       ['description', 'Mô tả thêm về nhà'],
       ['houseImages', 'Ảnh nhà'],
       ['bookImages', 'Ảnh sổ đỏ/sổ hồng'],

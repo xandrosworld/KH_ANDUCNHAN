@@ -25,6 +25,7 @@ const emptyForm = {
   legalStatus: '',
   planningStatus: '',
   price: '',
+  videoUrl: '',
   description: '',
 };
 
@@ -34,6 +35,7 @@ export default function OwnerSubmitPropertyPage() {
   const [groups, setGroups] = useState<SvpConfigGroup[]>([]);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(emptyForm);
+  const [ownerConfirm, setOwnerConfirm] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -49,6 +51,11 @@ export default function OwnerSubmitPropertyPage() {
     if (!form.propertyType || !form.street || !form.district) {
       setMessage('Vui lòng nhập loại bất động sản, số nhà/tên đường và quận/huyện trước khi gửi.');
       setStep(0);
+      return;
+    }
+    if (!ownerConfirm) {
+      setMessage('Vui lòng xác nhận thông tin đã nhập là đúng để đội Chuyên gia liên hệ xác minh.');
+      setStep(2);
       return;
     }
     setSubmitting(true);
@@ -85,6 +92,8 @@ export default function OwnerSubmitPropertyPage() {
           bookParcel: form.bookParcel,
           legalStatus: form.legalStatus,
           planningStatus: form.planningStatus,
+          videoUrl: form.videoUrl,
+          ownerConfirm,
           sourceRole: 'chu_nha',
         },
       });
@@ -169,6 +178,7 @@ export default function OwnerSubmitPropertyPage() {
           </select>
           <Field placeholder={label('planningStatus', 'Thông tin quy hoạch nếu biết')} value={form.planningStatus} onChange={(value) => update('planningStatus', value)} />
           <Field placeholder={label('price', 'Giá mong muốn (VNĐ)')} type="number" value={form.price} onChange={(value) => update('price', value)} />
+          <Field placeholder={label('videoUrl', 'Link video nhà nếu có')} value={form.videoUrl} onChange={(value) => update('videoUrl', value)} />
           <textarea className="h-28 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" placeholder={label('description', 'Mô tả thêm về nhà')} value={form.description} onChange={(event) => update('description', event.target.value)} />
         </div>
       )}
@@ -182,6 +192,17 @@ export default function OwnerSubmitPropertyPage() {
             <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => setFiles(Array.from(event.target.files || []))} />
           </label>
           {files.length > 0 && <p className="mt-3 text-sm font-bold text-[#757575]">Đã chọn {files.length} ảnh</p>}
+          <label className="mt-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-4">
+            <input
+              type="checkbox"
+              checked={ownerConfirm}
+              onChange={(event) => setOwnerConfirm(event.target.checked)}
+              className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#c40012]"
+            />
+            <span className="text-sm font-semibold leading-6 text-[#4a3b3b]">
+              Tôi xác nhận thông tin đã nhập là đúng và đồng ý để Sổ Đỏ Vạn Phúc liên hệ xác minh, ký hợp đồng và phân phối bán theo quy trình.
+            </span>
+          </label>
         </div>
       )}
 

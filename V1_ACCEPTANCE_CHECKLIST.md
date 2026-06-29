@@ -4,9 +4,9 @@ Ngay 29/06/2026
 
 ## Trang thai da kiem
 
-- Build frontend: PASS 29/06/2026 sau dot ra soat UI (`npm run build`)
-- PHP syntax: PASS 29/06/2026 sau dot ra soat UI (`npm run php:parse`)
-- Visual/mobile/desktop smoke: PASS 98/98 29/06/2026 sau dot ra soat UI (`npm run test:visual`)
+- Build frontend: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run build`)
+- PHP syntax: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run php:parse`)
+- Visual/mobile/desktop smoke: PASS 98/98 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run test:visual`)
 - Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `c763824` (`npm run hosting:smoke`)
 - Live browser smoke domain `https://sodovanphuc.vn`: PASS 32/32, skip 4 case write/admin do chua set `SVP_LIVE_ADMIN_PASSWORD` local (`npm run hosting:browser`)
 
@@ -18,18 +18,21 @@ Ngay 29/06/2026
 - Dang ky moi va xin them vai tro deu doc cau hinh duyet tai khoan tai thoi diem tao yeu cau.
 - Admin cau hinh ten truong nhap lieu nha cho cac field quan trong, giup doi ten goi ma khong sua code.
 - Admin cau hinh danh muc van hanh: cong ty, tag nha, trang thai nha, quyen xem, tieu chi diem ky nha, phan khuc gia, trang thai khach.
-- Form Chu nha gui ban co phap ly/vi tri, GPS, so to/thua dat, quy hoach, gia, anh nha.
-- Form Chuyen gia dang nha co CCCD, GPS, so to/thua dat, quy hoach, hoa hong, dia chi bao mat, ghi chu noi bo, anh so/hd/selfie.
+- Form Chu nha gui ban co phap ly/vi tri, GPS, so to/thua dat, quy hoach, gia, anh nha, link video neu co va checkbox xac nhan thong tin dung/quy trinh lien he xac minh.
+- Form Chuyen gia dang nha co CCCD, email chu nha, GPS, so to/thua dat, quy hoach, hoa hong, hop dong trich thuong/tinh trang ky, dia chi bao mat, ghi chu noi bo, link video, anh so/hd/selfie.
+- Form Chuyen gia bat buoc kiem tra trung va hoan tat checklist xac minh truoc khi gui duyet: dung chu nha, chong trung, giay to/so, quy hoach, hoa hong, san sang phan phoi.
 - Kiem tra trung nha theo dia chi, so so, so to, thua dat, SĐT chu nha va GPS.
 - Upload anh form Chu nha/Chuyen gia gui dung field backend `images`.
-- Chi tiet nha Chuyen gia hien thi lai cac field V1 moi.
+- Chi tiet nha Chuyen gia hien thi lai cac field V1 moi, gom email chu nha, hop dong, video va checklist xac minh.
 - API danh sach/chi tiet nha loc du lieu nhay cam theo vai tro.
 - Public/Khach mua khong thay dia chi chinh xac, GPS, chu nha, SĐT, so/giay to, hoa hong, ghi chu noi bo.
 - Media nha loc anh nhay cam: public/nhom khong du quyen khong thay anh so, hop dong, selfie, ho so duyet.
 - Quyen xem da bo ngon ngu source cu kieu Lop 4/Lop 8.
 - Da lam sach/nang cap UI mobile va desktop cho cac man V1 chinh: Chu nha dashboard/nha cua toi, Khach mua dashboard/tim nha/yeu thich, Chuyen gia dashboard/kho nha, Chuyen vien dashboard/khach hang/them khach/tim nha/lich xem, Admin dashboard/nguoi dung/duyet vai tro/nha/khach hang/nhat ky.
 - Nhat ky he thong hien thi theo ngon ngu van hanh, khong show JSON/raw log cho nguoi dung cuoi.
+- Da sua loi CSS global ep mau heading lam chu banner mobile bi toi tren nen toi; heading hien tai lay mau theo component.
 - Workflow visual da test: dang nhap vao dung dashboard, Chuyen gia dung AI mo ta va dang nha, Chuyen vien tao khach mua, Profile doi mat khau/xin them vai tro.
+- Workflow visual Chuyen gia da test theo luong moi: nhap nguon, ghi ghi chu xu ly trung, bam kiem tra trung, tick checklist xac minh, dung AI viet mo ta, gui duyet.
 
 ## Yeu cau moi 29/06/2026 19:28
 

@@ -382,9 +382,15 @@ test.describe('V1 core workflows', () => {
 
     await page.getByPlaceholder(/So to|S. t./i).fill('SO-QA-001');
     await page.getByPlaceholder(/Gia|Gi./i).fill('6800000000');
+    await page.locator('textarea').nth(1).fill('Đã rà trùng, nguồn QA có ghi chú xử lý rõ ràng.');
     await page.getByRole('button', { name: /Tiep theo|Ti.p theo/i }).click();
     await page.getByRole('button', { name: /Tiep theo|Ti.p theo/i }).click();
 
+    await page.getByRole('button', { name: /Kiem tra trung|Ki.m tra tr.ng|Kiểm tra trùng/i }).click();
+    const checkboxes = page.getByRole('checkbox');
+    for (let i = 0; i < await checkboxes.count(); i += 1) {
+      await checkboxes.nth(i).check();
+    }
     await page.getByRole('button', { name: /AI/i }).click();
     await expect(page.locator('textarea').last()).toHaveValue(/Mo ta AI/);
     await page.getByRole('button', { name: /Gui duyet|G.i duy.t/i }).click();

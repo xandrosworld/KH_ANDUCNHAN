@@ -55,6 +55,7 @@ export default function ExpertPropertyDetailPage() {
         {isOwn && (
           <Info title="Chủ nhà" lines={[
             `${prop.ownerName || 'Chưa nhập'} - ${prop.ownerPhone || 'Chưa nhập SĐT'}`,
+            extra.ownerEmail ? `Email: ${extra.ownerEmail}` : '',
             extra.ownerCccd ? `CCCD/CMND: ${extra.ownerCccd}` : '',
             extra.ownerNote || '',
           ]} />
@@ -67,15 +68,31 @@ export default function ExpertPropertyDetailPage() {
         ]} />
 
         {isOwn && extra.commission && (
-          <Info title="Hoa hồng" lines={[`${extra.commission}${String(extra.commission).includes('%') ? '' : '%'}`, extra.commissionNote || '']} />
+          <Info title="Hoa hồng" lines={[`${extra.commission}${String(extra.commission).includes('%') ? '' : '%'}`, extra.commissionNote || '', extra.contractStatus ? `Hợp đồng: ${extra.contractStatus}` : '']} />
         )}
 
         {prop.description && <Info title="Mô tả" lines={[prop.description]} muted />}
+        {extra.videoUrl && <Info title="Video" lines={[extra.videoUrl]} muted />}
         {isOwn && prop.hiddenAddress && <Info title="Địa chỉ bảo mật" lines={[prop.hiddenAddress]} muted />}
         {isOwn && extra.internalNote && <Info title="Ghi chú nội bộ" lines={[extra.internalNote]} muted />}
+        {isOwn && extra.verificationChecklist && (
+          <Info title="Checklist xác minh" lines={verificationLines(extra.verificationChecklist)} muted />
+        )}
       </div>
     </div>
   );
+}
+
+function verificationLines(checklist: Record<string, boolean>) {
+  const labels: Record<string, string> = {
+    ownerIdentity: 'Đã xác minh chủ nhà/người được ủy quyền',
+    duplicateChecked: 'Đã kiểm tra trùng nguồn nhà',
+    legalDocs: 'Đã kiểm tra tình trạng giấy tờ/sổ',
+    planningChecked: 'Đã ghi nhận tình trạng quy hoạch',
+    commissionAgreed: 'Đã thống nhất hoa hồng/thỏa thuận trích thưởng',
+    readyToDistribute: 'Đủ điều kiện gửi duyệt/phân phối bán',
+  };
+  return Object.entries(labels).map(([key, label]) => `${checklist[key] ? '✓' : '•'} ${label}`);
 }
 
 function Info({ title, lines, icon, muted = false }: { title: string; lines: string[]; icon?: ReactNode; muted?: boolean }) {
