@@ -12,6 +12,8 @@ Ngay 29/06/2026
 - Live browser smoke domain `https://sodovanphuc.vn`: PASS 36/36 tren mobile + desktop 30/06/2026 (`npm run hosting:browser`) - dang nhap admin live, redirect route bao ve, public routes, khong runtime/HTTP failure.
 - Hosting acceptance domain `https://sodovanphuc.vn`: PASS 30/06/2026 (`npm run hosting:acceptance`) - report tai `qa/hosting-acceptance/20260630-003032/ACCEPTANCE_REPORT.md`.
 - Temp admin live da duoc tao rieng de test, da cleanup bang workflow, da xoa GitHub secret va file mat khau local sau khi test.
+- Live V1 role flow domain `https://sodovanphuc.vn`: PASS 36/36 30/06/2026 (`npm run hosting:v1-role-flow`) - report tai `qa/live-v1-role-flow/20260629T175448/REPORT.md`. Da test dang ky/dang nhap/doi mat khau/avatar/xin them vai tro/cho duyet/duyet vai tro/tao nha/upload anh/kiem tra trung/an du lieu nhay cam/customer/need/lich xem/favorite/referral/audit/AI.
+- Sau khi cleanup admin tam: Hosting acceptance safe PASS 30/06/2026 (`npm run hosting:acceptance:safe`) - report tai `qa/hosting-acceptance/20260630-010232/ACCEPTANCE_REPORT.md`.
 
 ## V1 dang dap ung
 
@@ -40,6 +42,8 @@ Ngay 29/06/2026
 - Live write smoke da test API nghiep vu that tren hosting: tao nha, doc chi tiet, cap nhat nha, upload/tao media, kiem timeline/version, tao khach, nhu cau, lich xem, referral, audit va cleanup thanh cong.
 - Admin live dashboard/API da test qua browser sau dang nhap; endpoint `/api/svp/admin/dashboard` da sua de chay dung voi schema live.
 - Deploy GitHub Actions da them reset PHP OPcache sau moi lan upload de tranh server chay PHP cache cu.
+- Da sua loi live khi Khach mua luu yeu thich: backend tu tao bang `svp_favorites` neu live DB thieu bang va doc dung cot `area_m2`/`extra_json` theo schema SVP.
+- Da seed du lieu V1 co hon tren live qua role-flow: tai khoan vai tro chinh, nguon nha, khach mua, nhu cau, lich xem, referral, favorite va audit.
 
 ## Yeu cau moi 29/06/2026 19:28
 
@@ -51,7 +55,6 @@ Ngay 29/06/2026
 
 ## Can tiep tuc truoc ban giao chinh thuc
 
-- Tao user that cho cac vai tro chinh va test luong tren live: Chu nha, Khach mua, Nguoi gioi thieu, CTV, Chuyen vien, Chuyen gia, Admin.
-- Seed du lieu mau co hon neu muon demo cho khach bang data dep thay vi so lieu rong.
-- Rasoat tiep UI theo anh khach gui cho tung dashboard mobile.
-- Doi logo/asset cuoi cung neu khach gui ban chinh thuc.
+- Khong con viec chan ban giao V1 theo checklist hien tai.
+- Neu khach gui logo/asset chinh thuc moi hon thi thay lai asset.
+- Neu khach chot module moi ngoai V1 (quy, phan quyen to chuc nang cao, AI sau) thi tach phase/bao gia rieng.
