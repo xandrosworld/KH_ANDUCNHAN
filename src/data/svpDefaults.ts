@@ -1,6 +1,26 @@
 import type { SvpConfigGroup } from '../types/svp';
+import { ROLE_DEFINITIONS } from './roles';
 
 export const svpDefaultConfigGroups: SvpConfigGroup[] = [
+  {
+    id: 'account_role_approval',
+    name: 'Duyệt tài khoản',
+    description: 'Cấu hình loại tài khoản nào được dùng ngay hoặc cần quản trị viên duyệt',
+    sortOrder: 5,
+    isSystem: true,
+    options: ROLE_DEFINITIONS.map((role, index) => ({
+      id: `role_approval_${role.slug}`,
+      groupId: 'account_role_approval',
+      label: role.shortLabel,
+      value: role.slug,
+      metadata: {
+        requiresApproval: role.requiresApproval,
+        roleGroup: role.group,
+      },
+      sortOrder: (index + 1) * 10,
+      isActive: true,
+    })),
+  },
   {
     id: 'company_units',
     name: 'Công ty thành viên',

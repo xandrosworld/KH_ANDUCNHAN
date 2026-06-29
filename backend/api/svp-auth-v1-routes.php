@@ -22,6 +22,11 @@ function svp_v1_public_roles(): array {
 }
 
 function svp_v1_role_requires_approval(string $roleSlug): bool {
+    try {
+        return svp_role_requires_approval_from_config(Database::getInstance(), $roleSlug);
+    } catch (Throwable $e) {
+        error_log('[SVP_V1_ROLE_APPROVAL] ' . $e->getMessage());
+    }
     return !in_array($roleSlug, svp_v1_public_roles(), true);
 }
 
@@ -167,6 +172,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
     $phone = trim($input['phone'] ?? '');
     $password = trim($input['password'] ?? '');
     $roleSlugs = svp_v1_normalize_role_slugs($input);
+    $roleSlugs = array_values(array_filter($roleSlugs, fn($role) => $role !== 'admin'));
     $referralCode = trim($input['referralCode'] ?? $input['referral_code'] ?? '');
 
     if (!$fullName || !$email || !$phone || !$password || empty($roleSlugs)) {
@@ -323,6 +329,7 @@ $router->add('POST', '/api/svp/auth/register-role', function () {
     $reason = trim($input['reason'] ?? '');
 
     if (!$roleSlug) Response::error('Vui lòng chọn vai trò', 400);
+    if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
 
     $stmt = $db->prepare("SELECT id FROM svp_user_roles WHERE user_id = :uid AND role_slug = :role LIMIT 1");
     $stmt->execute(['uid' => $payload['sub'], 'role' => $roleSlug]);

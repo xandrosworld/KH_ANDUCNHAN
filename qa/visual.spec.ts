@@ -143,6 +143,18 @@ const configGroups = [
   },
 ];
 
+const roleApprovalSettings = [
+  { id: 'role_approval_khach_mua', slug: 'khach_mua', label: 'Khach mua', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 10 },
+  { id: 'role_approval_chu_nha', slug: 'chu_nha', label: 'Chu nha', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 20 },
+  { id: 'role_approval_nguoi_gioi_thieu', slug: 'nguoi_gioi_thieu', label: 'Nguoi gioi thieu', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 30 },
+  { id: 'role_approval_ctv_khach', slug: 'ctv_khach', label: 'CTV gioi thieu khach', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 40 },
+  { id: 'role_approval_ctv_nguon', slug: 'ctv_nguon', label: 'CTV gioi thieu nguon', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 50 },
+  { id: 'role_approval_chuyen_vien', slug: 'chuyen_vien', label: 'Chuyen vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 110 },
+  { id: 'role_approval_chuyen_gia', slug: 'chuyen_gia', label: 'Chuyen gia', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 120 },
+  { id: 'role_approval_truong_phong', slug: 'truong_phong', label: 'Truong phong', roleGroup: 'Quan ly', requiresApproval: true, sortOrder: 210 },
+  { id: 'role_approval_giam_doc', slug: 'giam_doc', label: 'Giam doc khu vuc', roleGroup: 'Quan ly', requiresApproval: true, sortOrder: 250 },
+];
+
 const publicRoutes = [
   '/',
   '/register',
@@ -241,6 +253,13 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
       return ok(route, { items: [{ id: 'app_1', userName: 'Nhan su moi', userEmail: 'new@sodovanphuc.vn', roleSlug: 'chuyen_gia', reason: 'Dang ky dau chu' }] });
     }
     if (path.startsWith('/admin/role-applications/') && method === 'PATCH') return ok(route, { item: { id: path.split('/').pop(), status: 'approved' } });
+    if (path === '/admin/role-approval-settings') return ok(route, { items: roleApprovalSettings, total: roleApprovalSettings.length });
+    if (path.startsWith('/admin/role-approval-settings/') && method === 'PATCH') {
+      const slug = decodeURIComponent(path.split('/').pop() || '');
+      const body = request.postDataJSON?.() as { requiresApproval?: boolean } | undefined;
+      const current = roleApprovalSettings.find((item) => item.slug === slug) || roleApprovalSettings[0];
+      return ok(route, { item: { ...current, requiresApproval: !!body?.requiresApproval } });
+    }
 
     if (path === '/properties/check-duplicate' && method === 'POST') return ok(route, { matches: [properties[0]] });
     if (path === '/properties' && method === 'GET') return ok(route, { items: filterByQuery(url, properties), total: properties.length });

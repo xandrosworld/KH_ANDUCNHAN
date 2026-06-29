@@ -92,7 +92,9 @@ export default function ProfilePage() {
     }
   };
 
-  const availableRoles = ROLE_DEFINITIONS.filter((role) => !user.roles?.some((item) => item.slug === role.slug));
+  const availableRoles = ROLE_DEFINITIONS.filter((role) =>
+    role.slug !== 'admin' && !user.roles?.some((item) => item.slug === role.slug),
+  );
 
   return (
     <div className="mx-auto max-w-lg pb-20">

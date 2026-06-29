@@ -30,6 +30,26 @@ function svp_require_role(string ...$slugs): array {
     return $payload; // unreachable
 }
 
+function svp_management_role_slugs(): array {
+    return [
+        'admin',
+        'giam_doc_dieu_hanh',
+        'pho_giam_doc_dieu_hanh',
+        'giam_doc',
+        'pho_giam_doc_khu_vuc',
+        'giam_doc_khoi',
+        'pho_giam_doc_khoi',
+        'truong_phong',
+        'pho_phong',
+        'tro_ly',
+        'thu_ky',
+    ];
+}
+
+function svp_require_management_role(): array {
+    return svp_require_role(...svp_management_role_slugs());
+}
+
 function svp_generate_svp_id(PDO $db): string {
     $stmt = $db->query("SELECT COUNT(*) as c FROM users WHERE svp_id IS NOT NULL AND svp_id != ''");
     $count = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
@@ -46,6 +66,11 @@ function svp_public_role_slugs(): array {
 }
 
 function svp_role_requires_approval(string $roleSlug): bool {
+    try {
+        return svp_role_requires_approval_from_config(Database::getInstance(), $roleSlug);
+    } catch (Throwable $e) {
+        error_log('[SVP_ROLE_APPROVAL] ' . $e->getMessage());
+    }
     return !in_array($roleSlug, svp_public_role_slugs(), true);
 }
 
@@ -219,6 +244,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
     $phone = trim($input['phone'] ?? '');
     $password = trim($input['password'] ?? '');
     $roleSlug = trim($input['roleSlug'] ?? $input['role_slug'] ?? '');
+    if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
     $referralCode = trim($input['referralCode'] ?? $input['referral_code'] ?? '');
 
     if (!$fullName || !$email || !$password || !$roleSlug) {
@@ -397,6 +423,7 @@ $router->add('POST', '/api/svp/auth/register-role', function () {
     $reason = trim($input['reason'] ?? '');
 
     if (!$roleSlug) Response::error('Vui lòng chọn vai trò', 400);
+    if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
 
     // Check if already has this role
     $stmt = $db->prepare("SELECT id FROM svp_user_roles WHERE user_id = :uid AND role_slug = :role LIMIT 1");
@@ -476,8 +503,88 @@ $router->add('POST', '/api/svp/auth/reset-password', function () {
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 
+$router->add('GET', '/api/svp/admin/role-approval-settings', function () {
+    svp_require_management_role();
+    $db = Database::getInstance();
+    svp_ensure_role_approval_config($db);
+
+    $stmt = $db->prepare(
+        "SELECT *
+         FROM svp_config_options
+         WHERE group_id = 'account_role_approval'
+         ORDER BY sort_order ASC, label ASC"
+    );
+    $stmt->execute();
+
+    $items = array_map(function ($row) {
+        $option = svp_option_to_response($row);
+        $metadata = $option['metadata'] ?? [];
+        return [
+            'id' => $option['id'],
+            'slug' => $option['value'],
+            'label' => $option['label'],
+            'roleGroup' => $metadata['roleGroup'] ?? 'Khác',
+            'requiresApproval' => (bool) ($metadata['requiresApproval'] ?? true),
+            'sortOrder' => $option['sortOrder'],
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    Response::json(['items' => $items, 'total' => count($items)]);
+});
+
+$router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function ($params) {
+    $payload = svp_require_management_role();
+    $db = Database::getInstance();
+    svp_ensure_role_approval_config($db);
+
+    $slug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) ($params['slug'] ?? ''))));
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    if ($slug === '' || !array_key_exists('requiresApproval', $input)) {
+        Response::error('Thông tin cấu hình không hợp lệ', 400);
+    }
+
+    $stmt = $db->prepare(
+        "SELECT *
+         FROM svp_config_options
+         WHERE group_id = 'account_role_approval' AND value = :role
+         LIMIT 1"
+    );
+    $stmt->execute(['role' => $slug]);
+    $old = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$old) Response::notFound('Không tìm thấy loại tài khoản');
+
+    $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
+    $metadata['requiresApproval'] = (bool) $input['requiresApproval'];
+
+    $update = $db->prepare(
+        "UPDATE svp_config_options
+         SET metadata_json = :metadata_json
+         WHERE id = :id"
+    );
+    $update->execute([
+        'metadata_json' => svp_json_encode($metadata),
+        'id' => $old['id'],
+    ]);
+
+    $stmt->execute(['role' => $slug]);
+    $next = $stmt->fetch(PDO::FETCH_ASSOC);
+    svp_insert_audit($db, $payload['sub'] ?? null, 'update', 'role_approval_setting', $slug, $old, $next);
+
+    $option = svp_option_to_response($next);
+    Response::json([
+        'item' => [
+            'id' => $option['id'],
+            'slug' => $option['value'],
+            'label' => $option['label'],
+            'roleGroup' => $option['metadata']['roleGroup'] ?? 'Khác',
+            'requiresApproval' => (bool) ($option['metadata']['requiresApproval'] ?? true),
+            'sortOrder' => $option['sortOrder'],
+        ],
+    ]);
+});
+
 $router->add('GET', '/api/svp/admin/dashboard', function () {
-    svp_require_role('admin', 'giam_doc', 'truong_phong');
+    svp_require_management_role();
     $db = Database::getInstance();
 
     $totalUsers = (int) $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
@@ -497,7 +604,7 @@ $router->add('GET', '/api/svp/admin/dashboard', function () {
 });
 
 $router->add('GET', '/api/svp/admin/role-applications', function () {
-    svp_require_role('admin', 'giam_doc', 'truong_phong');
+    svp_require_management_role();
     $db = Database::getInstance();
     $status = trim($_GET['status'] ?? 'pending');
 
@@ -529,7 +636,7 @@ $router->add('GET', '/api/svp/admin/role-applications', function () {
 });
 
 $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params) {
-    $payload = svp_require_role('admin', 'giam_doc', 'truong_phong');
+    $payload = svp_require_management_role();
     $db = Database::getInstance();
     $id = (int) ($params['id'] ?? 0);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -559,7 +666,7 @@ $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params
 });
 
 $router->add('GET', '/api/svp/admin/users', function () {
-    svp_require_role('admin', 'giam_doc', 'truong_phong');
+    svp_require_management_role();
     $db = Database::getInstance();
 
     $stmt = $db->query("SELECT id, full_name, email, phone, svp_id, avatar_url, referral_code, created_at FROM users ORDER BY created_at DESC LIMIT 500");

@@ -1,5 +1,6 @@
 export type SvpConfigGroupId =
   | 'company_units'
+  | 'account_role_approval'
   | 'property_tags'
   | 'property_statuses'
   | 'visibility_levels'

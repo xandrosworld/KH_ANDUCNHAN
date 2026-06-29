@@ -50,6 +50,15 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
     dashboardPath: '/ctv',
   },
   {
+    slug: 'ctv_nguon',
+    label: 'CTV giới thiệu nguồn',
+    shortLabel: 'CTV nguồn',
+    description: 'Giới thiệu chủ nhà hoặc nguồn nhà phù hợp',
+    group: 'public',
+    requiresApproval: false,
+    dashboardPath: '/ctv',
+  },
+  {
     slug: 'chuyen_vien',
     label: 'Chuyên viên',
     shortLabel: 'Chuyên viên',
@@ -187,9 +196,7 @@ export const ROLE_NAMES = ROLE_DEFINITIONS.reduce<Record<string, string>>((acc, 
   return acc;
 }, {});
 
-export const PUBLIC_REGISTRATION_ROLES = ROLE_DEFINITIONS.filter((role) =>
-  ['khach_mua', 'chu_nha', 'chuyen_vien', 'chuyen_gia', 'nguoi_gioi_thieu', 'tro_ly', 'truong_phong', 'giam_doc_khoi'].includes(role.slug),
-);
+export const PUBLIC_REGISTRATION_ROLES = ROLE_DEFINITIONS.filter((role) => role.slug !== 'admin');
 
 export function getRoleDashboardPath(roleSlug: string): string {
   return ROLE_MAP[roleSlug]?.dashboardPath || '/profile';

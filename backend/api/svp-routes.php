@@ -31,6 +31,108 @@ function svp_uid(string $prefix): string
     return $prefix . '_' . date('ymdHis') . '_' . bin2hex(random_bytes(4));
 }
 
+function svp_role_approval_definitions(): array
+{
+    return [
+        ['slug' => 'khach_mua', 'label' => 'Khách mua', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 10],
+        ['slug' => 'chu_nha', 'label' => 'Chủ nhà', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 20],
+        ['slug' => 'nguoi_gioi_thieu', 'label' => 'Người giới thiệu', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 30],
+        ['slug' => 'ctv_khach', 'label' => 'CTV giới thiệu khách', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 40],
+        ['slug' => 'ctv_nguon', 'label' => 'CTV giới thiệu nguồn', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 50],
+        ['slug' => 'doi_tac', 'label' => 'Đối tác', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 60],
+        ['slug' => 'chuyen_vien', 'label' => 'Chuyên viên', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 110],
+        ['slug' => 'chuyen_gia', 'label' => 'Chuyên gia', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 120],
+        ['slug' => 'tro_ly', 'label' => 'Trợ lý', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 130],
+        ['slug' => 'thu_ky', 'label' => 'Thư ký', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 140],
+        ['slug' => 'truong_phong', 'label' => 'Trưởng phòng', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 210],
+        ['slug' => 'pho_phong', 'label' => 'Phó phòng', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 220],
+        ['slug' => 'giam_doc_khoi', 'label' => 'Giám đốc Khối', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 230],
+        ['slug' => 'pho_giam_doc_khoi', 'label' => 'Phó Giám đốc Khối', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 240],
+        ['slug' => 'giam_doc', 'label' => 'Giám đốc Khu vực', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 250],
+        ['slug' => 'pho_giam_doc_khu_vuc', 'label' => 'Phó Giám đốc Khu vực', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 260],
+        ['slug' => 'giam_doc_dieu_hanh', 'label' => 'Giám đốc Điều hành', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 270],
+        ['slug' => 'pho_giam_doc_dieu_hanh', 'label' => 'Phó Giám đốc Điều hành', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 280],
+        ['slug' => 'admin', 'label' => 'Quản trị hệ thống', 'group' => 'Quản trị', 'requiresApproval' => true, 'sortOrder' => 900],
+    ];
+}
+
+function svp_role_approval_default_for(string $roleSlug): bool
+{
+    foreach (svp_role_approval_definitions() as $role) {
+        if ($role['slug'] === $roleSlug) {
+            return (bool) $role['requiresApproval'];
+        }
+    }
+    return true;
+}
+
+function svp_ensure_role_approval_config(PDO $db): void
+{
+    $db->prepare(
+        "INSERT INTO svp_config_groups (id, name, description, sort_order, is_system)
+         VALUES ('account_role_approval', 'Duyệt tài khoản', 'Cấu hình loại tài khoản nào được dùng ngay hoặc cần quản trị viên duyệt', 5, 1)
+         ON DUPLICATE KEY UPDATE
+           name = VALUES(name),
+           description = VALUES(description),
+           sort_order = VALUES(sort_order),
+           is_system = VALUES(is_system)"
+    )->execute();
+
+    $stmt = $db->prepare(
+        "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
+         VALUES (:id, 'account_role_approval', :label, :value, :metadata_json, :sort_order, 1)
+         ON DUPLICATE KEY UPDATE
+           label = VALUES(label),
+           sort_order = VALUES(sort_order),
+           is_active = 1,
+           metadata_json = CASE
+             WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
+             ELSE metadata_json
+           END"
+    );
+
+    foreach (svp_role_approval_definitions() as $role) {
+        $stmt->execute([
+            'id' => 'role_approval_' . $role['slug'],
+            'label' => $role['label'],
+            'value' => $role['slug'],
+            'metadata_json' => svp_json_encode([
+                'requiresApproval' => (bool) $role['requiresApproval'],
+                'roleGroup' => $role['group'],
+            ]),
+            'sort_order' => (int) $role['sortOrder'],
+        ]);
+    }
+}
+
+function svp_role_requires_approval_from_config(PDO $db, string $roleSlug): bool
+{
+    $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim($roleSlug)));
+    if ($roleSlug === '') return true;
+
+    try {
+        svp_ensure_role_approval_config($db);
+        $stmt = $db->prepare(
+            "SELECT metadata_json
+             FROM svp_config_options
+             WHERE group_id = 'account_role_approval' AND value = :role
+             LIMIT 1"
+        );
+        $stmt->execute(['role' => $roleSlug]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $metadata = svp_json_decode($row['metadata_json'] ?? null, []);
+            if (array_key_exists('requiresApproval', $metadata)) {
+                return (bool) $metadata['requiresApproval'];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('[SVP_ROLE_APPROVAL_CONFIG] ' . $e->getMessage());
+    }
+
+    return svp_role_approval_default_for($roleSlug);
+}
+
 function svp_next_property_code(PDO $db): string
 {
     $count = (int) $db->query('SELECT COUNT(*) FROM svp_properties')->fetchColumn();
@@ -169,6 +271,7 @@ function svp_insert_property_timeline(PDO $db, string $propertyId, string $event
 
 $router->add('GET', '/api/svp/config', function () {
     $db = Database::getInstance();
+    svp_ensure_role_approval_config($db);
     $groups = $db->query('SELECT * FROM svp_config_groups ORDER BY sort_order ASC, name ASC')->fetchAll(PDO::FETCH_ASSOC);
     $options = $db->query('SELECT * FROM svp_config_options ORDER BY sort_order ASC, label ASC')->fetchAll(PDO::FETCH_ASSOC);
 

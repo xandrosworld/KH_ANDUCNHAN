@@ -22,15 +22,23 @@ npm run prehost:proof
 
 | Route | Description |
 | --- | --- |
-| `/dashboard` | KPI and operations overview |
-| `/nha` | Property source list |
-| `/nha/:id` | Property detail, timeline, versions and media |
-| `/post-property` | Structured property input form |
-| `/khach-hang` | Customers, needs and viewing schedules |
-| `/referral` | Referral code, link and QR module |
-| `/admin/config` | Admin-configurable companies, tags, statuses and score criteria |
-| `/module` | Internal module roadmap |
-| `/audit` | Audit/event log |
+| `/`, `/sign-in` | Login screen |
+| `/register`, `/dang-ky` | Public registration with multiple role selection |
+| `/forgot-password`, `/reset-password` | Password recovery |
+| `/pending-approval`, `/select-role` | Approval waiting screen and role switcher |
+| `/chu-nha`, `/chu-nha/gui-ban`, `/chu-nha/nha-cua-toi` | Owner dashboard, submit property and owned properties |
+| `/khach-mua`, `/khach-mua/tim-nha`, `/khach-mua/yeu-thich` | Buyer dashboard, search and favorites |
+| `/chuyen-gia`, `/chuyen-gia/dang-nha`, `/chuyen-gia/kho-nha` | Expert dashboard, property submission and property stock |
+| `/chuyen-vien`, `/chuyen-vien/khach-hang`, `/chuyen-vien/them-khach`, `/chuyen-vien/tim-nha`, `/chuyen-vien/lich-xem` | Specialist customer and viewing workflows |
+| `/ctv`, `/ctv/cong-viec` | Contributor workspace |
+| `/gioi-thieu`, `/gioi-thieu/ma-gioi-thieu` | Referral workspace and QR/link |
+| `/quan-tri` | Admin dashboard |
+| `/quan-tri/nguoi-dung` | User and role overview |
+| `/quan-tri/duyet-vai-tro` | Role approval queue |
+| `/quan-tri/nha`, `/quan-tri/khach-hang` | Admin property and customer overview |
+| `/quan-tri/cau-hinh` | Configurable data lists and role approval settings |
+| `/quan-tri/nhat-ky` | System activity history |
+| `/profile`, `/notifications` | User profile and notifications |
 
 ## Deploy
 

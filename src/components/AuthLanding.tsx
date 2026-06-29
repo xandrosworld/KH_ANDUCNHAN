@@ -41,9 +41,19 @@ const roleIconMap: Record<string, typeof SvpHouseIcon> = {
   chuyen_vien: SvpPeopleIcon,
   chuyen_gia: SvpExpertIcon,
   nguoi_gioi_thieu: SvpPeopleIcon,
+  ctv_khach: SvpHandshakeIcon,
+  ctv_nguon: SvpHouseIcon,
   tro_ly: SvpHandshakeIcon,
+  thu_ky: SvpShieldIcon,
   truong_phong: SvpBriefcaseIcon,
+  pho_phong: SvpBriefcaseIcon,
   giam_doc_khoi: SvpCrownIcon,
+  pho_giam_doc_khoi: SvpCrownIcon,
+  giam_doc: SvpCrownIcon,
+  pho_giam_doc_khu_vuc: SvpCrownIcon,
+  giam_doc_dieu_hanh: SvpCrownIcon,
+  pho_giam_doc_dieu_hanh: SvpCrownIcon,
+  doi_tac: SvpHandshakeIcon,
 };
 
 const roleColorMap: Record<string, string> = {
@@ -52,9 +62,19 @@ const roleColorMap: Record<string, string> = {
   chuyen_vien: 'from-sky-500 to-blue-600',
   chuyen_gia: 'from-violet-500 to-purple-600',
   nguoi_gioi_thieu: 'from-pink-500 to-rose-500',
+  ctv_khach: 'from-lime-500 to-green-600',
+  ctv_nguon: 'from-emerald-500 to-teal-600',
   tro_ly: 'from-teal-500 to-cyan-600',
+  thu_ky: 'from-indigo-500 to-blue-600',
   truong_phong: 'from-amber-500 to-orange-500',
+  pho_phong: 'from-amber-400 to-yellow-600',
   giam_doc_khoi: 'from-red-600 to-rose-700',
+  pho_giam_doc_khoi: 'from-red-500 to-pink-600',
+  giam_doc: 'from-[#c40012] to-red-800',
+  pho_giam_doc_khu_vuc: 'from-[#d13b2f] to-red-700',
+  giam_doc_dieu_hanh: 'from-slate-800 to-[#c40012]',
+  pho_giam_doc_dieu_hanh: 'from-slate-700 to-red-700',
+  doi_tac: 'from-cyan-500 to-blue-600',
 };
 
 const stats = [

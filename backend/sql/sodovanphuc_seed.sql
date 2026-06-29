@@ -4,6 +4,7 @@
 SET NAMES utf8mb4;
 
 INSERT INTO `svp_config_groups` (`id`, `name`, `description`, `sort_order`, `is_system`) VALUES
+('account_role_approval', 'Duyệt tài khoản', 'Cấu hình loại tài khoản nào được dùng ngay hoặc cần quản trị viên duyệt', 5, 1),
 ('company_units', 'Công ty thành viên', 'Danh sách công ty/đội nhóm thành viên', 10, 1),
 ('property_tags', 'Đặc điểm nhà', 'Tag/đặc điểm tìm kiếm nhà', 20, 1),
 ('property_statuses', 'Trạng thái nhà', 'Trạng thái xử lý nhà', 30, 1),
@@ -16,6 +17,32 @@ ON DUPLICATE KEY UPDATE
 `description` = VALUES(`description`),
 `sort_order` = VALUES(`sort_order`),
 `is_system` = VALUES(`is_system`);
+
+INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `metadata_json`, `sort_order`, `is_active`) VALUES
+('role_approval_khach_mua', 'account_role_approval', 'Khách mua', 'khach_mua', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 10, 1),
+('role_approval_chu_nha', 'account_role_approval', 'Chủ nhà', 'chu_nha', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 20, 1),
+('role_approval_nguoi_gioi_thieu', 'account_role_approval', 'Người giới thiệu', 'nguoi_gioi_thieu', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 30, 1),
+('role_approval_ctv_khach', 'account_role_approval', 'CTV giới thiệu khách', 'ctv_khach', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 40, 1),
+('role_approval_ctv_nguon', 'account_role_approval', 'CTV giới thiệu nguồn', 'ctv_nguon', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 50, 1),
+('role_approval_doi_tac', 'account_role_approval', 'Đối tác', 'doi_tac', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 60, 1),
+('role_approval_chuyen_vien', 'account_role_approval', 'Chuyên viên', 'chuyen_vien', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 110, 1),
+('role_approval_chuyen_gia', 'account_role_approval', 'Chuyên gia', 'chuyen_gia', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 120, 1),
+('role_approval_tro_ly', 'account_role_approval', 'Trợ lý', 'tro_ly', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 130, 1),
+('role_approval_thu_ky', 'account_role_approval', 'Thư ký', 'thu_ky', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 140, 1),
+('role_approval_truong_phong', 'account_role_approval', 'Trưởng phòng', 'truong_phong', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 210, 1),
+('role_approval_pho_phong', 'account_role_approval', 'Phó phòng', 'pho_phong', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 220, 1),
+('role_approval_giam_doc_khoi', 'account_role_approval', 'Giám đốc Khối', 'giam_doc_khoi', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 230, 1),
+('role_approval_pho_giam_doc_khoi', 'account_role_approval', 'Phó Giám đốc Khối', 'pho_giam_doc_khoi', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 240, 1),
+('role_approval_giam_doc', 'account_role_approval', 'Giám đốc Khu vực', 'giam_doc', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 250, 1),
+('role_approval_pho_giam_doc_khu_vuc', 'account_role_approval', 'Phó Giám đốc Khu vực', 'pho_giam_doc_khu_vuc', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 260, 1),
+('role_approval_giam_doc_dieu_hanh', 'account_role_approval', 'Giám đốc Điều hành', 'giam_doc_dieu_hanh', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 270, 1),
+('role_approval_pho_giam_doc_dieu_hanh', 'account_role_approval', 'Phó Giám đốc Điều hành', 'pho_giam_doc_dieu_hanh', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 280, 1),
+('role_approval_admin', 'account_role_approval', 'Quản trị hệ thống', 'admin', '{"requiresApproval":true,"roleGroup":"Quản trị"}', 900, 1)
+ON DUPLICATE KEY UPDATE
+`label` = VALUES(`label`),
+`sort_order` = VALUES(`sort_order`),
+`is_active` = VALUES(`is_active`),
+`metadata_json` = IF(`metadata_json` IS NULL OR `metadata_json` = '', VALUES(`metadata_json`), `metadata_json`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `sort_order`, `is_active`) VALUES
 ('cu_tuan123_binh_chanh', 'company_units', 'Tuấn 123 Bình Chánh', 'tuan123_binh_chanh', 10, 1),
