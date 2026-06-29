@@ -1,0 +1,605 @@
+<?php
+/**
+ * Sổ Đỏ Vạn Phúc - Auth & Admin Routes
+ * Included by index.php after svp-routes.php
+ */
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function svp_auth_payload(): ?array {
+    $token = Auth::extractToken();
+    if (!$token) return null;
+    return JwtAuth::verifyToken($token);
+}
+
+function svp_auth_require(): array {
+    $payload = svp_auth_payload();
+    if (!$payload) Response::error('Phiên đăng nhập hết hạn', 401);
+    return $payload;
+}
+
+function svp_require_role(string ...$slugs): array {
+    $payload = svp_auth_require();
+    $roles = $payload['roles'] ?? [];
+    foreach ($roles as $r) {
+        if (in_array($r['slug'] ?? '', $slugs) && ($r['status'] ?? '') === 'approved') {
+            return $payload;
+        }
+    }
+    Response::error('Bạn không có quyền truy cập', 403);
+    return $payload; // unreachable
+}
+
+function svp_generate_svp_id(PDO $db): string {
+    $stmt = $db->query("SELECT COUNT(*) as c FROM users WHERE svp_id IS NOT NULL AND svp_id != ''");
+    $count = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
+    return 'SVP' . str_pad($count + 1, 6, '0', STR_PAD_LEFT);
+}
+
+function svp_generate_referral_code(string $svpId): string {
+    $digits = preg_replace('/\D+/', '', $svpId) ?: '0';
+    return 'SVP' . str_pad(substr($digits, -6), 6, '0', STR_PAD_LEFT) . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
+}
+
+function svp_filter_property_by_role(array $property, ?string $activeRole, ?string $userId): array {
+    $full = ['admin', 'giam_doc', 'truong_phong'];
+    if (in_array($activeRole, $full)) return $property;
+
+    $sensitive = ['ownerName', 'ownerPhone', 'bookSerial', 'commission', 'commissionNote', 'internalNote', 'contractMedia', 'owner_name', 'owner_phone', 'book_serial', 'internal_note'];
+
+    if ($activeRole === 'chuyen_gia') {
+        if (($property['created_by'] ?? $property['createdBy'] ?? '') === $userId) return $property;
+        foreach ($sensitive as $k) unset($property[$k]);
+        return $property;
+    }
+
+    if (in_array($activeRole, ['chuyen_vien', 'ctv_khach'])) {
+        foreach ($sensitive as $k) unset($property[$k]);
+        return $property;
+    }
+
+    if ($activeRole === 'ctv_nguon') {
+        return array_intersect_key($property, array_flip(['id', 'code', 'address', 'bookSerial', 'book_serial', 'district', 'ward']));
+    }
+
+    if ($activeRole === 'chu_nha') {
+        if (($property['created_by'] ?? $property['createdBy'] ?? '') !== $userId) return [];
+        return $property;
+    }
+
+    if ($activeRole === 'khach_mua') {
+        $status = $property['status_id'] ?? $property['statusId'] ?? '';
+        if (!in_array($status, ['active', 'st_active'], true)) return [];
+        foreach (array_merge($sensitive, ['address', 'street', 'gps_lat', 'gps_lng']) as $k) unset($property[$k]);
+        return $property;
+    }
+
+    // nguoi_gioi_thieu, doi_tac - no property access
+    return [];
+}
+
+// ─── Auth Routes ──────────────────────────────────────────────────────────────
+
+$router->add('POST', '/api/svp/auth/register', function () {
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $fullName = trim($input['fullName'] ?? $input['full_name'] ?? '');
+    $email = trim($input['email'] ?? '');
+    $phone = trim($input['phone'] ?? '');
+    $password = trim($input['password'] ?? '');
+    $roleSlug = trim($input['roleSlug'] ?? $input['role_slug'] ?? '');
+    $referralCode = trim($input['referralCode'] ?? $input['referral_code'] ?? '');
+
+    if (!$fullName || !$email || !$password || !$roleSlug) {
+        Response::error('Vui lòng điền đầy đủ thông tin', 400);
+    }
+
+    // Check email exists
+    $stmt = $db->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
+    $stmt->execute(['email' => $email]);
+    if ($stmt->fetch()) Response::error('Email đã được sử dụng', 409);
+
+    $userId = bin2hex(random_bytes(16));
+    $svpId = svp_generate_svp_id($db);
+    $refCode = svp_generate_referral_code($svpId);
+    $hash = password_hash($password, PASSWORD_DEFAULT);
+
+    $stmt = $db->prepare("INSERT INTO users (id, full_name, email, phone, password_hash, svp_id, referral_code, created_at) VALUES (:id, :fn, :email, :phone, :pw, :svpId, :ref, NOW())");
+    $stmt->execute(['id' => $userId, 'fn' => $fullName, 'email' => $email, 'phone' => $phone, 'pw' => $hash, 'svpId' => $svpId, 'ref' => $refCode]);
+
+    // Create role application
+    $db->prepare("INSERT INTO svp_role_applications (user_id, role_slug, status, created_at) VALUES (:uid, :role, 'pending', NOW())")->execute(['uid' => $userId, 'role' => $roleSlug]);
+
+    // Create user role (pending)
+    $db->prepare("INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at) VALUES (:uid, :role, 'pending', NOW())")->execute(['uid' => $userId, 'role' => $roleSlug]);
+
+    // Handle referral
+    if ($referralCode) {
+        $stmt = $db->prepare("SELECT id FROM users WHERE referral_code = :code LIMIT 1");
+        $stmt->execute(['code' => $referralCode]);
+        $referrer = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($referrer) {
+            $refId = bin2hex(random_bytes(16));
+            $db->prepare("INSERT INTO svp_referrals (id, referrer_user_id, referred_user_id, referral_code, referral_type, status) VALUES (:id, :ruid, :uid, :code, 'other', 'new')")
+               ->execute(['id' => $refId, 'ruid' => $referrer['id'], 'uid' => $userId, 'code' => $referralCode]);
+            $db->prepare("UPDATE users SET referred_by = :ref WHERE id = :id")->execute(['ref' => $referrer['id'], 'id' => $userId]);
+        }
+    }
+
+    Response::json([
+        'message' => 'Đăng ký thành công, vui lòng chờ duyệt',
+        'user' => ['id' => $userId, 'svpId' => $svpId, 'email' => $email, 'fullName' => $fullName],
+    ], 201);
+});
+
+$router->add('POST', '/api/svp/auth/login', function () {
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $email = trim($input['email'] ?? $input['identifier'] ?? '');
+    $password = trim($input['password'] ?? '');
+
+    if (!$email || !$password) Response::error('Vui lòng nhập email/số điện thoại và mật khẩu', 400);
+
+    $stmt = $db->prepare("SELECT * FROM users WHERE email = :login OR phone = :login LIMIT 1");
+    $stmt->execute(['login' => $email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user || !password_verify($password, $user['password_hash'] ?? '')) {
+        Response::error('Email hoặc mật khẩu không đúng', 401);
+    }
+
+    // Get all roles
+    $stmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid");
+    $stmt->execute(['uid' => $user['id']]);
+    $roles = array_map(function ($r) {
+        return ['slug' => $r['role_slug'], 'status' => $r['status']];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    $approved = array_filter($roles, fn($r) => $r['status'] === 'approved');
+
+    if (empty($approved)) {
+        Response::json([
+            'error' => 'Tài khoản chưa được duyệt',
+            'user' => ['id' => $user['id'], 'email' => $user['email'], 'fullName' => $user['full_name'], 'roles' => $roles],
+        ], 403);
+        return;
+    }
+
+    $activeRole = reset($approved)['slug'];
+
+    $token = JwtAuth::createToken([
+        'sub' => $user['id'],
+        'email' => $user['email'],
+        'fullName' => $user['full_name'],
+        'roles' => $roles,
+        'role' => $activeRole, // backward compat
+    ]);
+
+    Response::json([
+        'token' => $token,
+        'user' => [
+            'id' => $user['id'],
+            'svpId' => $user['svp_id'] ?? '',
+            'email' => $user['email'],
+            'phone' => $user['phone'] ?? '',
+            'fullName' => $user['full_name'],
+            'avatar' => $user['avatar_url'] ?? '',
+            'referralCode' => $user['referral_code'] ?? '',
+            'roles' => $roles,
+        ],
+        'activeRole' => $activeRole,
+    ]);
+});
+
+$router->add('GET', '/api/svp/auth/me', function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $payload['sub']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) Response::error('Người dùng không tồn tại', 404);
+
+    $stmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid");
+    $stmt->execute(['uid' => $user['id']]);
+    $roles = array_map(fn($r) => ['slug' => $r['role_slug'], 'status' => $r['status']], $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    Response::json([
+        'user' => [
+            'id' => $user['id'],
+            'svpId' => $user['svp_id'] ?? '',
+            'email' => $user['email'],
+            'phone' => $user['phone'] ?? '',
+            'fullName' => $user['full_name'],
+            'avatar' => $user['avatar_url'] ?? '',
+            'referralCode' => $user['referral_code'] ?? '',
+            'roles' => $roles,
+        ],
+    ]);
+});
+
+$router->add('POST', '/api/svp/auth/change-password', function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $stmt = $db->prepare("SELECT password_hash FROM users WHERE id = :id");
+    $stmt->execute(['id' => $payload['sub']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $currentPassword = (string) ($input['currentPassword'] ?? $input['current_password'] ?? '');
+    $newPassword = (string) ($input['newPassword'] ?? $input['new_password'] ?? $input['password'] ?? '');
+
+    if (!$user || !password_verify($currentPassword, $user['password_hash'])) {
+        Response::error('Mật khẩu hiện tại không đúng', 400);
+    }
+
+    if (strlen($newPassword) < 6) {
+        Response::error('Mật khẩu mới cần tối thiểu 6 ký tự', 400);
+    }
+
+    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $db->prepare("UPDATE users SET password_hash = :pw WHERE id = :id")->execute(['pw' => $hash, 'id' => $payload['sub']]);
+    Response::json(['message' => 'Đổi mật khẩu thành công']);
+});
+
+$svpAvatarHandler = function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+
+    if (empty($_FILES['avatar'])) Response::error('Vui lòng chọn ảnh', 400);
+
+    $url = Upload::handleAvatarUpload($_FILES['avatar']);
+    $db->prepare("UPDATE users SET avatar_url = :url WHERE id = :id")->execute(['url' => $url, 'id' => $payload['sub']]);
+
+    Response::json(['avatar' => $url]);
+};
+
+$router->add('POST', '/api/svp/auth/avatar', $svpAvatarHandler);
+$router->add('POST', '/api/svp/auth/upload-avatar', $svpAvatarHandler);
+
+$router->add('POST', '/api/svp/auth/register-role', function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $roleSlug = trim($input['roleSlug'] ?? $input['role_slug'] ?? '');
+    $reason = trim($input['reason'] ?? '');
+
+    if (!$roleSlug) Response::error('Vui lòng chọn vai trò', 400);
+
+    // Check if already has this role
+    $stmt = $db->prepare("SELECT id FROM svp_user_roles WHERE user_id = :uid AND role_slug = :role LIMIT 1");
+    $stmt->execute(['uid' => $payload['sub'], 'role' => $roleSlug]);
+    if ($stmt->fetch()) Response::error('Bạn đã có vai trò này', 409);
+
+    $db->prepare("INSERT INTO svp_role_applications (user_id, role_slug, status, reason, created_at) VALUES (:uid, :role, 'pending', :reason, NOW())")
+       ->execute(['uid' => $payload['sub'], 'role' => $roleSlug, 'reason' => $reason]);
+
+    $db->prepare("INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at) VALUES (:uid, :role, 'pending', NOW())")
+       ->execute(['uid' => $payload['sub'], 'role' => $roleSlug]);
+
+    Response::json(['message' => 'Đã gửi yêu cầu thêm vai trò']);
+});
+
+$router->add('POST', '/api/svp/auth/forgot-password', function () {
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $email = strtolower(trim($input['email'] ?? ''));
+
+    // Always return success to not reveal if email exists
+    if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $stmt = $db->prepare("SELECT id, full_name FROM users WHERE email = :email LIMIT 1");
+        $stmt->execute(['email' => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) {
+            Response::json(['message' => 'Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu']);
+            return;
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $db->prepare("UPDATE users SET reset_token = :token, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = :id")
+           ->execute(['token' => $token, 'id' => $user['id']]);
+
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'sodovanphuc.vn';
+        $resetUrl = "{$scheme}://{$host}/reset-password?token={$token}&email=" . urlencode($email);
+        $name = htmlspecialchars($user['full_name'] ?: 'anh/chị', ENT_QUOTES, 'UTF-8');
+        $safeUrl = htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8');
+        $body = "
+            <h2>Đặt lại mật khẩu Sổ Đỏ Vạn Phúc</h2>
+            <p>Xin chào <strong>{$name}</strong>,</p>
+            <p>Anh/chị vừa yêu cầu đặt lại mật khẩu. Vui lòng bấm nút bên dưới để tạo mật khẩu mới.</p>
+            <p style='margin:24px 0;text-align:center'>
+                <a href='{$safeUrl}' style='background:#D32F2F;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block'>Đặt lại mật khẩu</a>
+            </p>
+            <p style='color:#666;font-size:13px'>Liên kết có hiệu lực trong 1 giờ. Nếu không phải anh/chị yêu cầu, vui lòng bỏ qua email này.</p>
+            <p style='color:#666;font-size:13px;word-break:break-all'>Hoặc copy link: <a href='{$safeUrl}'>{$safeUrl}</a></p>
+        ";
+        Mailer::send($email, 'Đặt lại mật khẩu Sổ Đỏ Vạn Phúc', $body);
+    }
+
+    Response::json(['message' => 'Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu']);
+});
+
+$router->add('POST', '/api/svp/auth/reset-password', function () {
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $token = trim($input['token'] ?? '');
+    $newPassword = trim($input['newPassword'] ?? $input['new_password'] ?? $input['password'] ?? '');
+
+    if (!$token || !$newPassword) Response::error('Thông tin không hợp lệ', 400);
+
+    $stmt = $db->prepare("SELECT id FROM users WHERE reset_token = :token AND reset_token_expires > NOW() LIMIT 1");
+    $stmt->execute(['token' => $token]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) Response::error('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn', 400);
+
+    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $db->prepare("UPDATE users SET password_hash = :pw, reset_token = NULL, reset_token_expires = NULL WHERE id = :id")
+       ->execute(['pw' => $hash, 'id' => $user['id']]);
+
+    Response::json(['message' => 'Đặt lại mật khẩu thành công']);
+});
+
+// ─── Admin Routes ─────────────────────────────────────────────────────────────
+
+$router->add('GET', '/api/svp/admin/dashboard', function () {
+    svp_require_role('admin', 'giam_doc', 'truong_phong');
+    $db = Database::getInstance();
+
+    $totalUsers = (int) $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    $pendingApps = (int) $db->query("SELECT COUNT(*) FROM svp_role_applications WHERE status = 'pending'")->fetchColumn();
+    $totalProperties = (int) $db->query("SELECT COUNT(*) FROM svp_properties WHERE deleted_at IS NULL")->fetchColumn();
+    $totalCustomers = (int) $db->query("SELECT COUNT(*) FROM svp_customers WHERE deleted_at IS NULL")->fetchColumn();
+    $totalReferrals = (int) $db->query("SELECT COUNT(*) FROM svp_referrals")->fetchColumn();
+
+    Response::json([
+        'totalUsers' => $totalUsers,
+        'pendingApplications' => $pendingApps,
+        'totalProperties' => $totalProperties,
+        'totalCustomers' => $totalCustomers,
+        'totalSchedules' => 0,
+        'totalReferrals' => $totalReferrals,
+    ]);
+});
+
+$router->add('GET', '/api/svp/admin/role-applications', function () {
+    svp_require_role('admin', 'giam_doc', 'truong_phong');
+    $db = Database::getInstance();
+    $status = trim($_GET['status'] ?? 'pending');
+
+    $stmt = $db->prepare("
+        SELECT ra.*, u.full_name as user_name, u.email as user_email, u.phone as user_phone, u.svp_id
+        FROM svp_role_applications ra
+        LEFT JOIN users u ON u.id = ra.user_id
+        WHERE ra.status = :status
+        ORDER BY ra.created_at DESC
+    ");
+    $stmt->execute(['status' => $status]);
+    $items = array_map(function ($r) {
+        return [
+            'id' => $r['id'],
+            'userId' => $r['user_id'],
+            'userName' => $r['user_name'],
+            'userEmail' => $r['user_email'],
+            'userPhone' => $r['user_phone'] ?? '',
+            'svpId' => $r['svp_id'] ?? '',
+            'roleSlug' => $r['role_slug'],
+            'status' => $r['status'],
+            'reason' => $r['reason'] ?? '',
+            'adminNotes' => $r['admin_notes'] ?? '',
+            'createdAt' => $r['created_at'],
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    Response::json(['items' => $items, 'total' => count($items)]);
+});
+
+$router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params) {
+    $payload = svp_require_role('admin', 'giam_doc', 'truong_phong');
+    $db = Database::getInstance();
+    $id = (int) ($params['id'] ?? 0);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $status = trim($input['status'] ?? '');
+    $notes = trim($input['adminNotes'] ?? '');
+
+    if (!in_array($status, ['approved', 'rejected'])) Response::error('Trạng thái không hợp lệ', 400);
+
+    // Update application
+    $db->prepare("UPDATE svp_role_applications SET status = :s, admin_notes = :n, reviewed_by = :by, reviewed_at = NOW() WHERE id = :id")
+       ->execute(['s' => $status, 'n' => $notes, 'by' => $payload['sub'], 'id' => $id]);
+
+    // Get application to find user_id and role_slug
+    $stmt = $db->prepare("SELECT user_id, role_slug FROM svp_role_applications WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $app = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($app) {
+        $db->prepare("UPDATE svp_user_roles SET status = :s, approved_by = :by, approved_at = NOW() WHERE user_id = :uid AND role_slug = :role")
+           ->execute(['s' => $status, 'by' => $payload['sub'], 'uid' => $app['user_id'], 'role' => $app['role_slug']]);
+
+        // Audit
+        svp_insert_audit($db, $payload['sub'], $status === 'approved' ? 'approve' : 'reject', 'role_application', (string) $id, null, ['roleSlug' => $app['role_slug'], 'userId' => $app['user_id']]);
+    }
+
+    Response::json(['message' => $status === 'approved' ? 'Đã duyệt' : 'Đã từ chối']);
+});
+
+$router->add('GET', '/api/svp/admin/users', function () {
+    svp_require_role('admin', 'giam_doc', 'truong_phong');
+    $db = Database::getInstance();
+
+    $stmt = $db->query("SELECT id, full_name, email, phone, svp_id, avatar_url, referral_code, created_at FROM users ORDER BY created_at DESC LIMIT 500");
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $result = [];
+    foreach ($users as $u) {
+        $rStmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid");
+        $rStmt->execute(['uid' => $u['id']]);
+        $roles = array_map(fn($r) => ['slug' => $r['role_slug'], 'status' => $r['status']], $rStmt->fetchAll(PDO::FETCH_ASSOC));
+
+        $result[] = [
+            'id' => $u['id'],
+            'fullName' => $u['full_name'],
+            'email' => $u['email'],
+            'phone' => $u['phone'] ?? '',
+            'svpId' => $u['svp_id'] ?? '',
+            'avatar' => $u['avatar_url'] ?? '',
+            'roles' => $roles,
+            'createdAt' => $u['created_at'],
+        ];
+    }
+
+    Response::json(['items' => $result, 'total' => count($result)]);
+});
+
+$router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
+    $payload = svp_require_role('admin');
+    $db = Database::getInstance();
+    $id = (string) ($params['id'] ?? '');
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $fields = [];
+    $data = ['id' => $id];
+    foreach (['full_name' => 'fullName', 'phone' => 'phone', 'email' => 'email'] as $col => $key) {
+        if (isset($input[$key])) {
+            $fields[] = "{$col} = :{$col}";
+            $data[$col] = trim($input[$key]);
+        }
+    }
+
+    if (!empty($fields)) {
+        $db->prepare("UPDATE users SET " . implode(', ', $fields) . " WHERE id = :id")->execute($data);
+    }
+
+    // Manage roles if provided
+    if (isset($input['addRole'])) {
+        $db->prepare("INSERT IGNORE INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at) VALUES (:uid, :role, 'approved', NOW(), :by, NOW())")
+           ->execute(['uid' => $id, 'role' => $input['addRole'], 'by' => $payload['sub']]);
+    }
+
+    Response::json(['message' => 'Đã cập nhật']);
+});
+
+// ─── Property Enhancements ──────────────────────────────────────────────────
+
+$router->add('POST', '/api/svp/properties/check-duplicate', function () {
+    svp_auth_require();
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $address = trim($input['address'] ?? '');
+    $bookSerial = trim($input['bookSerial'] ?? '');
+    $ownerPhone = trim($input['ownerPhone'] ?? '');
+
+    $conditions = [];
+    $params = [];
+
+    if ($address) {
+        $conditions[] = "address LIKE :addr";
+        $params['addr'] = '%' . $address . '%';
+    }
+    if ($bookSerial) {
+        $conditions[] = "book_serial = :bs";
+        $params['bs'] = $bookSerial;
+    }
+    if ($ownerPhone) {
+        $conditions[] = "owner_phone = :op";
+        $params['op'] = $ownerPhone;
+    }
+
+    if (empty($conditions)) {
+        Response::json(['matches' => [], 'total' => 0]);
+        return;
+    }
+
+    $where = '(' . implode(' OR ', $conditions) . ') AND deleted_at IS NULL';
+    $stmt = $db->prepare("SELECT id, code, title, address, district, book_serial, status_id FROM svp_properties WHERE {$where} LIMIT 10");
+    $stmt->execute($params);
+    $matches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    Response::json(['matches' => $matches, 'total' => count($matches)]);
+});
+
+$router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    $id = (string) ($params['id'] ?? '');
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $statusId = trim($input['statusId'] ?? '');
+
+    if (!$id || !$statusId) Response::error('Thông tin không hợp lệ', 400);
+
+    // Get old status
+    $stmt = $db->prepare("SELECT status_id FROM svp_properties WHERE id = :id AND deleted_at IS NULL");
+    $stmt->execute(['id' => $id]);
+    $old = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$old) Response::notFound();
+
+    $db->prepare("UPDATE svp_properties SET status_id = :s WHERE id = :id")->execute(['s' => $statusId, 'id' => $id]);
+
+    // Timeline
+    $tlId = bin2hex(random_bytes(16));
+    $db->prepare("INSERT INTO svp_property_timeline (id, property_id, action, actor_id, note, created_at) VALUES (:id, :pid, :action, :actor, :note, NOW())")
+       ->execute(['id' => $tlId, 'pid' => $id, 'action' => 'status_change', 'actor' => $payload['sub'], 'note' => "Đổi trạng thái: {$old['status_id']} → {$statusId}"]);
+
+    // Audit
+    svp_insert_audit($db, $payload['sub'], 'update', 'property', $id, ['statusId' => $old['status_id']], ['statusId' => $statusId]);
+
+    Response::json(['message' => 'Đã cập nhật trạng thái']);
+});
+
+// ─── Favorites ────────────────────────────────────────────────────────────────
+
+$router->add('GET', '/api/svp/favorites', function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+
+    $stmt = $db->prepare("
+        SELECT f.id, f.property_id, f.created_at, p.title, p.price, p.district, p.area, p.bedrooms
+        FROM svp_favorites f
+        LEFT JOIN svp_properties p ON p.id = f.property_id
+        WHERE f.user_id = :uid
+        ORDER BY f.created_at DESC
+    ");
+    $stmt->execute(['uid' => $payload['sub']]);
+    $items = array_map(function ($r) {
+        return [
+            'id' => $r['id'],
+            'propertyId' => $r['property_id'],
+            'title' => $r['title'] ?? '',
+            'price' => (float) ($r['price'] ?? 0),
+            'district' => $r['district'] ?? '',
+            'area' => $r['area'] ?? '',
+            'bedrooms' => $r['bedrooms'] ?? '',
+            'createdAt' => $r['created_at'],
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    Response::json(['items' => $items]);
+});
+
+$router->add('POST', '/api/svp/favorites', function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $propertyId = trim($input['propertyId'] ?? '');
+    if (!$propertyId) Response::error('propertyId is required', 400);
+
+    $db->prepare("INSERT IGNORE INTO svp_favorites (user_id, property_id, created_at) VALUES (:uid, :pid, NOW())")
+       ->execute(['uid' => $payload['sub'], 'pid' => $propertyId]);
+
+    Response::json(['message' => 'Đã lưu']);
+});
+
+$router->add('DELETE', '/api/svp/favorites/{id}', function ($params) {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    $id = (int) ($params['id'] ?? 0);
+
+    $db->prepare("DELETE FROM svp_favorites WHERE id = :id AND user_id = :uid")->execute(['id' => $id, 'uid' => $payload['sub']]);
+    Response::json(['message' => 'Đã xóa']);
+});

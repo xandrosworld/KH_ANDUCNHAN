@@ -45,6 +45,7 @@
     "@rjsf/core": "^6.6.2",
     "@rjsf/validator-ajv8": "^6.6.2",
     "@tanstack/react-table": "^8.21.3",
+    "axios": "^1.18.1",
     "firebase": "^12.13.0",
     "lucide-react": "^1.16.0",
     "qrcode": "^1.5.4",

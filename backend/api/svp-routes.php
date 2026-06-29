@@ -37,6 +37,23 @@ function svp_next_property_code(PDO $db): string
     return 'SVP' . str_pad((string) ($count + 1), 6, '0', STR_PAD_LEFT);
 }
 
+function svp_normalize_property_status(string $status): string
+{
+    $status = trim($status);
+    if ($status === '') return '';
+    $map = [
+        'new' => 'st_new',
+        'draft' => 'st_new',
+        'pending' => 'st_new',
+        'active' => 'st_active',
+        'deposit' => 'st_deposit',
+        'sold' => 'st_sold',
+        'paused' => 'st_paused',
+        'hidden' => 'st_hidden',
+    ];
+    return $map[$status] ?? $status;
+}
+
 function svp_option_to_response(array $row): array
 {
     return [
@@ -265,7 +282,35 @@ $router->add('GET', '/api/svp/properties', function () {
     }
     if (!empty($_GET['statusId'])) {
         $where[] = 'status_id = :status';
-        $params['status'] = $_GET['statusId'];
+        $params['status'] = svp_normalize_property_status((string) $_GET['statusId']);
+    }
+    if (!empty($_GET['createdBy'])) {
+        $where[] = 'created_by = :created_by';
+        $params['created_by'] = (string) $_GET['createdBy'];
+    }
+    if (!empty($_GET['expertId'])) {
+        $where[] = 'expert_id = :expert_id';
+        $params['expert_id'] = (string) $_GET['expertId'];
+    }
+    if (!empty($_GET['assignedUserId'])) {
+        $where[] = 'assigned_user_id = :assigned_user_id';
+        $params['assigned_user_id'] = (string) $_GET['assignedUserId'];
+    }
+    if (isset($_GET['priceMin']) && $_GET['priceMin'] !== '') {
+        $where[] = 'price >= :price_min';
+        $params['price_min'] = (float) $_GET['priceMin'];
+    }
+    if (isset($_GET['priceMax']) && $_GET['priceMax'] !== '') {
+        $where[] = 'price <= :price_max';
+        $params['price_max'] = (float) $_GET['priceMax'];
+    }
+    if (isset($_GET['areaMin']) && $_GET['areaMin'] !== '') {
+        $where[] = 'area_m2 >= :area_min';
+        $params['area_min'] = (float) $_GET['areaMin'];
+    }
+    if (isset($_GET['areaMax']) && $_GET['areaMax'] !== '') {
+        $where[] = 'area_m2 <= :area_max';
+        $params['area_max'] = (float) $_GET['areaMax'];
     }
 
     $whereSql = 'WHERE ' . implode(' AND ', $where);
@@ -291,13 +336,13 @@ $router->add('POST', '/api/svp/properties', function () use ($input) {
         'book_serial' => trim((string) ($input['bookSerial'] ?? $input['book_serial'] ?? '')),
         'price' => (float) ($input['price'] ?? 0),
         'price_unit' => trim((string) ($input['priceUnit'] ?? $input['price_unit'] ?? 'VND')),
-        'area_m2' => isset($input['areaM2']) ? (float) $input['areaM2'] : null,
+        'area_m2' => isset($input['areaM2']) ? (float) $input['areaM2'] : (isset($input['area']) ? (float) $input['area'] : null),
         'district' => trim((string) ($input['district'] ?? '')),
         'ward' => trim((string) ($input['ward'] ?? '')),
         'address' => trim((string) ($input['address'] ?? '')),
         'hidden_address' => trim((string) ($input['hiddenAddress'] ?? $input['hidden_address'] ?? '')),
         'company_unit_id' => trim((string) ($input['companyUnitId'] ?? $input['company_unit_id'] ?? '')),
-        'status_id' => trim((string) ($input['statusId'] ?? $input['status_id'] ?? 'st_new')),
+        'status_id' => svp_normalize_property_status(trim((string) ($input['statusId'] ?? $input['status_id'] ?? 'st_new'))),
         'expert_id' => trim((string) ($input['expertId'] ?? $input['expert_id'] ?? '')),
         'assigned_user_id' => trim((string) ($input['assignedUserId'] ?? $input['assigned_user_id'] ?? '')),
         'signing_score' => (float) ($input['signingScore'] ?? $input['signing_score'] ?? 0),
@@ -581,7 +626,23 @@ $router->add('POST', '/api/svp/properties/{id}/media-upload', function ($params)
 
 $router->add('GET', '/api/svp/customers', function () {
     $db = Database::getInstance();
-    $stmt = $db->query('SELECT * FROM svp_customers ORDER BY updated_at DESC LIMIT 200');
+    $where = ['1=1'];
+    $params = [];
+    $assignedTo = trim((string) ($_GET['assignedTo'] ?? $_GET['assignedUserId'] ?? ''));
+    if ($assignedTo !== '') {
+        $where[] = 'assigned_user_id = :assigned_to';
+        $params['assigned_to'] = $assignedTo;
+    }
+    if (!empty($_GET['q'])) {
+        $where[] = '(full_name LIKE :q OR phone LIKE :q OR email LIKE :q)';
+        $params['q'] = '%' . (string) $_GET['q'] . '%';
+    }
+    if (!empty($_GET['statusId'])) {
+        $where[] = 'status_id = :status';
+        $params['status'] = (string) $_GET['statusId'];
+    }
+    $stmt = $db->prepare('SELECT * FROM svp_customers WHERE ' . implode(' AND ', $where) . ' ORDER BY updated_at DESC LIMIT 200');
+    $stmt->execute($params);
     $items = array_map(function ($row) {
         return [
             'id' => (string) $row['id'],

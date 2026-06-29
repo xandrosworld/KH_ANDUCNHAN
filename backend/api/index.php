@@ -3855,6 +3855,7 @@ $router->add('PATCH', '/api/bank-transfers/{id}/status', function ($params) use 
 // ═════════════════════════════════════════════════════════════════════════════
 
 require_once __DIR__ . '/svp-routes.php';
+require_once __DIR__ . '/svp-auth-routes.php';
 
 $router->add('GET', '/api/music', function () {
     $musicDir = __DIR__ . '/../uploads/music';

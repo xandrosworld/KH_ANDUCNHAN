@@ -22,7 +22,7 @@ jobs:
       SSH_PORT: ${{ secrets.MATBAO_SSH_PORT || '22' }}
       SSH_USER: ${{ secrets.MATBAO_SSH_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.MATBAO_SSH_PRIVATE_KEY }}
-      REMOTE_WEBROOT: ${{ secrets.MATBAO_WEBROOT || '/var/www/vanphuc/public_html' }}
+      REMOTE_WEBROOT: ${{ secrets.MATBAO_WEBROOT || '/var/www/sodovanphuc/public_html' }}
 
     steps:
       - name: Checkout

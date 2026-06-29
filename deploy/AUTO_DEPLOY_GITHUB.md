@@ -21,7 +21,7 @@ Tạo các secret sau:
 - `MATBAO_SSH_USER`: user SSH có quyền ghi vào webroot.
 - `MATBAO_SSH_PRIVATE_KEY`: private key SSH dùng riêng cho GitHub Actions.
 - `MATBAO_SSH_PORT`: port SSH, thường là `22`.
-- `MATBAO_WEBROOT`: thư mục public web, hiện dùng `/var/www/vanphuc/public_html`.
+- `MATBAO_WEBROOT`: thư mục public web, mặc định là `/var/www/sodovanphuc/public_html`.
 
 ## Tạo SSH key deploy
 

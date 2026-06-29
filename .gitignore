@@ -22,7 +22,9 @@ Thumbs.db
 *.tgz
 .github_sodovanphuc_deploy*
 
-qa/
+qa/*
+!qa/
+!qa/visual.spec.ts
 release/
 docs/
 hosting-wait-reports/

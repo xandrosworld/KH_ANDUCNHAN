@@ -6,7 +6,8 @@
  * - API subdomain: set VITE_API_BASE_URL=https://api.sodovanphuc.vn.
  *
  * Authentication:
- * - Admin requests use JWT Bearer token from authService (stored in sessionStorage)
+ * - Authenticated requests use the SVP JWT token stored by AuthContext.
+ * - Older admin requests can still use authService during the transition.
  * - No secrets are bundled into the frontend JS.
  */
 
@@ -48,6 +49,11 @@ export async function apiFetch<T = unknown>(
 
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
+  }
+
+  const svpToken = typeof window !== 'undefined' ? window.localStorage.getItem('svp_token') : null;
+  if (svpToken) {
+    headers.Authorization = `Bearer ${svpToken}`;
   }
 
   if (admin) {
