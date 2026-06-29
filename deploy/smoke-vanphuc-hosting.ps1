@@ -818,7 +818,7 @@ function Invoke-WriteWorkflowSmoke {
             address = "$marker address"
             hiddenAddress = 'Dia chi an tu smoke test'
             companyUnitId = 'cu_tuan123_mien_nam'
-            statusId = 'st_new'
+            statusId = 'st_active'
             signingScore = 1
             visibilityIds = @('vl_lop4', 'vl_vinh_danh')
             tagIds = @('tag_o_to', 'tag_thang_may', 'tag_mo_spa')
