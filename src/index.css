@@ -663,6 +663,27 @@ body {
   color: #ffffff !important;
 }
 
+.svp-brand-logo,
+.svp-auth-logo {
+  display: block;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  background: transparent;
+  filter: drop-shadow(0 10px 20px rgba(72, 31, 22, 0.16));
+}
+
+.svp-brand-logo {
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 22px rgba(34, 83, 68, 0.16);
+}
+
+.svp-auth-logo {
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 16px 34px rgba(72, 31, 22, 0.15),
+    0 0 0 6px rgba(255, 255, 255, 0.48);
+}
+
 .svp-auth-shell {
   min-height: 100vh;
   background:

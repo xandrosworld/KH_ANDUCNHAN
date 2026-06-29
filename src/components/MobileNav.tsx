@@ -7,7 +7,7 @@ const MobileNav = () => {
 
   const navItems = [
     { path: '/dashboard', label: 'KPI', icon: BarChart3 },
-    { path: '/nha', label: 'Bí Kíp', icon: HomeIcon },
+    { path: '/nha', label: 'Nhà', icon: HomeIcon },
     { path: '/post-property', label: 'Đăng', icon: HousePlus },
     { path: '/khach-hang', label: 'Khách', icon: UsersRound },
     { path: '/referral', label: 'SVP', icon: QrCode },

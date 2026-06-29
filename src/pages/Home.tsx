@@ -14,7 +14,7 @@ import RecommendationSection from '../components/RecommendationSection';
 import MobileNav from '../components/MobileNav';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import Sidebar from '../components/Sidebar';
-import logoImg from '../assets/logo-new.png';
+import logoImg from '../assets/svp-logo.png';
 import { useLanguage } from '../contexts/LanguageContext';
 
 /* ─── Footer dropdown column ─── */

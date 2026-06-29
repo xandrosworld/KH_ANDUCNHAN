@@ -72,7 +72,7 @@ function oneOfFromOptions(options: SvpConfigOption[]) {
 }
 
 const SvpPostPropertyPage = () => {
-  usePageTitle('Đăng Bí Kíp');
+  usePageTitle('Đăng nhà');
   const navigate = useNavigate();
   const [groups, setGroups] = useState<SvpConfigGroup[]>([]);
   const [formData, setFormData] = useState<SvpPropertyFormData>(emptyForm);
@@ -358,7 +358,7 @@ const SvpPostPropertyPage = () => {
                 <Sparkles className="h-4 w-4" />
                 Thông tin cơ bản
               </div>
-              <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">Đăng Bí Kíp</h1>
+              <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">Đăng nhà</h1>
               <p className="mt-2 max-w-3xl text-[14px] leading-6 text-[#A7ABB6]">
                 Nhập đúng các trường thông tin nhà theo mẫu khách đang dùng.
               </p>
@@ -427,7 +427,7 @@ const SvpPostPropertyPage = () => {
                       className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#F6D37A] px-5 text-[14px] font-black text-[#101114] transition-colors hover:bg-[#FFE8A3] disabled:cursor-wait disabled:opacity-70"
                     >
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      Đăng Bí Kíp
+                      Lưu hồ sơ nhà
                     </button>
                   </div>
                 </Form>

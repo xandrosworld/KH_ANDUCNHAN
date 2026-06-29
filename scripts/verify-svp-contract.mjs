@@ -400,7 +400,7 @@ assertIncludes(svpPostPropertyPage, 'Chọn nhiều ảnh: HĐ, sổ đỏ, ản
 assertIncludes(svpPostPropertyPage, 'accept="image/jpeg,image/png,image/webp"', 'SVP post property form limits upload picker to supported image types');
 assertIncludes(svpPostPropertyPage, 'pendingMedia.length + selected.length > 41', 'SVP post property form enforces 41-image limit before submit');
 assertIncludes(svpPostPropertyPage, 'uploadPropertyMediaImages', 'SVP post property form uploads pending media after property create');
-assertIncludes(svpPostPropertyPage, 'Đăng Bí Kíp', 'SVP post property form has a production save action');
+assertIncludes(svpPostPropertyPage, 'Lưu hồ sơ nhà', 'SVP post property form has a production save action');
 
 for (const fileContent of [configExample, robots, sitemap, envExample, indexHtml]) {
   assertIncludes(fileContent, 'sodovanphuc.vn', 'official domain appears in deploy-facing config');

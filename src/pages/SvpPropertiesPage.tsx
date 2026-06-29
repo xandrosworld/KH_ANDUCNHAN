@@ -10,7 +10,7 @@ import type { SvpConfigGroup, SvpProperty } from '../types/svp';
 import { formatDateTime, formatVnd, optionLabel, optionLabels } from '../utils/svpDisplay';
 
 const SvpPropertiesPage = () => {
-  usePageTitle('BÍ KÍP TỔNG');
+  usePageTitle('Kho nguồn nhà');
   const [groups, setGroups] = useState<SvpConfigGroup[]>([]);
   const [properties, setProperties] = useState<SvpProperty[]>([]);
   const [query, setQuery] = useState('');
@@ -168,7 +168,7 @@ const SvpPropertiesPage = () => {
               <Home className="h-4 w-4" />
               NHÀ CHÍNH CHỦ
             </div>
-            <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">BÍ KÍP TỔNG</h1>
+            <h1 className="mt-3 text-2xl font-bold text-[#F5F0E6] sm:text-3xl">Kho nguồn nhà</h1>
             <p className="mt-2 max-w-3xl text-[14px] leading-6 text-[#A7ABB6]">
               Quản lý nguồn nhà, trạng thái, tag, timeline và dữ liệu cấu trúc để sau này dùng chung cho web, app, dashboard và AI.
             </p>

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import type { CSSProperties, MouseEvent, FormEvent } from 'react';
 import { Bot, ChevronDown, Menu, X, LogOut, LayoutDashboard, User, Globe, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import logoImg from '../assets/logo-new.png';
+import logoImg from '../assets/svp-logo.png';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getUserItem } from '../utils/userStorage';
 import { isApiConfigured, getApiBase, toProxyUrl } from '../services/apiClient';
@@ -156,8 +156,8 @@ const Header = () => {
 
   const leftNav = [
     { label: 'Tổng quan', path: '/dashboard' },
-    { label: 'Bí Kíp', path: '/nha' },
-    { label: 'Đăng Bí Kíp', path: '/post-property' },
+    { label: 'Nhà', path: '/nha' },
+    { label: 'Đăng nhà', path: '/post-property' },
     { label: 'Khách hàng', path: '/khach-hang' },
     { label: 'Giới thiệu', path: '/referral' },
     { label: 'Trợ lý AI', path: '/ai' },
@@ -182,8 +182,8 @@ const Header = () => {
 
   const mobileHeaderProgress = isMobileMenuOpen ? 1 : 0;
   const currentMobileHeaderHeight = MOBILE_HEADER_HEIGHT;
-  const mobileLogoHeight = 128;
-  const mobileLogoWidth = 116;
+  const mobileLogoHeight = 72;
+  const mobileLogoWidth = 72;
   const mobileHeaderStyle = {
     '--mobile-header-bg': (mobileHeaderProgress * 0.95).toFixed(2),
     '--mobile-header-border': (mobileHeaderProgress * 0.1).toFixed(2),
@@ -245,8 +245,8 @@ const Header = () => {
             <img
               src={logoImg}
               alt="Sổ Đỏ Vạn Phúc"
-              className="object-contain flex-shrink-0 drop-shadow-[0_8px_16px_rgba(246,211,122,0.14)]"
-              style={{ height: '98px', width: '88px' }}
+              className="svp-brand-logo object-contain flex-shrink-0"
+              style={{ height: '58px', width: '58px' }}
             />
           </Link>
 
@@ -331,7 +331,7 @@ const Header = () => {
             <img
               src={logoImg}
               alt="Sổ Đỏ Vạn Phúc"
-              className="object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.45)]"
+              className="svp-brand-logo object-contain"
               style={{
                 height: `${mobileLogoHeight}px`,
                 width: `${mobileLogoWidth}px`,

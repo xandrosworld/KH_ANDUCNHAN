@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, ShieldCheck, User } from 'lucide-react';
-import logoImg from '../assets/logo-new.png';
+import logoImg from '../assets/svp-logo.png';
 import { login } from '../services/authService';
 import { isApiConfigured, getApiBase } from '../services/apiClient';
 import { migrateUserStorage } from '../utils/userStorage';
@@ -138,7 +138,7 @@ export default function SignInPage() {
       <div className="mx-auto flex min-h-[calc(100vh-48px)] w-full max-w-[1040px] flex-col justify-center gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
         <section className="hidden lg:block">
           <Link to="/" className="inline-flex items-center gap-4">
-            <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="h-24 w-auto object-contain" />
+            <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="svp-auth-logo h-24 w-24 object-contain" />
             <div>
               <div className="text-3xl font-black text-[#F6D37A]">Sổ Đỏ Vạn Phúc</div>
               <div className="mt-2 text-[15px] leading-6 text-[#A7ABB6]">Hệ thống quản lý nguồn nhà, khách hàng và lịch xem nội bộ.</div>
@@ -156,7 +156,7 @@ export default function SignInPage() {
 
         <section className="w-full">
           <Link to="/" className="mb-5 flex justify-center lg:hidden">
-            <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="h-24 w-auto object-contain" />
+            <img src={logoImg} alt="Sổ Đỏ Vạn Phúc" className="svp-auth-logo h-24 w-24 object-contain" />
           </Link>
 
           <div className="rounded-lg border border-white/10 bg-[#08090C] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
