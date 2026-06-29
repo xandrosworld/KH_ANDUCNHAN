@@ -97,4 +97,19 @@ jobs:
             chmod 755 '$REMOTE_WEBROOT/backend/uploads' || true
             chown -R apache:apache '$REMOTE_WEBROOT' 2>/dev/null || true
           "
+          reset_file=".codex-opcache-reset-${GITHUB_RUN_ID}.php"
+          cleanup_reset() {
+            ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "rm -f '$REMOTE_WEBROOT/$reset_file'" || true
+          }
+          trap cleanup_reset EXIT
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > '$REMOTE_WEBROOT/$reset_file'" <<'PHP'
+          <?php
+          header('Content-Type: text/plain; charset=utf-8');
+          if (function_exists('opcache_reset')) {
+              echo opcache_reset() ? 'OPCACHE_RESET_OK' : 'OPCACHE_RESET_SKIPPED';
+          } else {
+              echo 'OPCACHE_NOT_AVAILABLE';
+          }
+          PHP
+          curl -fsS "https://sodovanphuc.vn/$reset_file"
           curl -fsS https://sodovanphuc.vn/api/svp/health
