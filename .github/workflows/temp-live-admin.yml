@@ -69,16 +69,6 @@ jobs:
               exit(4);
           }
 
-          $text = file_get_contents($config);
-          $hash = password_hash($password, PASSWORD_DEFAULT);
-          $text = preg_replace("/define\\('ADMIN_USERNAME',\\s*'[^']*'\\);/", "define('ADMIN_USERNAME', '" . addslashes($username) . "');", $text, 1, $userCount);
-          $text = preg_replace("/define\\('ADMIN_PASSWORD_HASH',\\s*'[^']*'\\);/", "define('ADMIN_PASSWORD_HASH', '" . addslashes($hash) . "');", $text, 1, $hashCount);
-          if ($userCount !== 1 || $hashCount !== 1) {
-              fwrite(STDERR, "Could not patch admin constants.\n");
-              exit(5);
-          }
-          file_put_contents($config, $text);
-
           require_once $config;
           require_once $root . '/backend/lib/Database.php';
           $db = Database::getInstance();
@@ -194,16 +184,26 @@ jobs:
 
               $stmt = $db->prepare("
                   INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
-                  VALUES (:uid, 'admin', 'approved', NOW(), :uid, NOW())
+                  VALUES (:uid, 'admin', 'approved', NOW(), :approved_by, NOW())
                   ON DUPLICATE KEY UPDATE status = 'approved', approved_by = VALUES(approved_by), approved_at = NOW()
               ");
-              $stmt->execute(['uid' => $actualUserId]);
+              $stmt->execute(['uid' => $actualUserId, 'approved_by' => $actualUserId]);
 
               $db->commit();
           } catch (Throwable $e) {
               $db->rollBack();
               throw $e;
           }
+
+          $text = file_get_contents($config);
+          $hash = password_hash($password, PASSWORD_DEFAULT);
+          $text = preg_replace("/define\\('ADMIN_USERNAME',\\s*'[^']*'\\);/", "define('ADMIN_USERNAME', '" . addslashes($username) . "');", $text, 1, $userCount);
+          $text = preg_replace("/define\\('ADMIN_PASSWORD_HASH',\\s*'[^']*'\\);/", "define('ADMIN_PASSWORD_HASH', '" . addslashes($hash) . "');", $text, 1, $hashCount);
+          if ($userCount !== 1 || $hashCount !== 1) {
+              fwrite(STDERR, "Could not patch admin constants.\n");
+              exit(5);
+          }
+          file_put_contents($config, $text);
 
           echo "Temporary live admin is ready.\n";
           PHP
@@ -229,13 +229,25 @@ jobs:
           require_once $config;
           require_once $root . '/backend/lib/Database.php';
           $db = Database::getInstance();
+          $tableExists = function (string $table) use ($db): bool {
+              $stmt = $db->prepare("
+                  SELECT COUNT(*)
+                  FROM information_schema.tables
+                  WHERE table_schema = DATABASE()
+                    AND table_name = :table_name
+              ");
+              $stmt->execute(['table_name' => $table]);
+              return (int) $stmt->fetchColumn() > 0;
+          };
           $stmt = $db->prepare("SELECT id FROM users WHERE email = :email OR id = 'codex_live_admin'");
           $stmt->execute(['email' => $username]);
           $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
           foreach ($ids as $id) {
-              $db->prepare("DELETE FROM svp_role_applications WHERE user_id = :id")->execute(['id' => $id]);
-              $db->prepare("DELETE FROM svp_user_roles WHERE user_id = :id")->execute(['id' => $id]);
-              $db->prepare("DELETE FROM svp_favorites WHERE user_id = :id")->execute(['id' => $id]);
+              foreach (['svp_role_applications', 'svp_user_roles', 'svp_favorites'] as $table) {
+                  if ($tableExists($table)) {
+                      $db->prepare("DELETE FROM {$table} WHERE user_id = :id")->execute(['id' => $id]);
+                  }
+              }
               $db->prepare("DELETE FROM users WHERE id = :id")->execute(['id' => $id]);
           }
           echo "Temporary live admin cleaned up.\n";
