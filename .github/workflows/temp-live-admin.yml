@@ -198,8 +198,20 @@ jobs:
 
           $text = file_get_contents($config);
           $hash = password_hash($password, PASSWORD_DEFAULT);
-          $text = preg_replace("/define\\('ADMIN_USERNAME',\\s*'[^']*'\\);/", "define('ADMIN_USERNAME', '" . addslashes($username) . "');", $text, 1, $userCount);
-          $text = preg_replace("/define\\('ADMIN_PASSWORD_HASH',\\s*'[^']*'\\);/", "define('ADMIN_PASSWORD_HASH', '" . addslashes($hash) . "');", $text, 1, $hashCount);
+          $text = preg_replace_callback(
+              "/define\\('ADMIN_USERNAME',\\s*'[^']*'\\);/",
+              fn() => "define('ADMIN_USERNAME', " . var_export($username, true) . ");",
+              $text,
+              1,
+              $userCount
+          );
+          $text = preg_replace_callback(
+              "/define\\('ADMIN_PASSWORD_HASH',\\s*'[^']*'\\);/",
+              fn() => "define('ADMIN_PASSWORD_HASH', " . var_export($hash, true) . ");",
+              $text,
+              1,
+              $hashCount
+          );
           if ($userCount !== 1 || $hashCount !== 1) {
               fwrite(STDERR, "Could not patch admin constants.\n");
               exit(5);
@@ -231,6 +243,7 @@ jobs:
           $routeText = is_file($routeFile) ? file_get_contents($routeFile) : '';
           echo 'route_placeholder_fix=' . (str_contains($routeText, 'email = :email OR phone = :phone') ? 'yes' : 'no') . "\n";
           echo 'legacy_admin_username_match=' . ((defined('ADMIN_USERNAME') && ADMIN_USERNAME === $username) ? 'yes' : 'no') . "\n";
+          echo 'legacy_admin_password_ok=' . ((defined('ADMIN_PASSWORD_HASH') && password_verify($password, ADMIN_PASSWORD_HASH)) ? 'yes' : 'no') . "\n";
           echo 'jwt_secret_configured=' . ((defined('JWT_SECRET') && trim((string) JWT_SECRET) !== '') ? 'yes' : 'no') . "\n";
 
           $db = Database::getInstance();
