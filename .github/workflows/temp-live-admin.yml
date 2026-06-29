@@ -82,6 +82,79 @@ jobs:
           require_once $config;
           require_once $root . '/backend/lib/Database.php';
           $db = Database::getInstance();
+
+          $columnExists = function (string $table, string $column) use ($db): bool {
+              $stmt = $db->prepare("
+                  SELECT COUNT(*)
+                  FROM information_schema.columns
+                  WHERE table_schema = DATABASE()
+                    AND table_name = :table_name
+                    AND column_name = :column_name
+              ");
+              $stmt->execute(['table_name' => $table, 'column_name' => $column]);
+              return (int) $stmt->fetchColumn() > 0;
+          };
+          $indexExists = function (string $table, string $index) use ($db): bool {
+              $stmt = $db->prepare("
+                  SELECT COUNT(*)
+                  FROM information_schema.statistics
+                  WHERE table_schema = DATABASE()
+                    AND table_name = :table_name
+                    AND index_name = :index_name
+              ");
+              $stmt->execute(['table_name' => $table, 'index_name' => $index]);
+              return (int) $stmt->fetchColumn() > 0;
+          };
+
+          if (!$columnExists('users', 'svp_id')) {
+              $db->exec("ALTER TABLE users ADD COLUMN svp_id VARCHAR(64) DEFAULT NULL AFTER id");
+          }
+          if (!$indexExists('users', 'uq_svp_id')) {
+              $db->exec("ALTER TABLE users ADD UNIQUE KEY uq_svp_id (svp_id)");
+          }
+          if (!$columnExists('users', 'cccd')) {
+              $db->exec("ALTER TABLE users ADD COLUMN cccd VARCHAR(20) DEFAULT NULL AFTER phone");
+          }
+          if (!$columnExists('users', 'referral_code')) {
+              $db->exec("ALTER TABLE users ADD COLUMN referral_code VARCHAR(80) DEFAULT NULL AFTER cccd");
+          }
+          if (!$indexExists('users', 'uq_referral_code')) {
+              $db->exec("ALTER TABLE users ADD UNIQUE KEY uq_referral_code (referral_code)");
+          }
+          if (!$columnExists('users', 'referred_by')) {
+              $db->exec("ALTER TABLE users ADD COLUMN referred_by VARCHAR(64) DEFAULT NULL AFTER referral_code");
+          }
+          $db->exec("
+              CREATE TABLE IF NOT EXISTS svp_user_roles (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(64) NOT NULL,
+                role_slug VARCHAR(50) NOT NULL,
+                status ENUM('pending','approved','rejected','disabled') DEFAULT 'pending',
+                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                approved_by VARCHAR(64) DEFAULT NULL,
+                approved_at DATETIME DEFAULT NULL,
+                UNIQUE KEY uq_user_role (user_id, role_slug),
+                INDEX idx_role_slug (role_slug),
+                INDEX idx_status (status)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          ");
+          $db->exec("
+              CREATE TABLE IF NOT EXISTS svp_role_applications (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(64) NOT NULL,
+                role_slug VARCHAR(50) NOT NULL,
+                status ENUM('pending','approved','rejected') DEFAULT 'pending',
+                reason TEXT,
+                reviewed_by VARCHAR(64) DEFAULT NULL,
+                reviewed_at DATETIME DEFAULT NULL,
+                admin_notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status),
+                INDEX idx_role_slug (role_slug)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          ");
+
           $userId = 'codex_live_admin';
           $phone = '0999002026';
           $svpId = 'SVPCODEXADMIN';
