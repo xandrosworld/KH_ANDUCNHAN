@@ -263,6 +263,45 @@ jobs:
               echo 'jwt_create_error=' . get_class($e) . ': ' . $e->getMessage() . "\n";
               exit(7);
           }
+
+          $postJson = json_encode(['identifier' => $username, 'password' => $password]);
+          $context = stream_context_create([
+              'http' => [
+                  'method' => 'POST',
+                  'header' => "Content-Type: application/json; charset=utf-8\r\n",
+                  'content' => $postJson,
+                  'ignore_errors' => true,
+                  'timeout' => 20,
+              ],
+          ]);
+          $body = @file_get_contents('https://sodovanphuc.vn/api/svp/auth/login', false, $context);
+          $statusLine = $http_response_header[0] ?? 'HTTP status unavailable';
+          echo 'web_svp_login_status=' . $statusLine . "\n";
+          echo 'web_svp_login_body_length=' . strlen((string) $body) . "\n";
+
+          $logCandidates = [
+              $root . '/error_log',
+              $root . '/backend/error_log',
+              $root . '/backend/api/error_log',
+              dirname($root) . '/logs/error_log',
+              '/var/log/httpd/error_log',
+              '/var/log/apache2/error.log',
+          ];
+          foreach ($logCandidates as $candidate) {
+              if (!is_readable($candidate)) {
+                  continue;
+              }
+              echo "log_candidate={$candidate}\n";
+              $lines = @file($candidate, FILE_IGNORE_NEW_LINES);
+              if (!$lines) {
+                  continue;
+              }
+              foreach (array_slice($lines, -80) as $line) {
+                  if (preg_match('/(PHP Fatal|Uncaught|PDOException|HY093|api\\/svp\\/auth|api\\/auth\\/login|auth-v1|JwtAuth)/i', $line)) {
+                      echo "log_line=" . $line . "\n";
+                  }
+              }
+          }
           PHP
 
       - name: Cleanup temporary admin
