@@ -1,55 +1,112 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Users } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
+import { getRoleDisplayName } from '../../data/roles';
 
-const ROLE_NAMES: Record<string, string> = {
-  admin: 'Quản trị viên', giam_doc: 'Giám đốc', truong_phong: 'Trưởng phòng', chuyen_gia: 'Chuyên gia', chuyen_vien: 'Chuyên viên',
-  ctv_khach: 'CTV khách', ctv_nguon: 'CTV nguồn', chu_nha: 'Chủ nhà', khach_mua: 'Khách mua',
-  nguoi_gioi_thieu: 'Người giới thiệu', doi_tac: 'Đối tác',
+const ROLE_STATUS: Record<string, string> = {
+  approved: 'Đã duyệt',
+  pending: 'Chờ duyệt',
+  rejected: 'Từ chối',
+  disabled: 'Tạm khóa',
 };
 
 export default function AdminUsersPage() {
   const [items, setItems] = useState<any[]>([]);
-  const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/admin/users').then(r => setItems(r.data?.items || [])).catch(() => {});
+    api.get('/admin/users')
+      .then((response) => setItems(response.data?.items || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const filtered = items.filter(u => !q || (u.fullName || '').toLowerCase().includes(q.toLowerCase()) || (u.email || '').includes(q));
+  const filtered = useMemo(() => {
+    const keyword = query.trim().toLowerCase();
+    if (!keyword) return items;
+    return items.filter((user) => [user.fullName, user.email, user.phone, user.svpId].some((value) => String(value || '').toLowerCase().includes(keyword)));
+  }, [items, query]);
 
   return (
-    <div className="p-4 pb-20">
-      <h1 className="text-xl font-bold mb-4">Quản lý người dùng</h1>
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
-        <input className="w-full pl-10 pr-3 py-2.5 border rounded-xl" placeholder="Tìm..." value={q} onChange={e => setQ(e.target.value)} />
+    <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
+      <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Quản trị</p>
+        <h1 className="mt-1 text-2xl font-black text-[#25202a]">Người dùng</h1>
+        <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">Theo dõi tài khoản, SVP ID và vai trò đang được cấp.</p>
+        <div className="relative mt-4">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9aa1ad]" />
+          <input
+            className="min-h-12 w-full rounded-2xl border border-gray-200 bg-white pl-10 pr-3 text-sm font-semibold text-[#25202a] outline-none focus:border-[#c40012]"
+            placeholder="Tìm theo tên, email, số điện thoại, SVP ID..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+      </section>
+
+      {loading ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => <UserSkeleton key={index} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-gray-100">
+          <Users className="mx-auto h-12 w-12 text-red-200" />
+          <p className="mt-3 font-black text-[#25202a]">Không có người dùng phù hợp</p>
+          <p className="mt-1 text-sm font-medium text-[#747b88]">Thử đổi từ khóa tìm kiếm.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {filtered.map((user) => <UserCard key={user.id} user={user} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserCard({ user }: { user: any }) {
+  const initials = String(user.fullName || user.email || '?').trim().slice(0, 1).toUpperCase();
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <div className="flex items-start gap-3">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-red-50 text-lg font-black text-[#c40012]">
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="truncate font-black text-[#25202a]">{user.fullName || 'Người dùng'}</p>
+              <p className="mt-1 text-sm font-semibold text-[#747b88]">{user.phone || user.email || 'Chưa có liên hệ'}</p>
+            </div>
+            {user.svpId && <span className="shrink-0 rounded-full bg-[#faf7f5] px-2.5 py-1 text-xs font-black text-[#747b88]">{user.svpId}</span>}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(user.roles || []).length === 0 ? (
+              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-black text-gray-500">Chưa có vai trò</span>
+            ) : (
+              (user.roles || []).map((role: any) => (
+                <span key={`${user.id}-${role.slug}`} className={`rounded-full px-2.5 py-1 text-xs font-black ${role.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                  {getRoleDisplayName(role.slug)} · {ROLE_STATUS[role.status] || role.status}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
       </div>
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-[#757575]">Không có người dùng</p>
+    </div>
+  );
+}
+
+function UserSkeleton() {
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <div className="flex gap-3">
+        <div className="h-12 w-12 animate-pulse rounded-2xl bg-gray-100" />
+        <div className="flex-1 space-y-2 py-1">
+          <div className="h-4 w-40 animate-pulse rounded bg-gray-100" />
+          <div className="h-3 w-28 animate-pulse rounded bg-gray-100" />
         </div>
-      ) : filtered.map((u: any) => (
-        <div key={u.id} className="bg-white rounded-xl shadow-sm p-4 mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#FFCDD2] flex items-center justify-center text-[#D32F2F] font-bold">
-              {(u.fullName || '?')[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{u.fullName}</p>
-              <p className="text-xs text-[#757575]">{u.email} · {u.svpId || ''}</p>
-            </div>
-          </div>
-          <div className="flex gap-1 mt-2 flex-wrap">
-            {(u.roles || []).map((r: any) => (
-              <span key={r.slug} className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                {ROLE_NAMES[r.slug] || r.slug}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+      </div>
     </div>
   );
 }

@@ -4,9 +4,9 @@ Ngay 29/06/2026
 
 ## Trang thai da kiem
 
-- Build frontend: PASS (`npm run build`)
-- PHP syntax: PASS (`npm run php:parse`)
-- Visual/mobile/desktop smoke: PASS 98/98 (`npm run test:visual`)
+- Build frontend: PASS 29/06/2026 sau dot ra soat UI (`npm run build`)
+- PHP syntax: PASS 29/06/2026 sau dot ra soat UI (`npm run php:parse`)
+- Visual/mobile/desktop smoke: PASS 98/98 29/06/2026 sau dot ra soat UI (`npm run test:visual`)
 - Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `a826d9f` (`npm run hosting:smoke`)
 
 ## V1 dang dap ung
@@ -26,6 +26,9 @@ Ngay 29/06/2026
 - Public/Khach mua khong thay dia chi chinh xac, GPS, chu nha, SĐT, so/giay to, hoa hong, ghi chu noi bo.
 - Media nha loc anh nhay cam: public/nhom khong du quyen khong thay anh so, hop dong, selfie, ho so duyet.
 - Quyen xem da bo ngon ngu source cu kieu Lop 4/Lop 8.
+- Da lam sach/nang cap UI mobile va desktop cho cac man V1 chinh: Chu nha dashboard/nha cua toi, Khach mua dashboard/tim nha/yeu thich, Chuyen gia dashboard/kho nha, Chuyen vien dashboard/khach hang/them khach/tim nha/lich xem, Admin dashboard/nguoi dung/duyet vai tro/nha/khach hang/nhat ky.
+- Nhat ky he thong hien thi theo ngon ngu van hanh, khong show JSON/raw log cho nguoi dung cuoi.
+- Workflow visual da test: dang nhap vao dung dashboard, Chuyen gia dung AI mo ta va dang nha, Chuyen vien tao khach mua, Profile doi mat khau/xin them vai tro.
 
 ## Yeu cau moi 29/06/2026 19:28
 

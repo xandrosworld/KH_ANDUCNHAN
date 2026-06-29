@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Plus } from 'lucide-react';
+import { Home, Plus, Search } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { svpAxios as api } from '../../services/svpAxios';
 import { areaText, formatVndShort, isPropertyActive, isPropertySold, propertyStatusLabel } from '../../utils/svpFormat';
 
@@ -20,24 +20,112 @@ export default function ExpertMyPropertiesPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('Tất cả');
   const [items, setItems] = useState<any[]>([]);
-  useEffect(() => { api.get('/properties', { params: { createdBy: user?.id } }).then(r => setItems(r.data?.items || [])).catch(() => {}); }, [user?.id]);
-  const filtered = tab === 'Tất cả' ? items : items.filter(p => STATUS_MAP[tab]?.includes(p.statusId));
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/properties', { params: { createdBy: user?.id } })
+      .then((response) => setItems(response.data?.items || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [user?.id]);
+
+  const filtered = useMemo(() => {
+    const tabbed = tab === 'Tất cả' ? items : items.filter((item) => STATUS_MAP[tab]?.includes(item.statusId || item.status));
+    const keyword = query.trim().toLowerCase();
+    if (!keyword) return tabbed;
+    return tabbed.filter((item) => [item.title, item.code, item.ownerName, item.ownerPhone, item.district, item.ward].some((value) => String(value || '').toLowerCase().includes(keyword)));
+  }, [items, query, tab]);
 
   return (
-    <div className="p-4 pb-20">
-      <div className="flex items-center justify-between mb-4"><h1 className="text-xl font-bold">Kho nhà</h1></div>
-      <div className="flex gap-2 overflow-x-auto mb-4 pb-1">{TABS.map(t => (<button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${tab === t ? 'bg-[#D32F2F] text-white' : 'bg-white text-[#757575] border'}`}>{t}</button>))}</div>
-      {filtered.length === 0 ? <div className="bg-white rounded-xl shadow-sm p-8 text-center"><Home className="w-12 h-12 text-gray-300 mx-auto mb-3" /><p className="text-[#757575]">Chưa có nhà nào</p></div>
-      : filtered.map((p: any) => (
-        <div key={p.id} onClick={() => navigate(`/chuyen-gia/nha/${p.id}`)} className="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer">
-          <div className="flex justify-between items-start">
-            <div><p className="text-xs text-[#757575]">{p.code || p.id?.slice(0,8)}</p><h3 className="font-medium">{p.title || 'Nhà'}</h3><p className="text-[#D32F2F] font-bold text-sm">{formatVndShort(p.price)}</p></div>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${isPropertyActive(p.statusId) ? 'bg-green-100 text-green-700' : isPropertySold(p.statusId) ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{propertyStatusLabel(p.statusId)}</span>
+    <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
+      <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chuyên gia</p>
+            <h1 className="mt-1 text-2xl font-black text-[#25202a]">Kho nhà</h1>
+            <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">Quản lý các nguồn nhà đã nhập hoặc đang phụ trách.</p>
           </div>
-          <p className="text-xs text-[#757575] mt-1">{p.district || '—'} · {areaText(p)} · {p.createdAt?.slice(0, 10)}</p>
+          <button onClick={() => navigate('/chuyen-gia/dang-nha')} className="hidden min-h-11 items-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white sm:inline-flex">
+            <Plus className="h-4 w-4" />
+            Đăng nhà
+          </button>
         </div>
-      ))}
-      <button onClick={() => navigate('/chuyen-gia/dang-nha')} className="fixed bottom-20 right-4 w-14 h-14 bg-[#D32F2F] text-white rounded-full shadow-lg flex items-center justify-center lg:bottom-6"><Plus className="w-6 h-6" /></button>
+
+        <div className="relative mt-4">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9aa1ad]" />
+          <input
+            className="min-h-12 w-full rounded-2xl border border-gray-200 bg-white pl-10 pr-3 text-sm font-semibold text-[#25202a] outline-none focus:border-[#c40012]"
+            placeholder="Tìm theo mã nguồn, chủ nhà, khu vực..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+      </section>
+
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {TABS.map((item) => (
+          <button key={item} onClick={() => setTab(item)} className={`shrink-0 rounded-full px-3 py-2 text-sm font-black ${tab === item ? 'bg-[#c40012] text-white' : 'bg-white text-[#747b88] ring-1 ring-gray-100'}`}>
+            {item}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => <PropertySkeleton key={index} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-gray-100">
+          <Home className="mx-auto h-12 w-12 text-red-200" />
+          <p className="mt-3 font-black text-[#25202a]">Chưa có nguồn nhà phù hợp</p>
+          <p className="mt-1 text-sm font-medium text-[#747b88]">Thử đổi từ khóa hoặc đăng nguồn mới.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {filtered.map((item) => <ExpertPropertyCard key={item.id} item={item} onClick={() => navigate(`/chuyen-gia/nha/${item.id}`)} />)}
+        </div>
+      )}
+
+      <button onClick={() => navigate('/chuyen-gia/dang-nha')} className="fixed bottom-20 right-4 grid h-14 w-14 place-items-center rounded-full bg-[#c40012] text-white shadow-lg sm:hidden">
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   );
+}
+
+function ExpertPropertyCard({ item, onClick }: { item: any; onClick: () => void }) {
+  const status = item.statusId || item.status;
+  return (
+    <button onClick={onClick} className="rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-black text-[#9aa1ad]">{item.code || shortId(item.id)}</p>
+          <p className="mt-1 line-clamp-2 font-black leading-5 text-[#25202a]">{item.title || 'Nguồn nhà'}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${isPropertyActive(status) ? 'bg-emerald-50 text-emerald-700' : isPropertySold(status) ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+          {propertyStatusLabel(status)}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-[#747b88]">
+        <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{formatVndShort(item.price)}</span>
+        <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{item.district || item.ward || 'Chưa rõ khu vực'}</span>
+        <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{areaText(item)}</span>
+      </div>
+    </button>
+  );
+}
+
+function PropertySkeleton() {
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <div className="h-3 w-24 animate-pulse rounded bg-gray-100" />
+      <div className="mt-2 h-4 w-full animate-pulse rounded bg-gray-100" />
+      <div className="mt-4 h-3 w-32 animate-pulse rounded bg-gray-100" />
+    </div>
+  );
+}
+
+function shortId(id?: string) {
+  return id ? id.slice(0, 8).toUpperCase() : 'SVP';
 }
