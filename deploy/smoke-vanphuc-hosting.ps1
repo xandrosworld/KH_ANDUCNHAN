@@ -132,11 +132,8 @@ function Assert-NoLegacyText {
     $legacyPattern = @(
         'Global' + 'Forumz',
         'global' + 'forumz',
-        'sodovanphuc\.vn',
-        'api\.sodovanphuc\.vn',
         'tenmien' + 'cuakhach',
         'api\.tenmien' + 'cuakhach',
-        'contact@sodovanphuc\.vn',
         'your' + '-domain',
         'api\.domain\.com'
     ) -join '|'
@@ -1051,15 +1048,17 @@ if ($BaseUrl -eq 'https://sodovanphuc.vn') {
 
 $htmlRoutes = @(
     '/',
-    '/dashboard',
-    '/nha',
-    '/post-property',
-    '/khach-hang',
-    '/referral',
-    '/admin/config',
-    '/module',
-    '/audit',
-    '/sign-in'
+    '/register',
+    '/forgot-password',
+    '/chu-nha',
+    '/khach-mua',
+    '/chuyen-gia',
+    '/chuyen-vien',
+    '/ctv',
+    '/gioi-thieu',
+    '/quan-tri',
+    '/profile',
+    '/notifications'
 )
 
 foreach ($route in $htmlRoutes) {
@@ -1067,7 +1066,7 @@ foreach ($route in $htmlRoutes) {
     if ($route -eq '/') {
         Assert-SecurityHeaders $response.Headers 'HTML root'
     }
-    Assert-Contains $response.Content 'So Do Van Phuc' "HTML route $route renders SVP shell"
+    Assert-Contains $response.Content 'Sổ Đỏ Vạn Phúc' "HTML route $route renders SVP shell"
     Assert-NoLegacyText $response.Content "HTML route $route"
 }
 
@@ -1076,8 +1075,10 @@ Assert-Contains $robots.Content 'Sitemap: https://sodovanphuc.vn/sitemap.xml' 'r
 Assert-NoLegacyText $robots.Content 'robots.txt'
 
 $sitemap = Invoke-CheckedGet -Path '/sitemap.xml'
-Assert-Contains $sitemap.Content 'https://sodovanphuc.vn/dashboard' 'sitemap contains dashboard URL'
-Assert-Contains $sitemap.Content 'https://sodovanphuc.vn/nha' 'sitemap contains property list URL'
+Assert-Contains $sitemap.Content 'https://sodovanphuc.vn/' 'sitemap contains home URL'
+Assert-Contains $sitemap.Content 'https://sodovanphuc.vn/register' 'sitemap contains register URL'
+Assert-Contains $sitemap.Content 'https://sodovanphuc.vn/chu-nha' 'sitemap contains owner dashboard URL'
+Assert-Contains $sitemap.Content 'https://sodovanphuc.vn/chuyen-gia' 'sitemap contains expert dashboard URL'
 Assert-NoLegacyText $sitemap.Content 'sitemap.xml'
 
 foreach ($protectedPath in @(
