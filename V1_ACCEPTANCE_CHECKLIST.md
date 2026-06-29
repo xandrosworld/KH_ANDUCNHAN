@@ -6,7 +6,7 @@ Ngay 29/06/2026
 
 - Build frontend: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run build`)
 - PHP syntax: PASS 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run php:parse`)
-- Visual/mobile/desktop smoke: PASS 98/98 29/06/2026 sau dot bo sung quy trinh dang nha V1 (`npm run test:visual`)
+- Visual/mobile/desktop smoke: PASS 100/100 29/06/2026 sau dot bo sung workflow admin cau hinh duyet tai khoan/ten truong (`npm run test:visual`)
 - Hosting smoke domain `https://sodovanphuc.vn`: PASS sau deploy commit `54fd642` (`npm run hosting:smoke`)
 - Live browser smoke domain `https://sodovanphuc.vn`: PASS 32/32, skip 4 case write/admin do chua set `SVP_LIVE_ADMIN_PASSWORD` local (`npm run hosting:browser`)
 
@@ -17,6 +17,7 @@ Ngay 29/06/2026
 - Admin cau hinh loai tai khoan nao can duyet/duoc dung ngay theo tung vai tro.
 - Dang ky moi va xin them vai tro deu doc cau hinh duyet tai khoan tai thoi diem tao yeu cau.
 - Admin cau hinh ten truong nhap lieu nha cho cac field quan trong, giup doi ten goi ma khong sua code.
+- Da co workflow visual rieng cho Admin doi "Chuyen vien" tu can duyet sang dung ngay va doi ten field "Ten chu nha" thanh ten moi tren man Cau hinh van hanh.
 - Admin cau hinh danh muc van hanh: cong ty, tag nha, trang thai nha, quyen xem, tieu chi diem ky nha, phan khuc gia, trang thai khach.
 - Form Chu nha gui ban co phap ly/vi tri, GPS, so to/thua dat, quy hoach, gia, anh nha, link video neu co va checkbox xac nhan thong tin dung/quy trinh lien he xac minh.
 - Form Chuyen gia dang nha co CCCD, email chu nha, GPS, so to/thua dat, quy hoach, hoa hong, hop dong trich thuong/tinh trang ky, dia chi bao mat, ghi chu noi bo, link video, anh so/hd/selfie.
@@ -37,9 +38,9 @@ Ngay 29/06/2026
 ## Yeu cau moi 29/06/2026 19:28
 
 - Khach yeu cau admin tu cai dat duoc loai tai khoan nao can duyet hoac khong can duyet trong tuong lai.
-- Trang thai V1: da co trong Admin > Cau hinh van hanh > Duyet tai khoan.
+- Trang thai V1: da co trong Admin > Cau hinh van hanh > Duyet tai khoan; da them test thao tac luu tren mobile/desktop.
 - Khach yeu cau ten goi cac truong du lieu linh hoat nhat co the.
-- Trang thai V1: da co nhom Admin > Cau hinh van hanh > Ten truong nhap lieu nha cho cac truong dang nha quan trong.
+- Trang thai V1: da co nhom Admin > Cau hinh van hanh > Ten truong nhap lieu nha cho cac truong dang nha quan trong; da them test thao tac doi ten field tren mobile/desktop.
 - Ngoai V1: neu muon them chuc danh dong, vai tro dong, pham vi du lieu, uy quyen theo thoi gian va ma tran quyen tung module thi tinh vao module phan quyen to chuc nang cao.
 
 ## Can tiep tuc truoc ban giao chinh thuc

@@ -141,6 +141,16 @@ const configGroups = [
       { id: 'can_ho', key: 'can_ho', label: 'Can ho', value: 'can_ho', isActive: true },
     ],
   },
+  {
+    id: 'property_field_labels',
+    group: 'property_field_labels',
+    name: 'Ten truong nhap lieu nha',
+    description: 'Admin doi ten cac truong quan trong trong form dang nha',
+    options: [
+      { id: 'field_label_ownerName', key: 'ownerName', label: 'Ten chu nha', value: 'ownerName', isActive: true },
+      { id: 'field_label_ownerPhone', key: 'ownerPhone', label: 'SDT chu nha', value: 'ownerPhone', isActive: true },
+    ],
+  },
 ];
 
 const roleApprovalSettings = [
@@ -278,6 +288,20 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
     if (/^\/favorites\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true });
     if (path === '/referrals') return ok(route, { items: referrals, total: referrals.length });
     if (path === '/config') return ok(route, { groups: configGroups, items: configGroups });
+    if (/^\/config\/options\/[^/]+$/.test(path) && method === 'PUT') {
+      const id = decodeURIComponent(path.split('/').pop() || '');
+      const body = request.postDataJSON?.() as { label?: string; value?: string; metadata?: unknown; isActive?: boolean } | undefined;
+      return ok(route, {
+        item: {
+          id,
+          key: body?.value || id,
+          label: body?.label || 'Da cap nhat',
+          value: body?.value || id,
+          metadata: body?.metadata || null,
+          isActive: body?.isActive !== false,
+        },
+      });
+    }
     if (path === '/audit-logs') {
       return ok(route, {
         items: [
@@ -419,5 +443,27 @@ test.describe('V1 core workflows', () => {
     await page.getByRole('button', { name: /Xac nhan|X.c nh.n/i }).click();
     await expect(page.locator('body')).toContainText(/thanh cong|th.nh c.ng/i);
     await expectUsablePage(page, testInfo, 'workflow-profile');
+  });
+
+  test('admin can configure account approval and property field labels', async ({ page }, testInfo) => {
+    await installMocks(page, 'admin');
+    await page.goto('/quan-tri/cau-hinh', { waitUntil: 'networkidle' });
+
+    const specialistCard = page
+      .getByText('Chuyen vien', { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]');
+    await specialistCard.getByRole('button', { name: /Dung ngay|D.ng ngay/i }).click();
+    await expect(specialistCard).toContainText(/Dang cho dung ngay|.ang cho d.ng ngay/i);
+
+    await page.getByRole('button', { name: /Ten truong nhap lieu nha|T.n tr..ng nh.p li.u nh./i }).click();
+    const ownerNameRow = page
+      .getByText('Ten chu nha', { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"border-b")][1]');
+    await ownerNameRow.getByRole('button', { name: /Sua|S.a/i }).click();
+    await page.getByRole('textbox').fill('Nguoi ban/chu nha');
+    await page.getByRole('button', { name: /^Luu|^L.u/i }).click();
+    await expect(page.locator('body')).toContainText(/Nguoi ban\/chu nha/i);
+
+    await expectUsablePage(page, testInfo, 'workflow-admin-config');
   });
 });
