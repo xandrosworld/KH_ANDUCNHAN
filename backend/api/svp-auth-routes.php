@@ -621,19 +621,41 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
 $router->add('GET', '/api/svp/admin/dashboard', function () {
     svp_require_management_role();
     $db = Database::getInstance();
+    $countRows = function (string $table, bool $preferActive = false) use ($db): int {
+        $allowed = ['users', 'svp_role_applications', 'svp_properties', 'svp_customers', 'svp_viewing_schedules', 'svp_referrals'];
+        if (!in_array($table, $allowed, true)) {
+            return 0;
+        }
+        $where = '';
+        if ($preferActive) {
+            $column = $db->prepare("
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = :table_name
+                  AND column_name = 'deleted_at'
+            ");
+            $column->execute(['table_name' => $table]);
+            if ((int) $column->fetchColumn() > 0) {
+                $where = ' WHERE deleted_at IS NULL';
+            }
+        }
+        return (int) $db->query("SELECT COUNT(*) FROM {$table}{$where}")->fetchColumn();
+    };
 
-    $totalUsers = (int) $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    $totalUsers = $countRows('users');
     $pendingApps = (int) $db->query("SELECT COUNT(*) FROM svp_role_applications WHERE status = 'pending'")->fetchColumn();
-    $totalProperties = (int) $db->query("SELECT COUNT(*) FROM svp_properties WHERE deleted_at IS NULL")->fetchColumn();
-    $totalCustomers = (int) $db->query("SELECT COUNT(*) FROM svp_customers WHERE deleted_at IS NULL")->fetchColumn();
-    $totalReferrals = (int) $db->query("SELECT COUNT(*) FROM svp_referrals")->fetchColumn();
+    $totalProperties = $countRows('svp_properties', true);
+    $totalCustomers = $countRows('svp_customers', true);
+    $totalSchedules = $countRows('svp_viewing_schedules');
+    $totalReferrals = $countRows('svp_referrals');
 
     Response::json([
         'totalUsers' => $totalUsers,
         'pendingApplications' => $pendingApps,
         'totalProperties' => $totalProperties,
         'totalCustomers' => $totalCustomers,
-        'totalSchedules' => 0,
+        'totalSchedules' => $totalSchedules,
         'totalReferrals' => $totalReferrals,
     ]);
 });
