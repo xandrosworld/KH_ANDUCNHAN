@@ -37,6 +37,7 @@
     "hosting:complete:safe": "powershell -ExecutionPolicy Bypass -File deploy/complete-vanphuc-hosting-handoff.ps1",
     "hosting:acceptance": "powershell -ExecutionPolicy Bypass -File deploy/acceptance-report-vanphuc-hosting.ps1 -IncludeWriteWorkflow",
     "hosting:acceptance:safe": "powershell -ExecutionPolicy Bypass -File deploy/acceptance-report-vanphuc-hosting.ps1",
+    "hosting:v1-role-flow": "node scripts/live-v1-role-flow.mjs",
     "test:visual": "npx playwright test --config=playwright.config.ts",
     "qa": "npm run lint && npm run build && npm run test:visual",
     "prehost": "npm run php:parse && npm run ps:parse && npm run config:verify:template && npm run config:dryrun && npm run php:runtime:optional && npm run contract:verify && npm run qa && npm run release && npm run release:verify && npm run release:drill && npm run release:configured-dryrun"
