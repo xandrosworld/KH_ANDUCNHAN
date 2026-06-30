@@ -18,6 +18,9 @@ export default function PropertyDetailPage() {
   if (!prop) return <div className="p-4 text-center"><p className="text-[#757575]">Không tìm thấy nhà</p></div>;
 
   const extra = prop.extra || {};
+  const contactPhoneRaw = String(prop.ownerPhone || prop.owner_phone || prop.contactPhone || prop.contact_phone || '0912886794');
+  const contactPhoneDigits = contactPhoneRaw.replace(/\D/g, '') || '0912886794';
+  const zaloMessage = encodeURIComponent(`Chào Sổ Đỏ Vạn Phúc, tôi cần tư vấn nguồn nhà ${prop.code || prop.title || id || ''}.`);
 
   return (
     <div className="pb-20 bg-white min-h-screen">
@@ -75,12 +78,18 @@ export default function PropertyDetailPage() {
 
         {/* CTA */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex gap-3 max-w-2xl mx-auto">
-          <button className="flex-1 bg-[#D32F2F] text-white rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
+          <a href={`tel:${contactPhoneDigits}`} className="flex-1 bg-[#D32F2F] text-white rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
             <Phone className="w-5 h-5" /> Liên hệ tư vấn
-          </button>
-          <button className="w-12 h-12 border-2 border-[#D32F2F] text-[#D32F2F] rounded-xl flex items-center justify-center">
+          </a>
+          <a
+            href={`https://zalo.me/${contactPhoneDigits}?text=${zaloMessage}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Nhắn Zalo tư vấn"
+            className="w-12 h-12 border-2 border-[#D32F2F] text-[#D32F2F] rounded-xl flex items-center justify-center"
+          >
             <MessageCircle className="w-5 h-5" />
-          </button>
+          </a>
         </div>
       </div>
     </div>

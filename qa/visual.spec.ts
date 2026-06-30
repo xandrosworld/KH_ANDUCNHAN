@@ -400,6 +400,16 @@ test.describe('V1 core workflows', () => {
     await expectUsablePage(page, testInfo, 'workflow-auth-support-social');
   });
 
+  test('public property detail contact CTAs are actionable', async ({ page }, testInfo) => {
+    await installMocks(page, 'khach_mua', false);
+    await page.goto('/nha/prop_1', { waitUntil: 'networkidle' });
+
+    await expect(page.locator('a[href^="tel:"]').first()).toHaveAttribute('href', 'tel:0909000001');
+    await expect(page.locator('a[href^="https://zalo.me/"]').first()).toHaveAttribute('href', /https:\/\/zalo\.me\/0909000001\?text=/);
+
+    await expectUsablePage(page, testInfo, 'workflow-property-contact-cta');
+  });
+
   test('login routes to the active role dashboard', async ({ page }, testInfo) => {
     await installMocks(page, 'chuyen_gia', false);
     await page.goto('/', { waitUntil: 'networkidle' });
