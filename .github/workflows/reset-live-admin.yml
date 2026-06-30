@@ -1,0 +1,108 @@
+name: Reset live admin
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    name: Reset production admin password
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.MATBAO_SSH_HOST }}
+      SSH_PORT: ${{ secrets.MATBAO_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.MATBAO_SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.MATBAO_SSH_PRIVATE_KEY }}
+      REMOTE_WEBROOT: ${{ secrets.MATBAO_WEBROOT || '/var/www/sodovanphuc/public_html' }}
+      SVP_RESET_ADMIN_PASSWORD: ${{ secrets.SVP_RESET_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          test -n "$SSH_HOST"
+          test -n "$SSH_USER"
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SVP_RESET_ADMIN_PASSWORD"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/sodovanphuc_deploy_key
+          chmod 600 ~/.ssh/sodovanphuc_deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Reset admin in live database
+        run: |
+          set -euo pipefail
+          remote_script="/tmp/svp-reset-admin-${GITHUB_RUN_ID}.php"
+          cleanup() {
+            ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "rm -f '$remote_script'" || true
+          }
+          trap cleanup EXIT
+
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > '$remote_script'" <<'PHP'
+          <?php
+          $webroot = getenv('REMOTE_WEBROOT');
+          $password = getenv('SVP_RESET_ADMIN_PASSWORD');
+          if (!$webroot || !$password || strlen($password) < 16) {
+              fwrite(STDERR, "Missing webroot or strong password.\n");
+              exit(2);
+          }
+
+          require rtrim($webroot, '/') . '/backend/config/config.php';
+
+          $db = new PDO(
+              'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+              DB_USER,
+              DB_PASS,
+              [
+                  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+              ]
+          );
+
+          $email = 'admin@sodovanphuc.vn';
+          $userId = 'svp_user_000001';
+          $hash = password_hash($password, PASSWORD_DEFAULT);
+
+          $db->beginTransaction();
+          $db->prepare(
+              "INSERT INTO users (id, email, password_hash, full_name, phone, role, status, created_at, updated_at)
+               VALUES (:id, :email, :hash, 'Quản trị Sổ Đỏ Vạn Phúc', '0912886794', 'admin', 'active', NOW(), NOW())
+               ON DUPLICATE KEY UPDATE
+                 password_hash = VALUES(password_hash),
+                 full_name = VALUES(full_name),
+                 phone = VALUES(phone),
+                 role = 'admin',
+                 status = 'active',
+                 updated_at = NOW()"
+          )->execute([
+              'id' => $userId,
+              'email' => $email,
+              'hash' => $hash,
+          ]);
+
+          $stmt = $db->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
+          $stmt->execute(['email' => $email]);
+          $user = $stmt->fetch();
+          if (!$user || empty($user['id'])) {
+              throw new RuntimeException('Admin user was not found after upsert.');
+          }
+          $userId = $user['id'];
+
+          $db->prepare(
+              "INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
+               VALUES (:uid, 'admin', 'approved', NOW(), :uid, NOW())
+               ON DUPLICATE KEY UPDATE status = 'approved', approved_by = :uid, approved_at = NOW()"
+          )->execute(['uid' => $userId]);
+          $db->commit();
+
+          echo "RESET_OK\n";
+          PHP
+
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+            set -e
+            export REMOTE_WEBROOT='$REMOTE_WEBROOT'
+            export SVP_RESET_ADMIN_PASSWORD='$SVP_RESET_ADMIN_PASSWORD'
+            php '$remote_script'
+          "
