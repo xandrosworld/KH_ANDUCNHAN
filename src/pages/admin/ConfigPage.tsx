@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Pencil, Save, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, ChevronUp, Loader2, Pencil, Save, Send, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 
 interface ConfigOption {
@@ -26,6 +26,14 @@ interface RoleApprovalSetting {
   sortOrder: number;
 }
 
+interface AdminNotice {
+  id: string;
+  title: string;
+  body?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
 const roleGroupLabels: Record<string, string> = {
   public: 'Cơ bản',
   staff: 'Nhân sự',
@@ -41,6 +49,10 @@ export default function AdminConfigPage() {
   const [editingOptionId, setEditingOptionId] = useState('');
   const [editingLabel, setEditingLabel] = useState('');
   const [savingOptionId, setSavingOptionId] = useState('');
+  const [notices, setNotices] = useState<AdminNotice[]>([]);
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeBody, setNoticeBody] = useState('');
+  const [noticeSaving, setNoticeSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
@@ -48,12 +60,14 @@ export default function AdminConfigPage() {
     setLoading(true);
     setMessage('');
     try {
-      const [configResponse, roleResponse] = await Promise.all([
+      const [configResponse, roleResponse, noticeResponse] = await Promise.all([
         api.get('/config'),
         api.get('/admin/role-approval-settings'),
+        api.get('/admin/notifications'),
       ]);
       setGroups(configResponse.data?.groups || []);
       setRoleSettings(roleResponse.data?.items || []);
+      setNotices(noticeResponse.data?.items || []);
     } catch {
       setMessage('Chưa tải được cấu hình. Vui lòng thử lại.');
     } finally {
@@ -171,6 +185,29 @@ export default function AdminConfigPage() {
     }
   };
 
+  const publishNotice = async () => {
+    const title = noticeTitle.trim();
+    const body = noticeBody.trim();
+    if (!title || noticeSaving) {
+      setMessage('Vui lòng nhập tiêu đề thông báo.');
+      return;
+    }
+    setNoticeSaving(true);
+    setMessage('');
+    try {
+      const response = await api.post('/admin/notifications', { title, body });
+      const next = response.data?.item as AdminNotice | undefined;
+      setNotices((current) => next ? [{ ...next, createdAt: new Date().toISOString() }, ...current] : current);
+      setNoticeTitle('');
+      setNoticeBody('');
+      setMessage('Đã gửi thông báo nội bộ.');
+    } catch {
+      setMessage('Chưa gửi được thông báo. Vui lòng thử lại.');
+    } finally {
+      setNoticeSaving(false);
+    }
+  };
+
   return (
     <div className="pb-20">
       <div className="mb-5">
@@ -186,6 +223,66 @@ export default function AdminConfigPage() {
           {message}
         </div>
       )}
+
+      <section className="mb-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-[#c40012]">
+            <Bell className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-black text-[#25202a]">Thông báo nội bộ</h2>
+            <p className="mt-1 text-sm font-medium leading-6 text-[#667085]">
+              Gửi thông báo ngắn đến trang Thông báo của người dùng trong hệ thống.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[1fr_1.1fr]">
+          <div className="space-y-3">
+            <input
+              className="svp-input"
+              data-testid="admin-notice-title"
+              placeholder="Tiêu đề thông báo"
+              value={noticeTitle}
+              onChange={(event) => setNoticeTitle(event.target.value)}
+            />
+            <textarea
+              className="min-h-28 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-[#25202a] outline-none focus:border-[#c40012]"
+              data-testid="admin-notice-body"
+              placeholder="Nội dung thông báo"
+              value={noticeBody}
+              onChange={(event) => setNoticeBody(event.target.value)}
+            />
+            <button
+              type="button"
+              data-testid="admin-notice-publish"
+              disabled={noticeSaving}
+              onClick={publishNotice}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white shadow-sm disabled:opacity-60"
+            >
+              {noticeSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Gửi thông báo
+            </button>
+          </div>
+
+          <div className="rounded-2xl bg-[#fff8f2] p-3">
+            <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[#8c6b6b]">Thông báo gần đây</p>
+            {notices.length === 0 ? (
+              <div className="rounded-xl bg-white px-4 py-5 text-sm font-bold text-[#667085]">Chưa có thông báo nào.</div>
+            ) : (
+              <div className="space-y-2">
+                {notices.slice(0, 4).map((notice) => (
+                  <div key={notice.id} className="rounded-xl bg-white p-3 ring-1 ring-red-50">
+                    <p className="line-clamp-1 text-sm font-black text-[#25202a]">{notice.title}</p>
+                    {notice.body ? <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-[#667085]">{notice.body}</p> : null}
+                    <p className="mt-2 text-[11px] font-bold text-[#9aa1ad]">{formatNoticeDate(notice.createdAt || notice.created_at)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="mb-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
         <div className="mb-4 flex items-start gap-3">
@@ -351,4 +448,11 @@ export default function AdminConfigPage() {
       </section>
     </div>
   );
+}
+
+function formatNoticeDate(value?: string) {
+  if (!value) return 'Vừa tạo';
+  const date = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  return date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
 }

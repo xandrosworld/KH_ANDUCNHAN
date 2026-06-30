@@ -632,6 +632,48 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
     ]);
 });
 
+function svp_admin_random_password(int $length = 14): string {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
+    $password = '';
+    $max = strlen($alphabet) - 1;
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $alphabet[random_int(0, $max)];
+    }
+    return $password;
+}
+
+function svp_admin_ensure_notifications_table(PDO $db): void {
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS svp_notifications (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NULL,
+            title VARCHAR(255) NOT NULL,
+            body TEXT NULL,
+            kind VARCHAR(50) NOT NULL DEFAULT 'admin_notice',
+            is_read TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_created (user_id, created_at),
+            INDEX idx_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}
+
+function svp_admin_csv_download(string $filename, array $headers, array $rows): void {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . addcslashes($filename, '"\\') . '"');
+    header('Cache-Control: no-store, no-cache');
+
+    echo "\xEF\xBB\xBF";
+    $out = fopen('php://output', 'w');
+    fputcsv($out, $headers);
+    foreach ($rows as $row) {
+        fputcsv($out, array_map(fn($value) => is_scalar($value) || $value === null ? (string) $value : svp_json_encode($value), $row));
+    }
+    fclose($out);
+    exit;
+}
+
 $router->add('GET', '/api/svp/admin/dashboard', function () {
     svp_require_management_role();
     $db = Database::getInstance();
@@ -739,8 +781,9 @@ $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params
 $router->add('GET', '/api/svp/admin/users', function () {
     svp_require_management_role();
     $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
 
-    $stmt = $db->query("SELECT id, full_name, email, phone, svp_id, avatar_url, referral_code, created_at FROM users ORDER BY created_at DESC LIMIT 500");
+    $stmt = $db->query("SELECT id, full_name, email, phone, svp_id, avatar_url, referral_code, account_status, created_at FROM users ORDER BY created_at DESC LIMIT 500");
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $result = [];
@@ -756,6 +799,7 @@ $router->add('GET', '/api/svp/admin/users', function () {
             'phone' => $u['phone'] ?? '',
             'svpId' => $u['svp_id'] ?? '',
             'avatar' => $u['avatar_url'] ?? '',
+            'accountStatus' => $u['account_status'] ?? 'active',
             'roles' => $roles,
             'createdAt' => $u['created_at'],
         ];
@@ -793,6 +837,178 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
 });
 
 // ─── Property Enhancements ──────────────────────────────────────────────────
+
+$router->add('POST', '/api/svp/admin/users/{id}/account-status', function ($params) {
+    $payload = svp_require_role('admin');
+    $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
+    $id = (string) ($params['id'] ?? '');
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $status = trim((string) ($input['accountStatus'] ?? ''));
+
+    if (!in_array($status, ['active', 'locked'], true)) Response::error('Trang thai tai khoan khong hop le', 400);
+    if ($id === ($payload['sub'] ?? '') && $status === 'locked') Response::error('Khong the tu khoa tai khoan quan tri dang dung', 400);
+
+    $stmt = $db->prepare("SELECT id, full_name, email, account_status FROM users WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $id]);
+    $old = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$old) Response::notFound('Khong tim thay tai khoan');
+
+    $db->prepare("UPDATE users SET account_status = :status WHERE id = :id")->execute(['status' => $status, 'id' => $id]);
+
+    $stmt->execute(['id' => $id]);
+    $next = $stmt->fetch(PDO::FETCH_ASSOC);
+    svp_insert_audit($db, $payload['sub'], $status === 'locked' ? 'lock' : 'unlock', 'user', $id, $old, $next);
+
+    Response::json(['message' => $status === 'locked' ? 'Da tam khoa tai khoan' : 'Da mo khoa tai khoan', 'item' => $next]);
+});
+
+$router->add('POST', '/api/svp/admin/users/{id}/reset-password', function ($params) {
+    $payload = svp_require_role('admin');
+    $db = Database::getInstance();
+    $id = (string) ($params['id'] ?? '');
+
+    $stmt = $db->prepare("SELECT id, full_name, email, phone FROM users WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) Response::notFound('Khong tim thay tai khoan');
+
+    $tempPassword = svp_admin_random_password();
+    $db->prepare("UPDATE users SET password_hash = :hash WHERE id = :id")
+       ->execute(['hash' => password_hash($tempPassword, PASSWORD_DEFAULT), 'id' => $id]);
+
+    svp_insert_audit($db, $payload['sub'], 'reset_password', 'user', $id, null, [
+        'userId' => $id,
+        'email' => $user['email'] ?? '',
+        'temporary' => true,
+    ]);
+
+    Response::json([
+        'message' => 'Da tao mat khau tam',
+        'tempPassword' => $tempPassword,
+        'user' => [
+            'id' => $user['id'],
+            'fullName' => $user['full_name'] ?? '',
+            'email' => $user['email'] ?? '',
+            'phone' => $user['phone'] ?? '',
+        ],
+    ]);
+});
+
+$router->add('GET', '/api/svp/admin/export', function () {
+    svp_require_management_role();
+    $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
+
+    $type = preg_replace('/[^a-z_]/', '', strtolower((string) ($_GET['type'] ?? 'users')));
+    $today = date('Ymd-His');
+
+    if ($type === 'users') {
+        $stmt = $db->query("
+            SELECT u.svp_id, u.full_name, u.phone, u.email, u.account_status, GROUP_CONCAT(CONCAT(r.role_slug, ':', r.status) ORDER BY r.id SEPARATOR '; ') as roles, u.created_at
+            FROM users u
+            LEFT JOIN svp_user_roles r ON r.user_id = u.id
+            GROUP BY u.id, u.svp_id, u.full_name, u.phone, u.email, u.account_status, u.created_at
+            ORDER BY u.created_at DESC
+            LIMIT 2000
+        ");
+        svp_admin_csv_download("svp-users-{$today}.csv", ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'Trang thai', 'Vai tro', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+    }
+
+    if ($type === 'properties') {
+        $stmt = $db->query("
+            SELECT code, title, owner_name, owner_phone, district, ward, price, area_m2, status_id, created_at
+            FROM svp_properties
+            WHERE deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 3000
+        ");
+        svp_admin_csv_download("svp-properties-{$today}.csv", ['Ma tin', 'Tieu de', 'Chu nha', 'Dien thoai', 'Quan/Huyen', 'Phuong/Xa', 'Gia', 'Dien tich', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+    }
+
+    if ($type === 'customers') {
+        $stmt = $db->query("
+            SELECT full_name, phone, email, demand_type, budget_min, budget_max, district, status_id, created_at
+            FROM svp_customers
+            WHERE deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 3000
+        ");
+        svp_admin_csv_download("svp-customers-{$today}.csv", ['Ho ten', 'Dien thoai', 'Email', 'Nhu cau', 'Ngan sach tu', 'Ngan sach den', 'Khu vuc', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+    }
+
+    if ($type === 'role_applications') {
+        $stmt = $db->query("
+            SELECT u.svp_id, u.full_name, u.phone, u.email, ra.role_slug, ra.status, ra.reason, ra.admin_notes, ra.created_at, ra.reviewed_at
+            FROM svp_role_applications ra
+            LEFT JOIN users u ON u.id = ra.user_id
+            ORDER BY ra.created_at DESC
+            LIMIT 2000
+        ");
+        svp_admin_csv_download("svp-role-applications-{$today}.csv", ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'Vai tro', 'Trang thai', 'Ly do', 'Ghi chu', 'Ngay gui', 'Ngay duyet'], $stmt->fetchAll(PDO::FETCH_NUM));
+    }
+
+    Response::error('Loai du lieu xuat khong hop le', 400);
+});
+
+$router->add('GET', '/api/svp/admin/notifications', function () {
+    svp_require_management_role();
+    $db = Database::getInstance();
+    svp_admin_ensure_notifications_table($db);
+
+    $stmt = $db->query("SELECT id, user_id, title, body, kind, is_read, created_at FROM svp_notifications ORDER BY created_at DESC LIMIT 50");
+    Response::json(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+});
+
+$router->add('POST', '/api/svp/admin/notifications', function () {
+    $payload = svp_require_role('admin');
+    $db = Database::getInstance();
+    svp_admin_ensure_notifications_table($db);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $title = trim((string) ($input['title'] ?? ''));
+    $body = trim((string) ($input['body'] ?? ''));
+    if ($title === '') Response::error('Vui long nhap tieu de thong bao', 400);
+
+    $id = 'notice_' . bin2hex(random_bytes(12));
+    $db->prepare("INSERT INTO svp_notifications (id, user_id, title, body, kind, is_read, created_at) VALUES (:id, NULL, :title, :body, 'admin_notice', 0, NOW())")
+       ->execute(['id' => $id, 'title' => $title, 'body' => $body]);
+
+    svp_insert_audit($db, $payload['sub'], 'create', 'notification', $id, null, ['title' => $title, 'body' => $body]);
+
+    Response::json([
+        'message' => 'Da gui thong bao',
+        'item' => ['id' => $id, 'title' => $title, 'body' => $body, 'kind' => 'admin_notice'],
+    ]);
+});
+
+$router->add('DELETE', '/api/svp/admin/notifications/{id}', function ($params) {
+    $payload = svp_require_role('admin');
+    $db = Database::getInstance();
+    svp_admin_ensure_notifications_table($db);
+    $id = (string) ($params['id'] ?? '');
+    if ($id === '') Response::error('Thong bao khong hop le', 400);
+
+    $db->prepare("DELETE FROM svp_notifications WHERE id = :id")->execute(['id' => $id]);
+    svp_insert_audit($db, $payload['sub'], 'delete', 'notification', $id, null, ['deleted' => true]);
+    Response::json(['message' => 'Da xoa thong bao']);
+});
+
+$router->add('GET', '/api/svp/notifications', function () {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    svp_admin_ensure_notifications_table($db);
+
+    $stmt = $db->prepare("
+        SELECT id, title, body, kind, is_read, created_at
+        FROM svp_notifications
+        WHERE user_id IS NULL OR user_id = :uid
+        ORDER BY created_at DESC
+        LIMIT 50
+    ");
+    $stmt->execute(['uid' => $payload['sub']]);
+    Response::json(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+});
 
 $router->add('POST', '/api/svp/properties/check-duplicate', function () {
     svp_auth_require();

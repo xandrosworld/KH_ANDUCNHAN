@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock, Loader2, UserCheck, X } from 'lucide-react';
+import { Check, Clock, Download, Loader2, UserCheck, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { getRoleDisplayName } from '../../data/roles';
+import { downloadAdminExport } from '../../utils/adminExport';
 
 const TABS = [
   { label: 'Chờ duyệt', status: 'pending' },
@@ -15,6 +16,7 @@ export default function RoleApprovalsPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState('');
+  const [message, setMessage] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -28,23 +30,50 @@ export default function RoleApprovalsPage() {
 
   const act = async (id: string, status: string) => {
     setActingId(id);
+    setMessage('');
     try {
       await api.patch(`/admin/role-applications/${id}`, { status, adminNotes: notes[id] || '' });
       load();
+      setMessage(status === 'approved' ? 'Đã duyệt vai trò.' : 'Đã từ chối yêu cầu.');
+    } catch {
+      setMessage('Chưa cập nhật được yêu cầu duyệt vai trò.');
     } finally {
       setActingId('');
+    }
+  };
+
+  const exportApprovals = async () => {
+    setMessage('');
+    try {
+      await downloadAdminExport('role_applications');
+    } catch {
+      setMessage('Chưa xuất được danh sách duyệt vai trò.');
     }
   };
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
       <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Quản trị</p>
-        <h1 className="mt-1 text-2xl font-black text-[#25202a]">Duyệt vai trò</h1>
-        <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">
-          Xem xét các vai trò cần phê duyệt trước khi mở đầy đủ tính năng cho người dùng.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Quản trị</p>
+            <h1 className="mt-1 text-2xl font-black text-[#25202a]">Duyệt vai trò</h1>
+            <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">
+              Xem xét các vai trò cần phê duyệt trước khi mở đầy đủ tính năng cho người dùng.
+            </p>
+          </div>
+          <button onClick={exportApprovals} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white shadow-sm">
+            <Download className="h-4 w-4" />
+            Xuất Excel
+          </button>
+        </div>
       </section>
+
+      {message && (
+        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-[#c40012]">
+          {message}
+        </div>
+      )}
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {TABS.map((item) => (

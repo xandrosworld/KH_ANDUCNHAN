@@ -192,6 +192,7 @@ function userFor(role: string) {
     fullName: 'Tai khoan kiem thu',
     avatar: '/logo11.png',
     referralCode: 'SVP-2026-0001',
+    accountStatus: 'active',
     activeRole: role,
     roles: ROLE_SLUGS.map((slug) => ({ slug, name: ROLE_NAMES[slug], status: 'approved' })),
   };
@@ -258,7 +259,33 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
         totalReferrals: referrals.length,
       });
     }
-    if (path === '/admin/users') return ok(route, { items: [userFor('admin'), userFor('chuyen_gia'), userFor('chuyen_vien')] });
+    if (path === '/admin/users') return ok(route, { items: [userFor('admin'), userFor('chuyen_gia'), { ...userFor('chuyen_vien'), accountStatus: 'locked' }] });
+    if (/^\/admin\/users\/[^/]+\/account-status$/.test(path) && method === 'POST') {
+      const id = decodeURIComponent(path.split('/')[3] || '');
+      const body = request.postDataJSON?.() as { accountStatus?: string } | undefined;
+      return ok(route, { item: { id, account_status: body?.accountStatus || 'active' } });
+    }
+    if (/^\/admin\/users\/[^/]+\/reset-password$/.test(path) && method === 'POST') {
+      const id = decodeURIComponent(path.split('/')[3] || '');
+      return ok(route, { tempPassword: 'SVP@TEMP123', user: { id, fullName: 'Tai khoan kiem thu' } });
+    }
+    if (path === '/admin/export' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/csv; charset=UTF-8',
+        body: 'Ho ten,Email\nTai khoan kiem thu,admin@sodovanphuc.vn\n',
+      });
+    }
+    if (path === '/admin/notifications' && method === 'GET') {
+      return ok(route, {
+        items: [{ id: 'notice_1', title: 'Thong bao noi bo', body: 'Noi dung kiem thu thong bao.', createdAt: '2026-06-30 09:00:00' }],
+      });
+    }
+    if (path === '/admin/notifications' && method === 'POST') {
+      const body = request.postDataJSON?.() as { title?: string; body?: string } | undefined;
+      return ok(route, { item: { id: 'notice_new', title: body?.title || 'Thong bao moi', body: body?.body || '', createdAt: '2026-06-30 09:30:00' } });
+    }
+    if (/^\/admin\/notifications\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true });
     if (path === '/admin/role-applications') {
       return ok(route, { items: [{ id: 'app_1', userName: 'Nhan su moi', userEmail: 'new@sodovanphuc.vn', roleSlug: 'chuyen_gia', reason: 'Dang ky dau chu' }] });
     }
@@ -274,6 +301,7 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
     if (path === '/properties/check-duplicate' && method === 'POST') return ok(route, { matches: [properties[0]] });
     if (path === '/properties' && method === 'GET') return ok(route, { items: filterByQuery(url, properties), total: properties.length });
     if (path === '/properties' && method === 'POST') return ok(route, { item: { ...properties[0], id: 'prop_new', code: 'SVP000003' } });
+    if (/^\/properties\/[^/]+\/status$/.test(path) && method === 'PATCH') return ok(route, { message: 'Da cap nhat trang thai' });
     if (/^\/properties\/[^/]+\/media-upload$/.test(path) && method === 'POST') return ok(route, { item: { id: 'media_1', url: '/logo11.png' } });
     if (/^\/properties\/[^/]+$/.test(path) && method === 'GET') {
       const id = path.split('/').pop();
@@ -308,6 +336,11 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
           { id: 'log_1', action: 'create', entityType: 'property', entityId: 'SVP000001', actorId: 'Admin', createdAt: '2026-06-29 10:00:00' },
           { id: 'log_2', action: 'approve', entityType: 'user_role', entityId: 'chuyen_gia', actorId: 'Admin', createdAt: '2026-06-29 10:05:00' },
         ],
+      });
+    }
+    if (path === '/notifications') {
+      return ok(route, {
+        items: [{ id: 'notice_1', title: 'Thong bao noi bo', body: 'Noi dung kiem thu thong bao.', createdAt: '2026-06-30 09:00:00' }],
       });
     }
 
@@ -559,10 +592,42 @@ test.describe('V1 core workflows', () => {
       .getByText('Ten chu nha', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"border-b")][1]');
     await ownerNameRow.getByRole('button', { name: /Sua|S.a/i }).click();
-    await page.getByRole('textbox').fill('Nguoi ban/chu nha');
+    await page.locator('input[value="Ten chu nha"]').fill('Nguoi ban/chu nha');
     await page.getByRole('button', { name: /^Luu|^L.u/i }).click();
     await expect(page.locator('body')).toContainText(/Nguoi ban\/chu nha/i);
 
     await expectUsablePage(page, testInfo, 'workflow-admin-config');
+  });
+
+  test('admin utility actions are wired to real endpoints', async ({ page }, testInfo) => {
+    page.on('dialog', (dialog) => dialog.accept());
+    await installMocks(page, 'admin');
+
+    await page.goto('/quan-tri/nguoi-dung', { waitUntil: 'networkidle' });
+    await page.getByTestId('admin-user-reset-password').first().click();
+    await expect(page.locator('body')).toContainText('SVP@TEMP123');
+    await page.getByTestId('admin-user-lock').first().click();
+    await expect(page.locator('body')).toContainText(/Da tam khoa|Đã tạm khóa/i);
+    await page.getByTestId('admin-user-unlock').first().click();
+    await expect(page.locator('body')).toContainText(/Da mo khoa|Đã mở khóa/i);
+    await expectUsablePage(page, testInfo, 'workflow-admin-users-utilities');
+
+    await page.goto('/quan-tri/nha', { waitUntil: 'networkidle' });
+    await page.getByTestId('admin-property-hide').first().click();
+    await expect(page.locator('body')).toContainText(/Da an|Đã ẩn/i);
+    await page.getByTestId('admin-property-show').first().click();
+    await expect(page.locator('body')).toContainText(/Da duyet|Đã duyệt/i);
+    await expectUsablePage(page, testInfo, 'workflow-admin-property-utilities');
+
+    await page.goto('/quan-tri/cau-hinh', { waitUntil: 'networkidle' });
+    await page.getByTestId('admin-notice-title').fill('Thong bao QA');
+    await page.getByTestId('admin-notice-body').fill('Noi dung thong bao kiem thu.');
+    await page.getByTestId('admin-notice-publish').click();
+    await expect(page.locator('body')).toContainText(/Thong bao QA|Thông báo QA/i);
+    await expectUsablePage(page, testInfo, 'workflow-admin-notice-publish');
+
+    await page.goto('/notifications', { waitUntil: 'networkidle' });
+    await expect(page.locator('body')).toContainText(/Thong bao noi bo|Thông báo nội bộ/i);
+    await expectUsablePage(page, testInfo, 'workflow-notifications');
   });
 });

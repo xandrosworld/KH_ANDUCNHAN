@@ -17,6 +17,24 @@ function svp_v1_auth_require(): array {
     return $payload;
 }
 
+function svp_v1_ensure_account_status_column(PDO $db): void {
+    try {
+        $db->exec("ALTER TABLE users ADD COLUMN account_status VARCHAR(20) NOT NULL DEFAULT 'active' AFTER referral_code");
+    } catch (Throwable $e) {
+        // Column already exists, or the host blocks ALTER for this request.
+    }
+
+    try {
+        $db->exec("ALTER TABLE users ADD INDEX idx_account_status (account_status)");
+    } catch (Throwable $e) {
+        // Index already exists.
+    }
+}
+
+function svp_v1_user_is_locked(array $user): bool {
+    return strtolower((string) ($user['account_status'] ?? 'active')) === 'locked';
+}
+
 function svp_v1_public_roles(): array {
     return ['khach_mua', 'chu_nha', 'nguoi_gioi_thieu', 'ctv_khach', 'ctv_nguon', 'doi_tac'];
 }
@@ -117,6 +135,7 @@ function svp_v1_user_payload(array $user, array $roles, string $activeRole = '')
         'fullName' => $user['full_name'] ?? '',
         'avatar' => $user['avatar_url'] ?? '',
         'referralCode' => $user['referral_code'] ?? '',
+        'accountStatus' => $user['account_status'] ?? 'active',
         'roles' => $roles,
         'activeRole' => $activeRole,
     ];
@@ -165,6 +184,7 @@ function svp_v1_login_payload(array $user, array $roles): array {
 
 $router->add('POST', '/api/svp/auth/register', function () {
     $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
     $fullName = trim($input['fullName'] ?? $input['full_name'] ?? '');
@@ -254,6 +274,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
 
 $router->add('POST', '/api/svp/auth/login', function () {
     $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $identifier = trim($input['email'] ?? $input['identifier'] ?? '');
     $password = trim($input['password'] ?? '');
@@ -266,6 +287,9 @@ $router->add('POST', '/api/svp/auth/login', function () {
     if (!$user || !password_verify($password, $user['password_hash'] ?? '')) {
         Response::error('Email, số điện thoại hoặc mật khẩu không đúng', 401);
     }
+    if (svp_v1_user_is_locked($user)) {
+        Response::error('Tài khoản đang tạm khóa. Vui lòng liên hệ quản trị viên.', 423);
+    }
 
     $roles = svp_v1_get_user_roles($db, $user['id']);
     $auth = svp_v1_login_payload($user, $roles);
@@ -275,11 +299,15 @@ $router->add('POST', '/api/svp/auth/login', function () {
 $router->add('GET', '/api/svp/auth/me', function () {
     $payload = svp_v1_auth_require();
     $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
 
     $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
     $stmt->execute(['id' => $payload['sub']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) Response::error('Người dùng không tồn tại', 404);
+    if (svp_v1_user_is_locked($user)) {
+        Response::error('Tài khoản đang tạm khóa. Vui lòng liên hệ quản trị viên.', 423);
+    }
 
     $roles = svp_v1_get_user_roles($db, $user['id']);
     Response::json(['user' => svp_v1_user_payload($user, $roles, $payload['role'] ?? '')]);
