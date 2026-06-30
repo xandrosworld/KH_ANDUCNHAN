@@ -91,10 +91,23 @@ const benefits = [
   { title: 'Hiệu quả', desc: 'Kết nối đúng người, chốt giao dịch tốt hơn', icon: SvpTargetIcon, color: 'text-orange-600 bg-orange-50' },
 ];
 
+const SOCIAL_LOGIN_LINKS = {
+  google: 'https://accounts.google.com/',
+  facebook: 'https://www.facebook.com/login/',
+  apple: 'https://appleid.apple.com/',
+  zalo: 'https://id.zalo.me/account',
+};
+
+const SUPPORT_PHONE = '0912886794';
+const SUPPORT_PHONE_LABEL = '0912 886 794';
+const SUPPORT_EMAIL = 'contact@sodovanphuc.vn';
+const SUPPORT_ZALO_URL = `https://zalo.me/${SUPPORT_PHONE}`;
+
 export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps) {
   const navigate = useNavigate();
   const { login, register, isAuthenticated, approvedRoles, user } = useAuth();
   const registerRef = useRef<HTMLDivElement>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -211,10 +224,6 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     );
   };
 
-  const showSocialNotice = () => {
-    setLoginError('Đăng nhập qua mạng xã hội sẽ được kích hoạt sau khi có cấu hình chính thức.');
-  };
-
   return (
     <main className="svp-auth-page min-h-screen bg-[#fff8f2] text-[#25202a]">
       <div className="relative min-h-screen overflow-hidden">
@@ -228,13 +237,38 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         <div className="relative mx-auto w-full max-w-[1180px] px-4 pb-7 pt-4 sm:px-6 lg:px-8">
           <div className="mb-2 flex items-center justify-between">
             <div className="h-10 w-10" />
-            <button
-              type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-white/90 px-4 text-sm font-semibold text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur"
-            >
-              <span className="grid h-5 w-5 place-items-center rounded-full border border-[#d7d0c8] text-xs">?</span>
-              Hỗ trợ
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                data-testid="auth-support-toggle"
+                aria-expanded={supportOpen}
+                aria-controls="auth-support-menu"
+                onClick={() => setSupportOpen((open) => !open)}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-white/95 px-4 text-sm font-semibold text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25"
+              >
+                <span className="grid h-5 w-5 place-items-center rounded-full border border-[#d7d0c8] text-xs">?</span>
+                Hỗ trợ
+              </button>
+              {supportOpen ? (
+                <div
+                  id="auth-support-menu"
+                  data-testid="auth-support-menu"
+                  className="absolute right-0 z-30 mt-3 w-[min(330px,calc(100vw-2rem))] rounded-2xl border border-[#eadfd7] bg-white p-4 text-left shadow-[0_18px_55px_rgba(45,24,18,0.16)]"
+                >
+                  <div className="mb-3">
+                    <p className="text-sm font-black uppercase tracking-[0.08em] text-[#c40012]">Hỗ trợ nhanh</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-[#626976]">
+                      Liên hệ đội Sổ Đỏ Vạn Phúc khi cần hỗ trợ đăng nhập, đăng ký hoặc phê duyệt tài khoản.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <SupportLink href={`tel:${SUPPORT_PHONE}`} icon={<SvpPhoneIcon className="h-5 w-5" />} title="Gọi hotline" desc={SUPPORT_PHONE_LABEL} />
+                    <SupportLink href={SUPPORT_ZALO_URL} icon={<SvpZaloIcon className="h-5 w-5" />} title="Nhắn Zalo" desc={SUPPORT_PHONE_LABEL} external />
+                    <SupportLink href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Cần hỗ trợ tài khoản Sổ Đỏ Vạn Phúc')}`} icon={<SvpMailIcon className="h-5 w-5" />} title="Gửi email" desc={SUPPORT_EMAIL} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <section className="mx-auto max-w-3xl text-center">
@@ -314,10 +348,10 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                <SocialButton label="Google" onClick={showSocialNotice} icon={<SvpGoogleIcon className="h-7 w-7" />} />
-                <SocialButton label="Facebook" onClick={showSocialNotice} icon={<SvpFacebookIcon className="h-7 w-7" />} />
-                <SocialButton label="Apple" onClick={showSocialNotice} icon={<SvpAppleIcon className="h-7 w-7 text-black" />} />
-                <SocialButton label="Zalo" onClick={showSocialNotice} icon={<SvpZaloIcon className="h-7 w-7" />} />
+                <SocialButton label="Google" href={SOCIAL_LOGIN_LINKS.google} icon={<SvpGoogleIcon className="h-7 w-7" />} />
+                <SocialButton label="Facebook" href={SOCIAL_LOGIN_LINKS.facebook} icon={<SvpFacebookIcon className="h-7 w-7" />} />
+                <SocialButton label="Apple" href={SOCIAL_LOGIN_LINKS.apple} icon={<SvpAppleIcon className="h-7 w-7 text-black" />} />
+                <SocialButton label="Zalo" href={SOCIAL_LOGIN_LINKS.zalo} icon={<SvpZaloIcon className="h-7 w-7" />} />
               </div>
 
               <div className="mt-6 hidden rounded-xl border border-[#eadfd7] bg-[#fffaf7] p-4 sm:flex sm:items-start sm:gap-3">
@@ -561,15 +595,47 @@ function PasswordField({
   );
 }
 
-function SocialButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+function SupportLink({
+  href,
+  icon,
+  title,
+  desc,
+  external = false,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  desc: string;
+  external?: boolean;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white text-xs font-bold text-[#4d5562] transition hover:border-[#c40012] hover:shadow-sm"
+    <a
+      href={href}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
+      className="flex items-center gap-3 rounded-xl border border-[#f0e7df] bg-[#fffaf7] p-3 transition hover:border-[#c40012]/35 hover:bg-white"
+    >
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-50 text-[#c40012]">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-sm font-black text-[#25202a]">{title}</span>
+        <span className="block truncate text-xs font-semibold text-[#747b88]">{desc}</span>
+      </span>
+    </a>
+  );
+}
+
+function SocialButton({ icon, label, href }: { icon: ReactNode; label: string; href: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Đăng nhập với ${label}`}
+      data-testid={`social-login-${label.toLowerCase()}`}
+      className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white text-xs font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100"
     >
       {icon}
       {label}
-    </button>
+    </a>
   );
 }

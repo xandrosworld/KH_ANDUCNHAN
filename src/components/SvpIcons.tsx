@@ -218,9 +218,11 @@ export function SvpAppleIcon(props: IconProps) {
 export function SvpZaloIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>
-      <rect x="3" y="5" width="18" height="14" rx="4" fill="#E8F2FF" />
-      <path d="M8 15.8h5.3v-1.6H10.7l2.6-3.4V9.2H8.2v1.6h2.5L8 14.3v1.5Z" fill="#0068FF" />
-      <path d="M15 15.8h1.7v-3.2c0-.6.3-.9.8-.9.4 0 .7.3.7.9v3.2H20v-3.5c0-1.3-.8-2.1-1.9-2.1-.6 0-1.1.2-1.4.7v-.5H15v5.4Z" fill="#0068FF" />
+      <rect x="2.8" y="4.2" width="18.4" height="15.1" rx="4.6" fill="#0068FF" />
+      <path d="M7.2 19.2 5.4 22v-3.1c-1.6-.7-2.6-2.1-2.6-3.8V8.8c0-2.5 2-4.6 4.6-4.6h9.2c2.5 0 4.6 2 4.6 4.6v5.9c0 2.5-2 4.6-4.6 4.6H7.2Z" fill="#0068FF" />
+      <text x="12" y="14.1" textAnchor="middle" fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize="5.8" fontWeight="800">
+        Zalo
+      </text>
     </SvgIcon>
   );
 }

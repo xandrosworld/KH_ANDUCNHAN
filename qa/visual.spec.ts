@@ -380,6 +380,26 @@ test.describe('V1 role pages', () => {
 });
 
 test.describe('V1 core workflows', () => {
+  test('auth support and social entry points are actionable', async ({ page }, testInfo) => {
+    await installMocks(page, 'admin', false);
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    await expect(page.getByTestId('social-login-google')).toHaveAttribute('href', 'https://accounts.google.com/');
+    await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('href', 'https://www.facebook.com/login/');
+    await expect(page.getByTestId('social-login-apple')).toHaveAttribute('href', 'https://appleid.apple.com/');
+    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('href', 'https://id.zalo.me/account');
+    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('target', '_blank');
+
+    await page.getByTestId('auth-support-toggle').click();
+    const supportMenu = page.getByTestId('auth-support-menu');
+    await expect(supportMenu).toBeVisible();
+    await expect(supportMenu.getByRole('link', { name: /Goi hotline|Gọi hotline/i })).toHaveAttribute('href', 'tel:0912886794');
+    await expect(supportMenu.getByRole('link', { name: /Nhan Zalo|Nhắn Zalo/i })).toHaveAttribute('href', 'https://zalo.me/0912886794');
+    await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveAttribute('href', /mailto:contact@sodovanphuc\.vn/);
+
+    await expectUsablePage(page, testInfo, 'workflow-auth-support-social');
+  });
+
   test('login routes to the active role dashboard', async ({ page }, testInfo) => {
     await installMocks(page, 'chuyen_gia', false);
     await page.goto('/', { waitUntil: 'networkidle' });
