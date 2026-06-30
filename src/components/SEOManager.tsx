@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const DEFAULT_IMAGE = '/og-image.jpg';
+const DEFAULT_IMAGE = '/og-sodovanphuc-20260630.png';
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   '/': {
@@ -89,6 +89,11 @@ const SEOManager = () => {
     setMeta('property', 'og:title', metadata.title);
     setMeta('property', 'og:description', metadata.description);
     setMeta('property', 'og:image', absoluteImage);
+    setMeta('property', 'og:image:secure_url', absoluteImage);
+    setMeta('property', 'og:image:type', 'image/png');
+    setMeta('property', 'og:image:width', '1200');
+    setMeta('property', 'og:image:height', '630');
+    setMeta('property', 'og:image:alt', 'Sổ Đỏ Vạn Phúc - Hệ điều hành nghề môi giới thổ cư Việt Nam');
     setMeta('property', 'og:url', currentUrl);
     setMeta('property', 'og:type', 'website');
     setMeta('property', 'og:site_name', 'Sổ Đỏ Vạn Phúc');
