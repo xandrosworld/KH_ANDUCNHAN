@@ -109,6 +109,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const { login, register, isAuthenticated, approvedRoles, user } = useAuth();
   const registerRef = useRef<HTMLDivElement>(null);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [showRegisterOnMobile, setShowRegisterOnMobile] = useState(initialPanel === 'register');
 
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -127,6 +128,10 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [registerLoading, setRegisterLoading] = useState(false);
+
+  useEffect(() => {
+    setShowRegisterOnMobile(initialPanel === 'register');
+  }, [initialPanel]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -219,6 +224,21 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     );
   };
 
+  const revealRegisterOnMobile = () => {
+    setShowRegisterOnMobile(true);
+    window.setTimeout(() => {
+      registerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  const registerVisibleOnMobile = initialPanel === 'register' || showRegisterOnMobile;
+  const loginColumnClass = initialPanel === 'register' ? 'order-2 lg:order-1' : 'order-1';
+  const registerColumnClass = registerVisibleOnMobile
+    ? initialPanel === 'register'
+      ? 'order-1 lg:order-2'
+      : 'order-2 lg:order-2'
+    : 'order-2 hidden lg:block';
+
   return (
     <main className="svp-auth-page min-h-screen overflow-x-hidden bg-[#fff8f2] text-[#25202a]">
       <div className="relative min-h-screen overflow-x-hidden">
@@ -295,7 +315,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
           </section>
 
           <section className="mt-5 grid min-w-0 items-start gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
-            <div className={initialPanel === 'register' ? 'order-2 lg:order-1' : 'order-1'}>
+            <div className={loginColumnClass}>
             <AuthCard testId="auth-login-card">
               <div className="mb-4 text-center sm:mb-5">
                 <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-[#c40012] lg:hidden">
@@ -365,6 +385,18 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 <SocialButton label="Zalo" href={SOCIAL_LOGIN_LINKS.zalo} icon={<SvpZaloIcon className="h-6 w-6" />} />
               </div>
 
+              {!registerVisibleOnMobile ? (
+                <button
+                  type="button"
+                  data-testid="auth-show-register"
+                  onClick={revealRegisterOnMobile}
+                  className="mt-4 flex h-11 w-full items-center justify-center gap-1 rounded-xl border border-[#eadfd7] bg-white text-[13px] font-bold text-[#5f6672] transition hover:border-[#c40012]/35 hover:text-[#c40012] lg:hidden"
+                >
+                  <span>Chưa có tài khoản?</span>
+                  <span className="font-black text-[#c40012]">Đăng ký</span>
+                </button>
+              ) : null}
+
               <div className="mt-6 hidden rounded-xl border border-[#eadfd7] bg-[#fffaf7] p-4 sm:flex sm:items-start sm:gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-[#c40012]">
                   <SvpShieldIcon className="h-5 w-5" />
@@ -377,7 +409,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             </AuthCard>
             </div>
 
-            <div className={initialPanel === 'register' ? 'order-1 lg:order-2' : 'order-2'}>
+            <div className={registerColumnClass}>
             <AuthCard innerRef={registerRef} testId="auth-register-card">
               <div className="mb-4 text-center sm:mb-5">
                 <h2 className="text-[22px] font-black uppercase leading-tight text-[#c40012] sm:text-2xl">Đăng ký tài khoản</h2>

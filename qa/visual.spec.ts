@@ -502,6 +502,69 @@ test.describe('V1 core workflows', () => {
     }
   });
 
+  test('mobile home opens registration only when requested', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Phone viewport matrix only runs in mobile project');
+    await installMocks(page, 'admin', false);
+
+    for (const width of [320, 360, 375, 390, 412, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/', { waitUntil: 'networkidle' });
+
+      await expect(page.getByTestId('auth-login-card')).toBeVisible();
+      await expect(page.getByTestId('auth-register-card')).not.toBeVisible();
+      await expect(page.getByTestId('auth-show-register')).toBeVisible();
+
+      const collapsedLayoutIsSafe = await page.evaluate(() => {
+        const viewportWidth = document.documentElement.clientWidth;
+        const loginCard = document.querySelector('[data-testid="auth-login-card"]');
+        const showRegister = document.querySelector('[data-testid="auth-show-register"]');
+        if (!(loginCard instanceof HTMLElement) || !(showRegister instanceof HTMLElement)) return false;
+
+        const fitsViewport = (element: HTMLElement) => {
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= viewportWidth + 1 && element.scrollWidth <= element.clientWidth + 1;
+        };
+
+        return document.documentElement.scrollWidth <= viewportWidth + 1 && fitsViewport(loginCard) && fitsViewport(showRegister);
+      });
+      expect(collapsedLayoutIsSafe, `collapsed mobile auth should not overflow at ${width}px`).toBe(true);
+
+      await page.getByTestId('auth-show-register').click();
+      await expect(page.getByTestId('auth-register-card')).toBeVisible();
+
+      const expandedLayoutIsSafe = await page.evaluate(() => {
+        const viewportWidth = document.documentElement.clientWidth;
+        const registerCard = document.querySelector('[data-testid="auth-register-card"]');
+        const roleOptions = Array.from(document.querySelectorAll('[data-testid^="auth-role-option-"]'));
+        const roleChecks = Array.from(document.querySelectorAll('[data-testid^="auth-role-check-"]'));
+
+        if (!(registerCard instanceof HTMLElement)) return false;
+        if (roleOptions.length < 8 || roleChecks.length < 8) return false;
+
+        const fitsViewport = (element: Element) => {
+          if (!(element instanceof HTMLElement)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= viewportWidth + 1 && element.scrollWidth <= element.clientWidth + 1;
+        };
+
+        const fitsParent = (child: Element, parent: Element) => {
+          if (!(child instanceof HTMLElement) || !(parent instanceof HTMLElement)) return false;
+          const childRect = child.getBoundingClientRect();
+          const parentRect = parent.getBoundingClientRect();
+          return childRect.left >= parentRect.left - 1 && childRect.right <= parentRect.right + 1;
+        };
+
+        return (
+          document.documentElement.scrollWidth <= viewportWidth + 1 &&
+          fitsViewport(registerCard) &&
+          roleOptions.every((option) => fitsViewport(option) && fitsParent(option, registerCard)) &&
+          roleChecks.every((check) => fitsViewport(check) && fitsParent(check, registerCard))
+        );
+      });
+      expect(expandedLayoutIsSafe, `expanded mobile register should not overflow at ${width}px`).toBe(true);
+    }
+  });
+
   test('auth register role selection stays inside the phone viewport', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Phone viewport matrix only runs in mobile project');
     await installMocks(page, 'admin', false);
