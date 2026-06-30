@@ -44,6 +44,22 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     title: 'Đăng nhập | Sổ Đỏ Vạn Phúc',
     description: 'Đăng nhập hệ thống Sổ Đỏ Vạn Phúc.',
   },
+  '/dieu-khoan-su-dung': {
+    title: 'Điều khoản sử dụng | Sổ Đỏ Vạn Phúc',
+    description: 'Quy định sử dụng tài khoản, dữ liệu, nguồn nhà, khách hàng và phân quyền trên hệ thống Sổ Đỏ Vạn Phúc.',
+  },
+  '/terms': {
+    title: 'Điều khoản sử dụng | Sổ Đỏ Vạn Phúc',
+    description: 'Quy định sử dụng tài khoản, dữ liệu, nguồn nhà, khách hàng và phân quyền trên hệ thống Sổ Đỏ Vạn Phúc.',
+  },
+  '/chinh-sach-bao-mat': {
+    title: 'Chính sách bảo mật | Sổ Đỏ Vạn Phúc',
+    description: 'Cách Sổ Đỏ Vạn Phúc thu thập, sử dụng, bảo vệ và lưu trữ dữ liệu người dùng.',
+  },
+  '/privacy': {
+    title: 'Chính sách bảo mật | Sổ Đỏ Vạn Phúc',
+    description: 'Cách Sổ Đỏ Vạn Phúc thu thập, sử dụng, bảo vệ và lưu trữ dữ liệu người dùng.',
+  },
 };
 
 function setMeta(attr: 'name' | 'property', key: string, content: string) {

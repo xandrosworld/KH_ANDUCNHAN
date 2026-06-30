@@ -16,6 +16,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const SelectRolePage = lazy(() => import('./pages/SelectRolePage'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
 
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'));
@@ -72,6 +73,10 @@ export default function App() {
             <Route path="/cho-duyet" element={<PendingApprovalPage />} />
             <Route path="/select-role" element={<SelectRolePage />} />
             <Route path="/chon-vai-tro" element={<SelectRolePage />} />
+            <Route path="/dieu-khoan-su-dung" element={<LegalPage type="terms" />} />
+            <Route path="/terms" element={<LegalPage type="terms" />} />
+            <Route path="/chinh-sach-bao-mat" element={<LegalPage type="privacy" />} />
+            <Route path="/privacy" element={<LegalPage type="privacy" />} />
             <Route path="/nha/:id" element={<PropertyDetailPage />} />
 
             <Route element={<ProtectedRoute />}>

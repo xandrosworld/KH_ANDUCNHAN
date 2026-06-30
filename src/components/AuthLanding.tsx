@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type FormEvent, type HTMLAttributes, type 
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { getRoleDashboardPath, PUBLIC_REGISTRATION_ROLES } from '../data/roles';
+import type { LegalDocumentType } from '../data/legalDocuments';
 import { useAuth } from '../contexts/AuthContext';
+import LegalModal from './LegalModal';
 import {
   SvpAppleIcon,
   SvpBoltIcon,
@@ -109,6 +111,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const { login, register, isAuthenticated, approvedRoles, user } = useAuth();
   const registerRef = useRef<HTMLDivElement>(null);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [legalModal, setLegalModal] = useState<LegalDocumentType | null>(null);
   const [showRegisterOnMobile, setShowRegisterOnMobile] = useState(initialPanel === 'register');
 
   const [identifier, setIdentifier] = useState('');
@@ -402,8 +405,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   <SvpShieldIcon className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-[#343944]">Thông tin của bạn được bảo mật tuyệt đối</div>
-                  <p className="mt-1 text-sm text-[#67707d]">Chúng tôi cam kết không chia sẻ thông tin cho bên thứ ba.</p>
+                  <div className="font-bold text-[#343944]">Thông tin của bạn được bảo vệ theo phân quyền</div>
+                  <p className="mt-1 text-sm text-[#67707d]">Dữ liệu chỉ được sử dụng cho vận hành hệ thống và các mục đích đã công bố.</p>
                 </div>
               </div>
             </AuthCard>
@@ -468,18 +471,41 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   </div>
                 </div>
 
-                <label className="flex min-w-0 cursor-pointer items-start gap-2 pt-1 text-[13px] font-semibold leading-[1.35] text-[#3d424c] sm:text-sm sm:leading-5">
+                <div className="flex min-w-0 items-start gap-2 pt-1 text-[13px] font-semibold leading-[1.35] text-[#3d424c] sm:text-sm sm:leading-5">
                   <input
+                    id="accepted-legal"
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(event) => setAcceptedTerms(event.target.checked)}
                     className="mt-1 h-4 w-4 shrink-0 accent-[#c40012]"
                   />
-                  <span className="min-w-0">
-                    Tôi đã đọc và đồng ý với <span className="text-[#c40012]">Điều khoản sử dụng</span> và{' '}
-                    <span className="text-[#c40012]">Chính sách bảo mật</span>
-                  </span>
-                </label>
+                  <label htmlFor="accepted-legal" className="min-w-0 cursor-pointer">
+                    Tôi đã đọc và đồng ý với{' '}
+                    <button
+                      type="button"
+                      data-testid="legal-open-terms"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setLegalModal('terms');
+                      }}
+                      className="font-black text-[#c40012] underline-offset-2 hover:underline"
+                    >
+                      Điều khoản sử dụng
+                    </button>{' '}
+                    và{' '}
+                    <button
+                      type="button"
+                      data-testid="legal-open-privacy"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setLegalModal('privacy');
+                      }}
+                      className="font-black text-[#c40012] underline-offset-2 hover:underline"
+                    >
+                      Chính sách bảo mật
+                    </button>
+                  </label>
+                </div>
 
                 <button
                   type="submit"
@@ -544,10 +570,19 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
           </section>
 
           <footer className="mt-4 border-t border-red-100/70 pt-3 text-center text-[11px] font-medium text-[#7d8390] sm:mt-5 sm:pt-4 sm:text-xs">
-            © 2026 Sổ Đỏ Vạn Phúc. Điều khoản sử dụng • Chính sách bảo mật • Liên hệ
+            © 2026 Sổ Đỏ Vạn Phúc.{' '}
+            <button type="button" onClick={() => setLegalModal('terms')} className="font-bold text-[#c40012] hover:underline">
+              Điều khoản sử dụng
+            </button>{' '}
+            •{' '}
+            <button type="button" onClick={() => setLegalModal('privacy')} className="font-bold text-[#c40012] hover:underline">
+              Chính sách bảo mật
+            </button>{' '}
+            • Liên hệ
           </footer>
         </div>
       </div>
+      <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
     </main>
   );
 }
