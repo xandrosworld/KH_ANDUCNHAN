@@ -276,8 +276,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto h-[88px] w-[88px] rounded-full object-contain drop-shadow-[0_10px_28px_rgba(178,0,18,0.25)] sm:h-[112px] sm:w-[112px]" />
             <h1
               data-testid="auth-brand-title"
-              style={{ fontFamily: BRAND_TITLE_FONT }}
-              className="mt-3 text-[30px] font-black uppercase leading-tight tracking-[0.02em] text-[#8f0010] sm:text-[48px]"
+              style={{ color: '#8f0010', fontFamily: BRAND_TITLE_FONT }}
+              className="mt-3 whitespace-nowrap text-[28px] font-black uppercase leading-tight tracking-[0.02em] min-[390px]:text-[30px] sm:text-[48px]"
             >
               Sổ Đỏ Vạn Phúc
             </h1>
@@ -300,8 +300,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             </p>
           </section>
 
-          <section className="mt-8 grid items-start gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
-            <AuthCard>
+          <section className="mt-8 grid min-w-0 items-start gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
+            <AuthCard testId="auth-login-card">
               <div className="mb-5 text-center">
                 <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-[#c40012] lg:hidden">
                   <SvpLoginIcon className="h-6 w-6" />
@@ -332,8 +332,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   autoComplete="current-password"
                 />
 
-                <div className="flex items-center justify-between pt-1 text-sm">
-                  <label className="flex cursor-pointer items-center gap-2 font-semibold text-[#3d424c]">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1 text-sm">
+                  <label className="flex shrink-0 cursor-pointer items-center gap-2 font-semibold text-[#3d424c]">
                     <input
                       type="checkbox"
                       checked={remember}
@@ -342,7 +342,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                     />
                     Ghi nhớ đăng nhập
                   </label>
-                  <button type="button" onClick={() => navigate('/forgot-password')} className="font-bold text-[#c40012]">
+                  <button type="button" onClick={() => navigate('/forgot-password')} className="ml-auto shrink-0 font-bold text-[#c40012]">
                     Quên mật khẩu?
                   </button>
                 </div>
@@ -363,7 +363,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 <div className="h-px flex-1 bg-[#ece5df]" />
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 max-[360px]:gap-1">
                 <SocialButton label="Google" href={SOCIAL_LOGIN_LINKS.google} icon={<SvpGoogleIcon className="h-7 w-7" />} />
                 <SocialButton label="Facebook" href={SOCIAL_LOGIN_LINKS.facebook} icon={<SvpFacebookIcon className="h-7 w-7" />} />
                 <SocialButton label="Apple" href={SOCIAL_LOGIN_LINKS.apple} icon={<SvpAppleIcon className="h-7 w-7 text-black" />} />
@@ -381,7 +381,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
               </div>
             </AuthCard>
 
-            <AuthCard innerRef={registerRef}>
+            <AuthCard innerRef={registerRef} testId="auth-register-card">
               <div className="mb-5 text-center">
                 <h2 className="text-2xl font-black uppercase text-[#c40012]">Đăng ký tài khoản</h2>
                 <div className="mx-auto mt-2 h-1 w-14 rounded-full bg-[#c40012]" />
@@ -520,8 +520,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   );
 }
 
-const AuthCard = ({ children, innerRef }: { children: ReactNode; innerRef?: Ref<HTMLDivElement> }) => (
-  <div ref={innerRef} className="rounded-[22px] bg-white/[0.96] p-5 shadow-[0_18px_60px_rgba(88,40,20,0.14)] ring-1 ring-black/5 backdrop-blur sm:p-7">
+const AuthCard = ({ children, innerRef, testId }: { children: ReactNode; innerRef?: Ref<HTMLDivElement>; testId?: string }) => (
+  <div ref={innerRef} data-testid={testId} className="w-full min-w-0 rounded-[22px] bg-white/[0.96] p-4 shadow-[0_18px_60px_rgba(88,40,20,0.14)] ring-1 ring-black/5 backdrop-blur sm:p-7">
     {children}
   </div>
 );
@@ -648,7 +648,7 @@ function SocialButton({ icon, label, href }: { icon: ReactNode; label: string; h
       rel="noopener noreferrer"
       aria-label={`Đăng nhập với ${label}`}
       data-testid={`social-login-${label.toLowerCase()}`}
-      className="flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white text-xs font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100"
+      className="flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white px-1 text-xs font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100"
     >
       {icon}
       {label}

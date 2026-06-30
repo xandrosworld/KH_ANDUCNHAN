@@ -387,15 +387,33 @@ test.describe('V1 core workflows', () => {
     await expect(page.getByTestId('auth-brand-title')).toHaveText('Sổ Đỏ Vạn Phúc');
     await expect(page.getByTestId('auth-brand-slogan-line-1')).toHaveText('Hệ điều hành nghề Môi giới');
     await expect(page.getByTestId('auth-brand-slogan-line-2')).toHaveText('Thổ cư Việt Nam');
+    await expect(page.getByTestId('auth-brand-title')).toHaveCSS('color', 'rgb(143, 0, 16)');
     const brandLinesFitViewport = await page.evaluate(() => {
       return ['auth-brand-title', 'auth-brand-slogan-line-1', 'auth-brand-slogan-line-2'].every((testId) => {
         const element = document.querySelector(`[data-testid="${testId}"]`);
-        if (!element) return false;
+        if (!(element instanceof HTMLElement)) return false;
         const rect = element.getBoundingClientRect();
-        return rect.left >= 0 && rect.right <= window.innerWidth;
+        return rect.left >= 0 && rect.right <= window.innerWidth && element.scrollWidth <= element.clientWidth + 1;
       });
     });
     expect(brandLinesFitViewport).toBe(true);
+    const loginCardFitsViewport = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="auth-login-card"]');
+      if (!(card instanceof HTMLElement)) return false;
+      const cardRect = card.getBoundingClientRect();
+      const children = Array.from(card.querySelectorAll('input, button, a'));
+      return (
+        document.documentElement.scrollWidth <= window.innerWidth + 1 &&
+        cardRect.left >= 0 &&
+        cardRect.right <= window.innerWidth &&
+        children.every((child) => {
+          if (!(child instanceof HTMLElement)) return true;
+          const rect = child.getBoundingClientRect();
+          return rect.left >= 0 && rect.right <= window.innerWidth && child.scrollWidth <= child.clientWidth + 1;
+        })
+      );
+    });
+    expect(loginCardFitsViewport).toBe(true);
 
     await expect(page.getByTestId('social-login-google')).toHaveAttribute('href', 'https://accounts.google.com/');
     await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('href', 'https://www.facebook.com/login/');
@@ -411,6 +429,44 @@ test.describe('V1 core workflows', () => {
     await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveAttribute('href', /mailto:contact@sodovanphuc\.vn/);
 
     await expectUsablePage(page, testInfo, 'workflow-auth-support-social');
+  });
+
+  test('auth login layout fits common phone widths', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Phone viewport matrix only runs in mobile project');
+    await installMocks(page, 'admin', false);
+
+    for (const width of [320, 360, 375, 390, 412, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/', { waitUntil: 'networkidle' });
+
+      await expect(page.getByTestId('auth-brand-title')).toHaveCSS('color', 'rgb(143, 0, 16)');
+      await expect(page.getByTestId('auth-brand-slogan-line-1')).toHaveText('Hệ điều hành nghề Môi giới');
+      await expect(page.getByTestId('auth-brand-slogan-line-2')).toHaveText('Thổ cư Việt Nam');
+
+      const layoutIsSafe = await page.evaluate(() => {
+        const selectors = [
+          '[data-testid="auth-brand-title"]',
+          '[data-testid="auth-brand-slogan-line-1"]',
+          '[data-testid="auth-brand-slogan-line-2"]',
+          '[data-testid="auth-login-card"]',
+          '[data-testid="social-login-google"]',
+          '[data-testid="social-login-facebook"]',
+          '[data-testid="social-login-apple"]',
+          '[data-testid="social-login-zalo"]',
+        ];
+
+        return (
+          document.documentElement.scrollWidth <= window.innerWidth + 1 &&
+          selectors.every((selector) => {
+            const element = document.querySelector(selector);
+            if (!(element instanceof HTMLElement)) return false;
+            const rect = element.getBoundingClientRect();
+            return rect.left >= 0 && rect.right <= window.innerWidth && element.scrollWidth <= element.clientWidth + 1;
+          })
+        );
+      });
+      expect(layoutIsSafe, `auth layout should not overflow at ${width}px`).toBe(true);
+    }
   });
 
   test('public property detail contact CTAs are actionable', async ({ page }, testInfo) => {
