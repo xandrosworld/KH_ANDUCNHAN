@@ -1,0 +1,142 @@
+name: Create customer admin account
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create-admin:
+    name: Create official admin
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.MATBAO_SSH_HOST }}
+      SSH_PORT: ${{ secrets.MATBAO_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.MATBAO_SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.MATBAO_SSH_PRIVATE_KEY }}
+      REMOTE_WEBROOT: ${{ secrets.MATBAO_WEBROOT || '/var/www/sodovanphuc/public_html' }}
+      CUSTOMER_ADMIN_USERNAME: admin@sodovanphuc.vn
+      CUSTOMER_ADMIN_PASSWORD: ${{ secrets.SVP_CUSTOMER_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          test -n "$SSH_HOST"
+          test -n "$SSH_USER"
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$CUSTOMER_ADMIN_PASSWORD"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/sodovanphuc_deploy_key
+          chmod 600 ~/.ssh/sodovanphuc_deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Create official admin account
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+            cd '$REMOTE_WEBROOT'
+            CUSTOMER_ADMIN_USERNAME='$CUSTOMER_ADMIN_USERNAME' CUSTOMER_ADMIN_PASSWORD='$CUSTOMER_ADMIN_PASSWORD' php
+          " <<'PHP'
+          <?php
+          $username = getenv('CUSTOMER_ADMIN_USERNAME') ?: 'admin@sodovanphuc.vn';
+          $password = getenv('CUSTOMER_ADMIN_PASSWORD') ?: '';
+          if (strlen($password) < 14) {
+              fwrite(STDERR, "Customer admin password is missing or too short.\n");
+              exit(2);
+          }
+
+          $root = getcwd();
+          $config = $root . '/backend/config/config.php';
+          if (!is_file($config)) {
+              fwrite(STDERR, "Live config.php not found.\n");
+              exit(3);
+          }
+
+          require_once $config;
+          require_once $root . '/backend/lib/Database.php';
+          $db = Database::getInstance();
+
+          $columnExists = function (string $table, string $column) use ($db): bool {
+              $stmt = $db->prepare("
+                  SELECT COUNT(*)
+                  FROM information_schema.columns
+                  WHERE table_schema = DATABASE()
+                    AND table_name = :table_name
+                    AND column_name = :column_name
+              ");
+              $stmt->execute(['table_name' => $table, 'column_name' => $column]);
+              return (int) $stmt->fetchColumn() > 0;
+          };
+
+          foreach ([
+              ['svp_id', "ALTER TABLE users ADD COLUMN svp_id VARCHAR(64) DEFAULT NULL AFTER id"],
+              ['cccd', "ALTER TABLE users ADD COLUMN cccd VARCHAR(20) DEFAULT NULL AFTER phone"],
+              ['referral_code', "ALTER TABLE users ADD COLUMN referral_code VARCHAR(80) DEFAULT NULL AFTER cccd"],
+              ['referred_by', "ALTER TABLE users ADD COLUMN referred_by VARCHAR(64) DEFAULT NULL AFTER referral_code"],
+          ] as [$column, $ddl]) {
+              if (!$columnExists('users', $column)) {
+                  $db->exec($ddl);
+              }
+          }
+
+          $db->exec("
+              CREATE TABLE IF NOT EXISTS svp_user_roles (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(64) NOT NULL,
+                role_slug VARCHAR(50) NOT NULL,
+                status ENUM('pending','approved','rejected','disabled') DEFAULT 'pending',
+                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                approved_by VARCHAR(64) DEFAULT NULL,
+                approved_at DATETIME DEFAULT NULL,
+                UNIQUE KEY uq_user_role (user_id, role_slug),
+                INDEX idx_role_slug (role_slug),
+                INDEX idx_status (status)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          ");
+
+          $userId = 'svp_customer_admin';
+          $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
+          $db->beginTransaction();
+          try {
+              $stmt = $db->prepare("
+                  INSERT INTO users (id, svp_id, email, phone, password_hash, full_name, role, status, referral_code, created_at, updated_at)
+                  VALUES (:id, 'SVPADMIN', :email, '0900000001', :password_hash, 'Quản trị Sổ Đỏ Vạn Phúc', 'admin', 'active', 'SVPADMIN', NOW(), NOW())
+                  ON DUPLICATE KEY UPDATE
+                    password_hash = VALUES(password_hash),
+                    full_name = VALUES(full_name),
+                    role = 'admin',
+                    status = 'active',
+                    svp_id = VALUES(svp_id),
+                    updated_at = NOW()
+              ");
+              $stmt->execute([
+                  'id' => $userId,
+                  'email' => $username,
+                  'password_hash' => $passwordHash,
+              ]);
+
+              $stmt = $db->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
+              $stmt->execute(['email' => $username]);
+              $actualUserId = (string) $stmt->fetchColumn();
+              if ($actualUserId === '') {
+                  throw new RuntimeException('Official admin user was not created.');
+              }
+
+              $stmt = $db->prepare("
+                  INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
+                  VALUES (:uid, 'admin', 'approved', NOW(), :approved_by, NOW())
+                  ON DUPLICATE KEY UPDATE status = 'approved', approved_by = VALUES(approved_by), approved_at = NOW()
+              ");
+              $stmt->execute(['uid' => $actualUserId, 'approved_by' => $actualUserId]);
+
+              $db->commit();
+          } catch (Throwable $e) {
+              $db->rollBack();
+              throw $e;
+          }
+
+          echo "Official customer admin account is ready.\n";
+          PHP
