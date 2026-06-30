@@ -259,7 +259,25 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
         totalReferrals: referrals.length,
       });
     }
-    if (path === '/admin/users') return ok(route, { items: [userFor('admin'), userFor('chuyen_gia'), { ...userFor('chuyen_vien'), accountStatus: 'locked' }] });
+    if (path === '/admin/users') return ok(route, {
+      items: [
+        userFor('admin'),
+        {
+          ...userFor('chuyen_gia'),
+          id: 'user_long_live_like',
+          fullName: 'Khách mua kiêm chuyên gia demo Vạn Phúc khu vực Thành phố Hồ Chí Minh',
+          email: 'khachmua.kiem.chuyen.gia.demo.vanphuc@sodovanphuc.vn',
+          phone: '0917544808',
+          svpId: 'SVP000019',
+          roles: [
+            { slug: 'chuyen_gia', name: 'Chuyên gia', status: 'approved' },
+            { slug: 'khach_mua', name: 'Khách mua', status: 'approved' },
+            { slug: 'nguoi_gioi_thieu', name: 'Người giới thiệu', status: 'approved' },
+          ],
+        },
+        { ...userFor('chuyen_vien'), accountStatus: 'locked' },
+      ],
+    });
     if (/^\/admin\/users\/[^/]+\/account-status$/.test(path) && method === 'POST') {
       const id = decodeURIComponent(path.split('/')[3] || '');
       const body = request.postDataJSON?.() as { accountStatus?: string } | undefined;
@@ -610,6 +628,44 @@ test.describe('V1 core workflows', () => {
       });
 
       expect(layoutIsSafe, `register role cards and checkmarks should not overflow at ${width}px`).toBe(true);
+    }
+  });
+
+  test('admin user cards handle long live data on phone widths', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Phone viewport matrix only runs in mobile project');
+    await installMocks(page, 'admin');
+
+    for (const width of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/quan-tri/nguoi-dung', { waitUntil: 'networkidle' });
+
+      const cardsFit = await page.evaluate(() => {
+        const viewportWidth = document.documentElement.clientWidth;
+        const cards = Array.from(document.querySelectorAll('[data-testid="admin-user-card"]'));
+        const actions = Array.from(document.querySelectorAll('[data-testid="admin-user-lock"], [data-testid="admin-user-unlock"], [data-testid="admin-user-reset-password"]'));
+        if (cards.length < 3 || actions.length < 3) return false;
+
+        const fitsViewport = (element: Element) => {
+          if (!(element instanceof HTMLElement)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= viewportWidth + 1 && element.scrollWidth <= element.clientWidth + 1;
+        };
+
+        const fitsParent = (child: Element) => {
+          if (!(child instanceof HTMLElement) || !(child.parentElement instanceof HTMLElement)) return false;
+          const childRect = child.getBoundingClientRect();
+          const parentRect = child.parentElement.getBoundingClientRect();
+          return childRect.left >= parentRect.left - 1 && childRect.right <= parentRect.right + 1;
+        };
+
+        return (
+          document.documentElement.scrollWidth <= viewportWidth + 1 &&
+          cards.every(fitsViewport) &&
+          actions.every((action) => fitsViewport(action) && fitsParent(action))
+        );
+      });
+
+      expect(cardsFit, `admin user cards and actions should not overflow at ${width}px`).toBe(true);
     }
   });
 

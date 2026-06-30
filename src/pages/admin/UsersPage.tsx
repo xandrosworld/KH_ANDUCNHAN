@@ -135,7 +135,7 @@ export default function AdminUsersPage() {
       )}
 
       {loading ? (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-3 lg:grid-cols-2">
           {Array.from({ length: 6 }).map((_, index) => <UserSkeleton key={index} />)}
         </div>
       ) : filtered.length === 0 ? (
@@ -145,7 +145,7 @@ export default function AdminUsersPage() {
           <p className="mt-1 text-sm font-medium text-[#747b88]">Thử đổi từ khóa hoặc bộ lọc.</p>
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-3 lg:grid-cols-2">
           {filtered.map((user) => (
             <UserCard
               key={user.id}
@@ -166,8 +166,8 @@ function UserCard({ user, busyId, onLock, onUnlock, onReset }: { user: any; busy
   const initials = String(user.fullName || user.email || '?').trim().slice(0, 1).toUpperCase();
   const isLocked = user.accountStatus === 'locked';
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-      <div className="flex items-start gap-3">
+    <div data-testid="admin-user-card" className="min-w-0 max-w-full overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-red-50 text-lg font-black text-[#c40012]">
           {initials}
         </div>
@@ -175,41 +175,41 @@ function UserCard({ user, busyId, onLock, onUnlock, onReset }: { user: any; busy
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="truncate font-black text-[#25202a]">{user.fullName || 'Người dùng'}</p>
-              <p className="mt-1 text-sm font-semibold text-[#747b88]">{user.phone || user.email || 'Chưa có liên hệ'}</p>
+              <p className="mt-1 truncate text-sm font-semibold text-[#747b88]">{user.phone || user.email || 'Chưa có liên hệ'}</p>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {user.svpId && <span className="rounded-full bg-[#faf7f5] px-2.5 py-1 text-xs font-black text-[#747b88]">{user.svpId}</span>}
-              <span className={`rounded-full px-2.5 py-1 text-xs font-black ${isLocked ? 'bg-rose-50 text-[#c40012]' : 'bg-emerald-50 text-emerald-700'}`}>
+            <div className="flex min-w-0 flex-wrap gap-2">
+              {user.svpId && <span className="max-w-full truncate rounded-full bg-[#faf7f5] px-2.5 py-1 text-xs font-black text-[#747b88]">{user.svpId}</span>}
+              <span className={`max-w-full truncate rounded-full px-2.5 py-1 text-xs font-black ${isLocked ? 'bg-rose-50 text-[#c40012]' : 'bg-emerald-50 text-emerald-700'}`}>
                 {isLocked ? 'Tạm khóa' : 'Hoạt động'}
               </span>
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex min-w-0 flex-wrap gap-2">
             {(user.roles || []).length === 0 ? (
-              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-black text-gray-500">Chưa có vai trò</span>
+              <span className="max-w-full truncate rounded-full bg-gray-100 px-2.5 py-1 text-xs font-black text-gray-500">Chưa có vai trò</span>
             ) : (
               (user.roles || []).map((role: any) => (
-                <span key={`${user.id}-${role.slug}`} className={`rounded-full px-2.5 py-1 text-xs font-black ${role.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                <span key={`${user.id}-${role.slug}`} className={`max-w-full truncate rounded-full px-2.5 py-1 text-xs font-black ${role.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                   {getRoleDisplayName(role.slug)} · {ROLE_STATUS[role.status] || role.status}
                 </span>
               ))
             )}
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
             {isLocked ? (
-              <button data-testid="admin-user-unlock" disabled={busyId === `${user.id}-active`} onClick={onUnlock} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white disabled:opacity-60">
+              <button data-testid="admin-user-unlock" disabled={busyId === `${user.id}-active`} onClick={onUnlock} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white disabled:opacity-60">
                 <Unlock className="h-4 w-4" />
-                Mở khóa
+                <span className="truncate">Mở khóa</span>
               </button>
             ) : (
-              <button data-testid="admin-user-lock" disabled={busyId === `${user.id}-locked`} onClick={onLock} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-[#c40012] disabled:opacity-60">
+              <button data-testid="admin-user-lock" disabled={busyId === `${user.id}-locked`} onClick={onLock} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-[#c40012] disabled:opacity-60">
                 <Lock className="h-4 w-4" />
-                Tạm khóa
+                <span className="truncate">Tạm khóa</span>
               </button>
             )}
-            <button data-testid="admin-user-reset-password" disabled={busyId === `${user.id}-reset`} onClick={onReset} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a] disabled:opacity-60 sm:col-span-2">
+            <button data-testid="admin-user-reset-password" disabled={busyId === `${user.id}-reset`} onClick={onReset} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a] disabled:opacity-60 sm:col-span-2">
               <KeyRound className="h-4 w-4" />
-              Tạo mật khẩu tạm
+              <span className="truncate">Tạo mật khẩu tạm</span>
             </button>
           </div>
         </div>
