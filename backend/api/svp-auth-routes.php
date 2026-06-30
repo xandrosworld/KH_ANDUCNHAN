@@ -1070,6 +1070,33 @@ $router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $statusId = trim($input['statusId'] ?? '');
 
+    if (!$id || !$statusId) Response::error('Thong tin khong hop le', 400);
+
+    $stmt = $db->prepare("SELECT status_id FROM svp_properties WHERE id = :id AND deleted_at IS NULL");
+    $stmt->execute(['id' => $id]);
+    $old = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$old) Response::notFound();
+
+    $db->prepare("UPDATE svp_properties SET status_id = :s, updated_by = :actor WHERE id = :id")
+       ->execute(['s' => $statusId, 'actor' => $payload['sub'], 'id' => $id]);
+
+    svp_insert_property_timeline($db, $id, 'status_change', 'Doi trang thai nguon nha', "{$old['status_id']} -> {$statusId}", $payload['sub'], [
+        'oldStatusId' => $old['status_id'],
+        'newStatusId' => $statusId,
+    ]);
+
+    svp_insert_audit($db, $payload['sub'], 'update', 'property', $id, ['statusId' => $old['status_id']], ['statusId' => $statusId]);
+
+    Response::json(['message' => 'Da cap nhat trang thai']);
+});
+
+$router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
+    $payload = svp_auth_require();
+    $db = Database::getInstance();
+    $id = (string) ($params['id'] ?? '');
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $statusId = trim($input['statusId'] ?? '');
+
     if (!$id || !$statusId) Response::error('Thông tin không hợp lệ', 400);
 
     // Get old status
