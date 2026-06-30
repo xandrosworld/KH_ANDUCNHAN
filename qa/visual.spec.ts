@@ -502,6 +502,54 @@ test.describe('V1 core workflows', () => {
     }
   });
 
+  test('auth register role selection stays inside the phone viewport', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Phone viewport matrix only runs in mobile project');
+    await installMocks(page, 'admin', false);
+
+    for (const width of [320, 360, 375, 390, 412, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/register', { waitUntil: 'networkidle' });
+
+      const layoutIsSafe = await page.evaluate(() => {
+        const viewportWidth = document.documentElement.clientWidth;
+        const registerCard = document.querySelector('[data-testid="auth-register-card"]');
+        const roleList = document.querySelector('[data-testid="auth-role-list"]');
+        const roleOptions = Array.from(document.querySelectorAll('[data-testid^="auth-role-option-"]'));
+        const roleChecks = Array.from(document.querySelectorAll('[data-testid^="auth-role-check-"]'));
+
+        if (!(registerCard instanceof HTMLElement) || !(roleList instanceof HTMLElement)) return false;
+        if (roleOptions.length < 8 || roleChecks.length < 8) return false;
+
+        const fitsViewport = (element: Element) => {
+          if (!(element instanceof HTMLElement)) return false;
+          const rect = element.getBoundingClientRect();
+          return (
+            rect.left >= -1 &&
+            rect.right <= viewportWidth + 1 &&
+            element.scrollWidth <= element.clientWidth + 1
+          );
+        };
+
+        const fitsParent = (child: Element, parent: Element) => {
+          if (!(child instanceof HTMLElement) || !(parent instanceof HTMLElement)) return false;
+          const childRect = child.getBoundingClientRect();
+          const parentRect = parent.getBoundingClientRect();
+          return childRect.left >= parentRect.left - 1 && childRect.right <= parentRect.right + 1;
+        };
+
+        return (
+          document.documentElement.scrollWidth <= viewportWidth + 1 &&
+          fitsViewport(registerCard) &&
+          fitsViewport(roleList) &&
+          roleOptions.every((option) => fitsViewport(option) && fitsParent(option, registerCard)) &&
+          roleChecks.every((check) => fitsViewport(check) && fitsParent(check, registerCard))
+        );
+      });
+
+      expect(layoutIsSafe, `register role cards and checkmarks should not overflow at ${width}px`).toBe(true);
+    }
+  });
+
   test('public property detail contact CTAs are actionable', async ({ page }, testInfo) => {
     await installMocks(page, 'khach_mua', false);
     await page.goto('/nha/prop_1', { waitUntil: 'networkidle' });

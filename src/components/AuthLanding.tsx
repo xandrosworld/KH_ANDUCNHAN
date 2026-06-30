@@ -138,12 +138,6 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     navigate(getRoleDashboardPath(activeRole));
   }, [approvedRoles, isAuthenticated, navigate, user?.activeRole]);
 
-  useEffect(() => {
-    if (initialPanel === 'register') {
-      window.setTimeout(() => registerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120);
-    }
-  }, [initialPanel]);
-
   const routeAfterAuth = (roles: { slug: string; status: string }[]) => {
     const approved = roles.filter((role) => role.status === 'approved');
     if (approved.length === 0) {
@@ -226,17 +220,17 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   };
 
   return (
-    <main className="svp-auth-page min-h-screen bg-[#fff8f2] text-[#25202a]">
-      <div className="relative min-h-screen overflow-hidden">
+    <main className="svp-auth-page min-h-screen overflow-x-hidden bg-[#fff8f2] text-[#25202a]">
+      <div className="relative min-h-screen overflow-x-hidden">
         <div
-          className="absolute inset-x-0 top-0 h-[460px] bg-cover bg-center"
+          className="absolute inset-x-0 top-0 h-[330px] bg-cover bg-center sm:h-[460px]"
           style={{ backgroundImage: "url('/assets/svp-auth-hero.png')" }}
         />
-        <div className="absolute inset-x-0 top-0 h-[460px] bg-gradient-to-b from-white/20 via-white/60 to-[#fff8f2]" />
-        <div className="absolute inset-x-0 top-[330px] h-48 bg-gradient-to-b from-transparent to-[#fff8f2]" />
+        <div className="absolute inset-x-0 top-0 h-[330px] bg-gradient-to-b from-white/20 via-white/65 to-[#fff8f2] sm:h-[460px]" />
+        <div className="absolute inset-x-0 top-[250px] h-36 bg-gradient-to-b from-transparent to-[#fff8f2] sm:top-[330px] sm:h-48" />
 
-        <div className="relative mx-auto w-full max-w-[1180px] px-4 pb-7 pt-4 sm:px-6 lg:px-8">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="relative mx-auto w-full max-w-[1180px] px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 lg:px-8">
+          <div className="mb-1 flex items-center justify-between sm:mb-2">
             <div className="h-10 w-10" />
             <div className="relative">
               <button
@@ -245,7 +239,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 aria-expanded={supportOpen}
                 aria-controls="auth-support-menu"
                 onClick={() => setSupportOpen((open) => !open)}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-white/95 px-4 text-sm font-semibold text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/95 px-3 text-sm font-semibold text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:gap-2 sm:px-4"
               >
                 <span className="grid h-5 w-5 place-items-center rounded-full border border-[#d7d0c8] text-xs">?</span>
                 Hỗ trợ
@@ -273,18 +267,18 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
           </div>
 
           <section className="mx-auto max-w-3xl text-center">
-            <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto h-[88px] w-[88px] rounded-full object-contain drop-shadow-[0_10px_28px_rgba(178,0,18,0.25)] sm:h-[112px] sm:w-[112px]" />
+            <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto h-[74px] w-[74px] rounded-full object-contain drop-shadow-[0_10px_28px_rgba(178,0,18,0.25)] sm:h-[112px] sm:w-[112px]" />
             <h1
               data-testid="auth-brand-title"
               style={{ color: '#8f0010', fontFamily: BRAND_TITLE_FONT }}
-              className="mt-3 whitespace-nowrap text-[28px] font-black uppercase leading-tight tracking-[0.02em] min-[390px]:text-[30px] sm:text-[48px]"
+              className="mt-2 whitespace-nowrap text-[25px] font-black uppercase leading-tight tracking-[0.02em] min-[375px]:text-[27px] min-[410px]:text-[30px] sm:mt-3 sm:text-[48px]"
             >
               Sổ Đỏ Vạn Phúc
             </h1>
             <p
               data-testid="auth-brand-slogan"
               style={{ fontFamily: BRAND_TITLE_FONT }}
-              className="mt-1 text-[12px] font-extrabold uppercase leading-[1.36] tracking-[0.018em] text-[#1f2633] min-[360px]:text-[13px] min-[390px]:text-[14px] sm:text-xl"
+              className="mt-1 text-[11px] font-extrabold uppercase leading-[1.32] tracking-[0.012em] text-[#1f2633] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-xl"
             >
               <span data-testid="auth-brand-slogan-line-1" className="block whitespace-nowrap">
                 Hệ điều hành nghề Môi giới
@@ -293,22 +287,23 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 Thổ cư Việt Nam
               </span>
             </p>
-            <p className="mx-auto mt-2 max-w-xl text-sm font-medium leading-6 text-[#555b66] sm:text-base">
+            <p className="mx-auto mt-2 max-w-xl text-[13px] font-medium leading-5 text-[#555b66] sm:text-base sm:leading-6">
               <span className="block sm:inline">Kết nối Chủ nhà • Người mua • Môi giới</span>
               <span className="hidden sm:inline"> • </span>
               <span className="block sm:inline">AI trên một nền tảng duy nhất</span>
             </p>
           </section>
 
-          <section className="mt-8 grid min-w-0 items-start gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
+          <section className="mt-5 grid min-w-0 items-start gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
+            <div className={initialPanel === 'register' ? 'order-2 lg:order-1' : 'order-1'}>
             <AuthCard testId="auth-login-card">
-              <div className="mb-5 text-center">
-                <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-[#c40012] lg:hidden">
-                  <SvpLoginIcon className="h-6 w-6" />
+              <div className="mb-4 text-center sm:mb-5">
+                <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-[#c40012] lg:hidden">
+                  <SvpLoginIcon className="h-5 w-5" />
                 </div>
-                <h2 className="text-2xl font-black uppercase text-[#c40012]">Đăng nhập</h2>
-                <div className="mx-auto mt-2 h-1 w-14 rounded-full bg-[#c40012]" />
-                <p className="mt-3 text-sm font-semibold text-[#5c6470]">Chào mừng bạn trở lại!</p>
+                <h2 className="text-[22px] font-black uppercase leading-tight text-[#c40012] sm:text-2xl">Đăng nhập</h2>
+                <div className="mx-auto mt-1.5 h-1 w-12 rounded-full bg-[#c40012] sm:mt-2 sm:w-14" />
+                <p className="mt-2 text-[13px] font-semibold text-[#5c6470] sm:mt-3 sm:text-sm">Chào mừng bạn trở lại!</p>
               </div>
 
               {loginError && <AlertMessage>{loginError}</AlertMessage>}
@@ -332,7 +327,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   autoComplete="current-password"
                 />
 
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1 text-[13px] sm:text-sm">
                   <label className="flex shrink-0 cursor-pointer items-center gap-2 font-semibold text-[#3d424c]">
                     <input
                       type="checkbox"
@@ -357,17 +352,17 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 </button>
               </form>
 
-              <div className="my-6 flex items-center gap-3">
+              <div className="my-4 flex items-center gap-2 sm:my-6 sm:gap-3">
                 <div className="h-px flex-1 bg-[#ece5df]" />
-                <span className="text-sm font-medium text-[#7d8390]">Hoặc đăng nhập với</span>
+                <span className="text-xs font-medium text-[#7d8390] sm:text-sm">Hoặc đăng nhập với</span>
                 <div className="h-px flex-1 bg-[#ece5df]" />
               </div>
 
               <div className="grid grid-cols-4 gap-2 max-[360px]:gap-1">
-                <SocialButton label="Google" href={SOCIAL_LOGIN_LINKS.google} icon={<SvpGoogleIcon className="h-7 w-7" />} />
-                <SocialButton label="Facebook" href={SOCIAL_LOGIN_LINKS.facebook} icon={<SvpFacebookIcon className="h-7 w-7" />} />
-                <SocialButton label="Apple" href={SOCIAL_LOGIN_LINKS.apple} icon={<SvpAppleIcon className="h-7 w-7 text-black" />} />
-                <SocialButton label="Zalo" href={SOCIAL_LOGIN_LINKS.zalo} icon={<SvpZaloIcon className="h-7 w-7" />} />
+                <SocialButton label="Google" href={SOCIAL_LOGIN_LINKS.google} icon={<SvpGoogleIcon className="h-6 w-6" />} />
+                <SocialButton label="Facebook" href={SOCIAL_LOGIN_LINKS.facebook} icon={<SvpFacebookIcon className="h-6 w-6" />} />
+                <SocialButton label="Apple" href={SOCIAL_LOGIN_LINKS.apple} icon={<SvpAppleIcon className="h-6 w-6 text-black" />} />
+                <SocialButton label="Zalo" href={SOCIAL_LOGIN_LINKS.zalo} icon={<SvpZaloIcon className="h-6 w-6" />} />
               </div>
 
               <div className="mt-6 hidden rounded-xl border border-[#eadfd7] bg-[#fffaf7] p-4 sm:flex sm:items-start sm:gap-3">
@@ -380,12 +375,14 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 </div>
               </div>
             </AuthCard>
+            </div>
 
+            <div className={initialPanel === 'register' ? 'order-1 lg:order-2' : 'order-2'}>
             <AuthCard innerRef={registerRef} testId="auth-register-card">
-              <div className="mb-5 text-center">
-                <h2 className="text-2xl font-black uppercase text-[#c40012]">Đăng ký tài khoản</h2>
-                <div className="mx-auto mt-2 h-1 w-14 rounded-full bg-[#c40012]" />
-                <p className="mt-3 text-sm font-semibold text-[#5c6470]">Tạo tài khoản để kết nối và phát triển cùng Sổ Đỏ Vạn Phúc</p>
+              <div className="mb-4 text-center sm:mb-5">
+                <h2 className="text-[22px] font-black uppercase leading-tight text-[#c40012] sm:text-2xl">Đăng ký tài khoản</h2>
+                <div className="mx-auto mt-1.5 h-1 w-12 rounded-full bg-[#c40012] sm:mt-2 sm:w-14" />
+                <p className="mt-2 text-[13px] font-semibold leading-5 text-[#5c6470] sm:mt-3 sm:text-sm">Tạo tài khoản để kết nối cùng Sổ Đỏ Vạn Phúc</p>
               </div>
 
               {registerError && <AlertMessage>{registerError}</AlertMessage>}
@@ -408,7 +405,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   <p className="mb-2 text-sm font-bold text-[#3d424c]">
                     Chọn một hoặc nhiều nhu cầu / vai trò
                   </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div data-testid="auth-role-list" className="grid min-w-0 max-w-full gap-1.5 sm:grid-cols-2 sm:gap-2">
                     {PUBLIC_REGISTRATION_ROLES.map((role) => {
                       const Icon = roleIconMap[role.slug] || SvpUserIcon;
                       const selected = selectedRoles.includes(role.slug);
@@ -416,20 +413,22 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                         <button
                           type="button"
                           key={role.slug}
+                          data-testid={`auth-role-option-${role.slug}`}
+                          aria-pressed={selected}
                           onClick={() => toggleRole(role.slug)}
-                          className={`flex min-h-[58px] items-center gap-3 rounded-xl border bg-white px-3 py-2 text-left transition ${
+                          className={`flex min-h-[50px] w-full max-w-full min-w-0 items-center gap-2 rounded-lg border bg-white px-2.5 py-1.5 text-left transition sm:min-h-[58px] sm:gap-3 sm:rounded-xl sm:px-3 sm:py-2 ${
                             selected ? 'border-[#c40012] shadow-[0_0_0_3px_rgba(196,0,18,0.08)]' : 'border-[#e9e1dc] hover:border-[#d7cbc3]'
                           }`}
                         >
-                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${roleColorMap[role.slug] || 'from-red-500 to-red-600'} text-white shadow-sm`}>
-                            <Icon className="h-5 w-5" />
+                          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${roleColorMap[role.slug] || 'from-red-500 to-red-600'} text-white shadow-sm sm:h-10 sm:w-10 sm:rounded-xl`}>
+                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-extrabold leading-5 text-[#2c313a]">{role.label}</span>
-                            <span className="block truncate text-[12px] font-medium text-[#717986]">{role.description}</span>
+                            <span className="block max-w-full break-words text-[13px] font-extrabold leading-[1.18] text-[#2c313a] sm:text-sm sm:leading-5">{role.label}</span>
+                            <span className="block max-w-full truncate text-[11px] font-medium leading-4 text-[#717986] sm:text-[12px]">{role.description}</span>
                           </span>
-                          <span className={`grid h-5 w-5 shrink-0 place-items-center rounded border ${selected ? 'border-[#c40012] bg-[#c40012]' : 'border-[#d6d6d6] bg-white'}`}>
-                            {selected ? <span className="h-2.5 w-1.5 rotate-45 border-b-2 border-r-2 border-white" /> : null}
+                          <span data-testid={`auth-role-check-${role.slug}`} className={`grid h-4 w-4 shrink-0 place-items-center rounded border sm:h-5 sm:w-5 ${selected ? 'border-[#c40012] bg-[#c40012]' : 'border-[#d6d6d6] bg-white'}`}>
+                            {selected ? <span className="h-2 w-1.5 rotate-45 border-b-2 border-r-2 border-white sm:h-2.5" /> : null}
                           </span>
                         </button>
                       );
@@ -437,14 +436,14 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   </div>
                 </div>
 
-                <label className="flex cursor-pointer items-start gap-2 pt-1 text-sm font-semibold leading-5 text-[#3d424c]">
+                <label className="flex min-w-0 cursor-pointer items-start gap-2 pt-1 text-[13px] font-semibold leading-[1.35] text-[#3d424c] sm:text-sm sm:leading-5">
                   <input
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(event) => setAcceptedTerms(event.target.checked)}
                     className="mt-1 h-4 w-4 shrink-0 accent-[#c40012]"
                   />
-                  <span>
+                  <span className="min-w-0">
                     Tôi đã đọc và đồng ý với <span className="text-[#c40012]">Điều khoản sử dụng</span> và{' '}
                     <span className="text-[#c40012]">Chính sách bảo mật</span>
                   </span>
@@ -460,23 +459,24 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 </button>
               </form>
 
-              <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
-                <div className="flex gap-3">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600">
-                    <SvpCrownIcon className="h-5 w-5" />
+              <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
+                <div className="flex gap-2.5 sm:gap-3">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600 sm:h-9 sm:w-9">
+                    <SvpCrownIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-[#5d4a19]">Lưu ý về phê duyệt tài khoản</p>
-                    <p className="mt-1 text-[13px] leading-5 text-[#725f26]">
+                    <p className="text-[13px] font-black text-[#5d4a19] sm:text-sm">Lưu ý về phê duyệt tài khoản</p>
+                    <p className="mt-1 text-[12px] leading-[1.45] text-[#725f26] sm:text-[13px] sm:leading-5">
                       Từ cấp Chuyên viên trở lên cần có người phê duyệt để mở đầy đủ tính năng. Các tài khoản còn lại được sử dụng ngay sau khi đăng ký.
                     </p>
                   </div>
                 </div>
               </div>
             </AuthCard>
+            </div>
           </section>
 
-          <section className="mt-5 grid gap-3 rounded-2xl bg-white/[0.92] p-3 shadow-[0_12px_40px_rgba(80,40,20,0.08)] ring-1 ring-black/5 backdrop-blur sm:grid-cols-4">
+          <section className="mt-5 hidden gap-3 rounded-2xl bg-white/[0.92] p-3 shadow-[0_12px_40px_rgba(80,40,20,0.08)] ring-1 ring-black/5 backdrop-blur sm:grid sm:grid-cols-4">
             {stats.map((item) => {
               const Icon = item.icon;
               return (
@@ -494,7 +494,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             })}
           </section>
 
-          <section className="mt-4 grid gap-3 rounded-2xl bg-white/[0.88] p-3 shadow-[0_12px_40px_rgba(80,40,20,0.06)] ring-1 ring-black/5 backdrop-blur sm:grid-cols-4">
+          <section className="mt-4 hidden gap-3 rounded-2xl bg-white/[0.88] p-3 shadow-[0_12px_40px_rgba(80,40,20,0.06)] ring-1 ring-black/5 backdrop-blur sm:grid sm:grid-cols-4">
             {benefits.map((item) => {
               const Icon = item.icon;
               return (
@@ -511,7 +511,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             })}
           </section>
 
-          <footer className="mt-5 border-t border-red-100/70 pt-4 text-center text-xs font-medium text-[#7d8390]">
+          <footer className="mt-4 border-t border-red-100/70 pt-3 text-center text-[11px] font-medium text-[#7d8390] sm:mt-5 sm:pt-4 sm:text-xs">
             © 2026 Sổ Đỏ Vạn Phúc. Điều khoản sử dụng • Chính sách bảo mật • Liên hệ
           </footer>
         </div>
@@ -521,7 +521,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
 }
 
 const AuthCard = ({ children, innerRef, testId }: { children: ReactNode; innerRef?: Ref<HTMLDivElement>; testId?: string }) => (
-  <div ref={innerRef} data-testid={testId} className="w-full min-w-0 rounded-[22px] bg-white/[0.96] p-4 shadow-[0_18px_60px_rgba(88,40,20,0.14)] ring-1 ring-black/5 backdrop-blur sm:p-7">
+  <div ref={innerRef} data-testid={testId} className="w-full max-w-full min-w-0 overflow-hidden rounded-[20px] bg-white/[0.96] p-3.5 shadow-[0_18px_60px_rgba(88,40,20,0.14)] ring-1 ring-black/5 backdrop-blur sm:rounded-[22px] sm:p-7">
     {children}
   </div>
 );
@@ -564,7 +564,7 @@ function InputWithIcon({
         placeholder={placeholder}
         autoComplete={autoComplete}
         inputMode={inputMode}
-        className="h-12 w-full rounded-xl border border-[#e0ddd9] bg-white pl-12 pr-4 text-sm font-semibold text-[#2b313d] placeholder:text-[#9ba1aa] focus:border-[#c40012] focus:outline-none focus:ring-4 focus:ring-red-100"
+        className="h-11 w-full rounded-xl border border-[#e0ddd9] bg-white pl-11 pr-3 text-[13px] font-semibold text-[#2b313d] placeholder:text-[#9ba1aa] focus:border-[#c40012] focus:outline-none focus:ring-4 focus:ring-red-100 sm:h-12 sm:pl-12 sm:pr-4 sm:text-sm"
       />
     </div>
   );
@@ -597,7 +597,7 @@ function PasswordField({
         type={show ? 'text' : 'password'}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="h-12 w-full rounded-xl border border-[#e0ddd9] bg-white pl-12 pr-12 text-sm font-semibold text-[#2b313d] placeholder:text-[#9ba1aa] focus:border-[#c40012] focus:outline-none focus:ring-4 focus:ring-red-100"
+        className="h-11 w-full rounded-xl border border-[#e0ddd9] bg-white pl-11 pr-11 text-[13px] font-semibold text-[#2b313d] placeholder:text-[#9ba1aa] focus:border-[#c40012] focus:outline-none focus:ring-4 focus:ring-red-100 sm:h-12 sm:pl-12 sm:pr-12 sm:text-sm"
       />
       <button
         type="button"
@@ -648,7 +648,7 @@ function SocialButton({ icon, label, href }: { icon: ReactNode; label: string; h
       rel="noopener noreferrer"
       aria-label={`Đăng nhập với ${label}`}
       data-testid={`social-login-${label.toLowerCase()}`}
-      className="flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white px-1 text-xs font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100"
+      className="flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white px-1 text-[11px] font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100 sm:min-h-[72px] sm:text-xs"
     >
       {icon}
       {label}
