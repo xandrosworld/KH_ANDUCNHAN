@@ -384,6 +384,19 @@ test.describe('V1 core workflows', () => {
     await installMocks(page, 'admin', false);
     await page.goto('/', { waitUntil: 'networkidle' });
 
+    await expect(page.getByTestId('auth-brand-title')).toHaveText('Sổ Đỏ Vạn Phúc');
+    await expect(page.getByTestId('auth-brand-slogan-line-1')).toHaveText('Hệ điều hành nghề Môi giới');
+    await expect(page.getByTestId('auth-brand-slogan-line-2')).toHaveText('Thổ cư Việt Nam');
+    const brandLinesFitViewport = await page.evaluate(() => {
+      return ['auth-brand-title', 'auth-brand-slogan-line-1', 'auth-brand-slogan-line-2'].every((testId) => {
+        const element = document.querySelector(`[data-testid="${testId}"]`);
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.left >= 0 && rect.right <= window.innerWidth;
+      });
+    });
+    expect(brandLinesFitViewport).toBe(true);
+
     await expect(page.getByTestId('social-login-google')).toHaveAttribute('href', 'https://accounts.google.com/');
     await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('href', 'https://www.facebook.com/login/');
     await expect(page.getByTestId('social-login-apple')).toHaveAttribute('href', 'https://appleid.apple.com/');

@@ -102,6 +102,7 @@ const SUPPORT_PHONE = '0912886794';
 const SUPPORT_PHONE_LABEL = '0912 886 794';
 const SUPPORT_EMAIL = 'contact@sodovanphuc.vn';
 const SUPPORT_ZALO_URL = `https://zalo.me/${SUPPORT_PHONE}`;
+const BRAND_TITLE_FONT = '"UTM Avo", "SVN-Avo", "Avo", "Montserrat", "Inter", "Arial", sans-serif';
 
 export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps) {
   const navigate = useNavigate();
@@ -273,14 +274,29 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
 
           <section className="mx-auto max-w-3xl text-center">
             <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto h-[88px] w-[88px] rounded-full object-contain drop-shadow-[0_10px_28px_rgba(178,0,18,0.25)] sm:h-[112px] sm:w-[112px]" />
-            <h1 className="mt-3 text-[30px] font-black uppercase leading-tight tracking-[0.01em] text-[#b90416] sm:text-[48px]">
+            <h1
+              data-testid="auth-brand-title"
+              style={{ fontFamily: BRAND_TITLE_FONT }}
+              className="mt-3 text-[30px] font-black uppercase leading-tight tracking-[0.02em] text-[#8f0010] sm:text-[48px]"
+            >
               Sổ Đỏ Vạn Phúc
             </h1>
-            <p className="mt-1 text-[15px] font-extrabold uppercase tracking-[0.02em] text-[#1f2633] sm:text-xl">
-              Hệ điều hành nghề Môi giới Thổ cư Việt Nam
+            <p
+              data-testid="auth-brand-slogan"
+              style={{ fontFamily: BRAND_TITLE_FONT }}
+              className="mt-1 text-[12px] font-extrabold uppercase leading-[1.36] tracking-[0.018em] text-[#1f2633] min-[360px]:text-[13px] min-[390px]:text-[14px] sm:text-xl"
+            >
+              <span data-testid="auth-brand-slogan-line-1" className="block whitespace-nowrap">
+                Hệ điều hành nghề Môi giới
+              </span>
+              <span data-testid="auth-brand-slogan-line-2" className="block whitespace-nowrap">
+                Thổ cư Việt Nam
+              </span>
             </p>
             <p className="mx-auto mt-2 max-w-xl text-sm font-medium leading-6 text-[#555b66] sm:text-base">
-              Kết nối Chủ nhà • Người mua • Môi giới • AI trên một nền tảng duy nhất
+              <span className="block sm:inline">Kết nối Chủ nhà • Người mua • Môi giới</span>
+              <span className="hidden sm:inline"> • </span>
+              <span className="block sm:inline">AI trên một nền tảng duy nhất</span>
             </p>
           </section>
 
