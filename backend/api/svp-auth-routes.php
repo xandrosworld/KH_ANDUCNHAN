@@ -645,7 +645,7 @@ function svp_admin_random_password(int $length = 14): string {
 function svp_admin_ensure_notifications_table(PDO $db): void {
     $db->exec(
         "CREATE TABLE IF NOT EXISTS svp_notifications (
-            id VARCHAR(64) PRIMARY KEY,
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
             user_id VARCHAR(64) NULL,
             title VARCHAR(255) NOT NULL,
             body TEXT NULL,
@@ -970,9 +970,9 @@ $router->add('POST', '/api/svp/admin/notifications', function () {
     $body = trim((string) ($input['body'] ?? ''));
     if ($title === '') Response::error('Vui long nhap tieu de thong bao', 400);
 
-    $id = 'notice_' . bin2hex(random_bytes(12));
-    $db->prepare("INSERT INTO svp_notifications (id, user_id, title, body, kind, is_read, created_at) VALUES (:id, NULL, :title, :body, 'admin_notice', 0, NOW())")
-       ->execute(['id' => $id, 'title' => $title, 'body' => $body]);
+    $db->prepare("INSERT INTO svp_notifications (user_id, title, body, kind, is_read, created_at) VALUES (NULL, :title, :body, 'admin_notice', 0, NOW())")
+       ->execute(['title' => $title, 'body' => $body]);
+    $id = (string) $db->lastInsertId();
 
     svp_insert_audit($db, $payload['sub'], 'create', 'notification', $id, null, ['title' => $title, 'body' => $body]);
 
