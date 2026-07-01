@@ -520,7 +520,7 @@ test.describe('V1 core workflows', () => {
     }
   });
 
-  test('mobile home opens registration only when requested', async ({ page }, testInfo) => {
+  test('mobile home shows login then registration without overflow', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Phone viewport matrix only runs in mobile project');
     await installMocks(page, 'admin', false);
 
@@ -529,34 +529,16 @@ test.describe('V1 core workflows', () => {
       await page.goto('/', { waitUntil: 'networkidle' });
 
       await expect(page.getByTestId('auth-login-card')).toBeVisible();
-      await expect(page.getByTestId('auth-register-card')).not.toBeVisible();
-      await expect(page.getByTestId('auth-show-register')).toBeVisible();
-
-      const collapsedLayoutIsSafe = await page.evaluate(() => {
-        const viewportWidth = document.documentElement.clientWidth;
-        const loginCard = document.querySelector('[data-testid="auth-login-card"]');
-        const showRegister = document.querySelector('[data-testid="auth-show-register"]');
-        if (!(loginCard instanceof HTMLElement) || !(showRegister instanceof HTMLElement)) return false;
-
-        const fitsViewport = (element: HTMLElement) => {
-          const rect = element.getBoundingClientRect();
-          return rect.left >= -1 && rect.right <= viewportWidth + 1 && element.scrollWidth <= element.clientWidth + 1;
-        };
-
-        return document.documentElement.scrollWidth <= viewportWidth + 1 && fitsViewport(loginCard) && fitsViewport(showRegister);
-      });
-      expect(collapsedLayoutIsSafe, `collapsed mobile auth should not overflow at ${width}px`).toBe(true);
-
-      await page.getByTestId('auth-show-register').click();
       await expect(page.getByTestId('auth-register-card')).toBeVisible();
 
-      const expandedLayoutIsSafe = await page.evaluate(() => {
+      const layoutIsSafe = await page.evaluate(() => {
         const viewportWidth = document.documentElement.clientWidth;
+        const loginCard = document.querySelector('[data-testid="auth-login-card"]');
         const registerCard = document.querySelector('[data-testid="auth-register-card"]');
         const roleOptions = Array.from(document.querySelectorAll('[data-testid^="auth-role-option-"]'));
         const roleChecks = Array.from(document.querySelectorAll('[data-testid^="auth-role-check-"]'));
 
-        if (!(registerCard instanceof HTMLElement)) return false;
+        if (!(loginCard instanceof HTMLElement) || !(registerCard instanceof HTMLElement)) return false;
         if (roleOptions.length < 8 || roleChecks.length < 8) return false;
 
         const fitsViewport = (element: Element) => {
@@ -574,12 +556,13 @@ test.describe('V1 core workflows', () => {
 
         return (
           document.documentElement.scrollWidth <= viewportWidth + 1 &&
+          fitsViewport(loginCard) &&
           fitsViewport(registerCard) &&
           roleOptions.every((option) => fitsViewport(option) && fitsParent(option, registerCard)) &&
           roleChecks.every((check) => fitsViewport(check) && fitsParent(check, registerCard))
         );
       });
-      expect(expandedLayoutIsSafe, `expanded mobile register should not overflow at ${width}px`).toBe(true);
+      expect(layoutIsSafe, `mobile auth/register should not overflow at ${width}px`).toBe(true);
     }
   });
 
@@ -685,6 +668,9 @@ test.describe('V1 core workflows', () => {
     await page.locator('#identifier').fill('chuyen_gia@sodovanphuc.vn');
     await page.locator('#password').fill('123456');
     await page.getByRole('button', { name: /^Đăng nhập$/ }).click();
+    await page.waitForURL(/\/select-role$/);
+    await expect(page.getByRole('heading', { name: /Chọn vai trò sử dụng|Ch.n vai tr. s. d.ng/i })).toBeVisible();
+    await page.getByRole('button', { name: /Chuyên gia|Chuy.n gia/i }).click();
     await page.waitForURL(/\/chuyen-gia$/);
     await expectUsablePage(page, testInfo, 'workflow-login');
   });
@@ -693,21 +679,16 @@ test.describe('V1 core workflows', () => {
     await installMocks(page, 'chuyen_gia');
     await page.goto('/chuyen-gia/dang-nha', { waitUntil: 'networkidle' });
 
-    await page.getByPlaceholder(/Ten chu nha|T.n ch./i).fill('Chu nha QA');
-    await page.getByPlaceholder(/SDT chu nha|S.T ch./i).fill('0909000000');
-    await page.getByRole('button', { name: /Tiep theo|Ti.p theo/i }).click();
-
-    await page.getByPlaceholder(/Tieu de|Ti.u/i).fill('Nha QA dang bang Playwright');
-    await page.getByPlaceholder(/So nha|S. nh./i).fill('12 Van Phuc');
-    await page.getByPlaceholder(/Quan|Qu.n/i).fill('Ha Dong');
-    await page.getByPlaceholder(/Dien tich|Di.n t.ch/i).fill('72');
-    await page.getByRole('button', { name: /Tiep theo|Ti.p theo/i }).click();
-
-    await page.getByPlaceholder(/So to|S. t./i).fill('SO-QA-001');
-    await page.getByPlaceholder(/Gia|Gi./i).fill('6800000000');
-    await page.locator('textarea').nth(1).fill('Đã rà trùng, nguồn QA có ghi chú xử lý rõ ràng.');
-    await page.getByRole('button', { name: /Tiep theo|Ti.p theo/i }).click();
-    await page.getByRole('button', { name: /Tiep theo|Ti.p theo/i }).click();
+    await page.getByLabel(/Tên chủ nhà|T.n ch. nh./i).fill('Chu nha QA');
+    await page.getByLabel(/SĐT chủ nhà|S.T ch. nh./i).fill('0909000000');
+    await page.getByLabel(/Tiêu đề tin|Ti.u . tin/i).fill('Nha QA dang bang Playwright');
+    await page.getByLabel(/Quận\/Huyện|Qu.n\/Huy.n/i).fill('Ha Dong');
+    await page.getByLabel(/Phường\/Xã|Ph..ng\/X./i).fill('Van Phuc');
+    await page.getByLabel(/Số nhà \+ tên đường|S. nh. \+ t.n/i).fill('12 Van Phuc');
+    await page.getByLabel(/Seri \/ mã sổ|Seri \/ m. s./i).fill('SO-QA-001');
+    await page.getByRole('textbox', { name: /Giá chào|Gi. ch.o/i }).fill('6800000000');
+    await page.getByRole('textbox', { name: /Diện tích m2|Di.n t.ch m2/i }).fill('72');
+    await page.getByLabel(/Ghi chú nội bộ|Ghi ch. n.i b./i).fill('Đã rà trùng, nguồn QA có ghi chú xử lý rõ ràng.');
 
     await page.getByRole('button', { name: /Kiem tra trung|Ki.m tra tr.ng|Kiểm tra trùng/i }).click();
     const checkboxes = page.getByRole('checkbox');
@@ -715,7 +696,7 @@ test.describe('V1 core workflows', () => {
       await checkboxes.nth(i).check();
     }
     await page.getByRole('button', { name: /AI/i }).click();
-    await expect(page.locator('textarea').last()).toHaveValue(/Mo ta AI/);
+    await expect(page.locator('textarea').nth(1)).toHaveValue(/Mo ta AI/);
     await page.getByRole('button', { name: /Gui duyet|G.i duy.t/i }).click();
     await page.waitForURL(/\/chuyen-gia\/kho-nha$/);
     await expectUsablePage(page, testInfo, 'workflow-expert-property');

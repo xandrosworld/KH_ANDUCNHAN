@@ -9,6 +9,30 @@ export interface UserRole {
   status: RoleStatus;
 }
 
+export interface UserAddress {
+  province: string;
+  district: string;
+  ward: string;
+  street: string;
+  houseNumber: string;
+}
+
+export interface UserBankInfo {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}
+
+export interface UserProfile {
+  cccd: string;
+  hasCertificate: boolean;
+  certificateUrl: string;
+  address: UserAddress;
+  educationLevel: string;
+  bio: string;
+  bankInfo: UserBankInfo;
+}
+
 export interface AuthUser {
   id: string;
   svpId: string;
@@ -16,7 +40,11 @@ export interface AuthUser {
   phone: string;
   fullName: string;
   avatar: string;
+  cccd?: string;
   referralCode: string;
+  referredBy?: string;
+  accountStatus?: string;
+  profile?: UserProfile;
   roles: UserRole[];
   activeRole: string;
 }
@@ -136,6 +164,22 @@ export const authApi = {
     const formData = new FormData();
     formData.append('avatar', file);
     return authFetch<{ avatar: string }>('/avatar', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  async updateProfile(profile: Partial<UserProfile> & { cccd?: string }): Promise<{ message: string; user: AuthUser }> {
+    return authFetch<{ message: string; user: AuthUser }>('/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(profile),
+    });
+  },
+
+  async uploadCertificate(file: File): Promise<{ certificateUrl: string; profile: UserProfile }> {
+    const formData = new FormData();
+    formData.append('certificate', file);
+    return authFetch<{ certificateUrl: string; profile: UserProfile }>('/certificate', {
       method: 'POST',
       body: formData,
     });

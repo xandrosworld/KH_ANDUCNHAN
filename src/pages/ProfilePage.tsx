@@ -1,10 +1,42 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent, type InputHTMLAttributes, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Check, ChevronRight, Copy, Lock, LogOut, UserPlus } from 'lucide-react';
+import { Camera, Check, ChevronRight, Copy, Lock, LogOut, Save, UploadCloud, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi } from '../services/authApi';
+import { authApi, type UserProfile } from '../services/authApi';
 import { getRoleDisplayName, ROLE_DEFINITIONS } from '../data/roles';
 import { usePageTitle } from '../hooks/usePageTitle';
+
+const emptyProfile: UserProfile = {
+  cccd: '',
+  hasCertificate: false,
+  certificateUrl: '',
+  address: {
+    province: '',
+    district: '',
+    ward: '',
+    street: '',
+    houseNumber: '',
+  },
+  educationLevel: '',
+  bio: '',
+  bankInfo: {
+    bankName: '',
+    accountNumber: '',
+    accountHolder: '',
+  },
+};
+
+const EDUCATION_LEVELS = ['THPT', 'Trung cấp', 'Cao đẳng', 'Đại học', 'Sau đại học', 'Chứng chỉ nghề BĐS', 'Khác'];
+
+function normalizeProfile(profile?: Partial<UserProfile>, cccd = ''): UserProfile {
+  return {
+    ...emptyProfile,
+    ...profile,
+    cccd: profile?.cccd || cccd || '',
+    address: { ...emptyProfile.address, ...(profile?.address || {}) },
+    bankInfo: { ...emptyProfile.bankInfo, ...(profile?.bankInfo || {}) },
+  };
+}
 
 export default function ProfilePage() {
   usePageTitle('Tài khoản | Sổ Đỏ Vạn Phúc');
@@ -18,6 +50,13 @@ export default function ProfilePage() {
   const [roleReason, setRoleReason] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [profileForm, setProfileForm] = useState<UserProfile>(emptyProfile);
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm(normalizeProfile(user.profile, user.cccd));
+    }
+  }, [user]);
 
   if (!user) return null;
 
@@ -43,6 +82,49 @@ export default function ProfilePage() {
       setMessage('Đã cập nhật ảnh đại diện.');
     } catch {
       setMessage('Chưa tải được ảnh. Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateProfileField = (key: keyof UserProfile, value: any) => {
+    setProfileForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateAddressField = (key: keyof UserProfile['address'], value: string) => {
+    setProfileForm((current) => ({ ...current, address: { ...current.address, [key]: value } }));
+  };
+
+  const updateBankField = (key: keyof UserProfile['bankInfo'], value: string) => {
+    setProfileForm((current) => ({ ...current, bankInfo: { ...current.bankInfo, [key]: value } }));
+  };
+
+  const handleSaveProfile = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await authApi.updateProfile(profileForm);
+      await refreshUser();
+      setMessage('Đã lưu thông tin chi tiết tài khoản.');
+    } catch (error: any) {
+      setMessage(error.message || 'Chưa lưu được hồ sơ. Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCertificate = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await authApi.uploadCertificate(file);
+      setProfileForm(normalizeProfile(result.profile, result.profile.cccd));
+      await refreshUser();
+      setMessage('Đã tải ảnh chứng chỉ hành nghề.');
+    } catch (error: any) {
+      setMessage(error.message || 'Chưa tải được ảnh chứng chỉ.');
     } finally {
       setBusy(false);
     }
@@ -143,6 +225,91 @@ export default function ProfilePage() {
         </div>
       </section>
 
+      <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-black text-[#25202a]">Thông tin chi tiết tài khoản</h3>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[#7b8190]">Chỉ bạn và quản trị viên được xem các thông tin nhạy cảm.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            disabled={busy}
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#c40012] px-3 text-xs font-black text-white disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            Lưu
+          </button>
+        </div>
+
+        <div className="grid gap-3">
+          <ProfileInput label="CCCD" value={profileForm.cccd} onChange={(value) => updateProfileField('cccd', value)} inputMode="numeric" />
+          <div className="rounded-2xl border border-gray-100 bg-[#fffaf7] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-sm font-black text-[#25202a]">
+                <input
+                  type="checkbox"
+                  checked={profileForm.hasCertificate}
+                  onChange={(event) => updateProfileField('hasCertificate', event.target.checked)}
+                  className="h-4 w-4 accent-[#c40012]"
+                />
+                Có chứng chỉ hành nghề
+              </label>
+              <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-xl border border-red-100 bg-white px-3 text-xs font-black text-[#c40012]">
+                <UploadCloud className="h-4 w-4" />
+                Tải ảnh
+                <input type="file" accept="image/*" onChange={handleCertificate} className="hidden" disabled={busy} />
+              </label>
+            </div>
+            {profileForm.certificateUrl ? (
+              <a href={profileForm.certificateUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-xs font-bold text-[#c40012]">
+                {profileForm.certificateUrl}
+              </a>
+            ) : (
+              <p className="mt-2 text-xs font-medium text-[#7b8190]">Chưa có ảnh chứng chỉ.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+        <h3 className="mb-3 font-black text-[#25202a]">Địa chỉ hiện tại</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ProfileInput label="Tỉnh/Thành" value={profileForm.address.province} onChange={(value) => updateAddressField('province', value)} />
+          <ProfileInput label="Quận/Huyện" value={profileForm.address.district} onChange={(value) => updateAddressField('district', value)} />
+          <ProfileInput label="Phường/Xã" value={profileForm.address.ward} onChange={(value) => updateAddressField('ward', value)} />
+          <ProfileInput label="Đường" value={profileForm.address.street} onChange={(value) => updateAddressField('street', value)} />
+          <ProfileInput label="Số nhà" value={profileForm.address.houseNumber} onChange={(value) => updateAddressField('houseNumber', value)} />
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+        <h3 className="mb-3 font-black text-[#25202a]">Học vấn và giới thiệu</h3>
+        <select
+          className="svp-input mb-3"
+          value={profileForm.educationLevel}
+          onChange={(event) => updateProfileField('educationLevel', event.target.value)}
+        >
+          <option value="">Chọn bằng cấp / trình độ</option>
+          {EDUCATION_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+        </select>
+        <textarea
+          className="svp-input h-24 py-3"
+          value={profileForm.bio}
+          onChange={(event) => updateProfileField('bio', event.target.value)}
+          placeholder="Mô tả ngắn về kinh nghiệm, khu vực phụ trách, thế mạnh..."
+        />
+      </section>
+
+      <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+        <h3 className="mb-3 font-black text-[#25202a]">Tài khoản ngân hàng</h3>
+        <div className="grid gap-3">
+          <ProfileInput label="Ngân hàng" value={profileForm.bankInfo.bankName} onChange={(value) => updateBankField('bankName', value)} />
+          <ProfileInput label="Số tài khoản" value={profileForm.bankInfo.accountNumber} onChange={(value) => updateBankField('accountNumber', value)} inputMode="numeric" />
+          <ProfileInput label="Chủ tài khoản" value={profileForm.bankInfo.accountHolder} onChange={(value) => updateBankField('accountHolder', value)} />
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <ActionRow icon={<Lock className="h-5 w-5" />} label="Đổi mật khẩu" onClick={() => setShowPasswordDialog(true)} />
         <ActionRow icon={<UserPlus className="h-5 w-5" />} label="Xin thêm vai trò" onClick={() => setShowRoleDialog(true)} />
@@ -180,6 +347,30 @@ export default function ProfilePage() {
         </Dialog>
       )}
     </div>
+  );
+}
+
+function ProfileInput({
+  label,
+  value,
+  onChange,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        inputMode={inputMode}
+        className="svp-input"
+      />
+    </label>
   );
 }
 

@@ -20,10 +20,43 @@ const ROLE_ICONS: Record<string, any> = {
   doi_tac: Briefcase,
 };
 
+const ROLE_PRIORITY = [
+  'chuyen_vien',
+  'chuyen_gia',
+  'giam_doc_dieu_hanh',
+  'pho_giam_doc_dieu_hanh',
+  'giam_doc',
+  'pho_giam_doc_khu_vuc',
+  'giam_doc_khoi',
+  'pho_giam_doc_khoi',
+  'truong_phong',
+  'pho_phong',
+  'tro_ly',
+  'thu_ky',
+  'admin',
+  'ctv_nguon',
+  'ctv_khach',
+  'nguoi_gioi_thieu',
+  'doi_tac',
+  'khach_mua',
+  'chu_nha',
+];
+
+function sortRoles<T extends { slug: string }>(roles: T[]): T[] {
+  return [...roles].sort((first, second) => {
+    const firstIndex = ROLE_PRIORITY.indexOf(first.slug);
+    const secondIndex = ROLE_PRIORITY.indexOf(second.slug);
+    const a = firstIndex === -1 ? 999 : firstIndex;
+    const b = secondIndex === -1 ? 999 : secondIndex;
+    return a - b;
+  });
+}
+
 export default function SelectRolePage() {
   usePageTitle('Chọn vai trò | Sổ Đỏ Vạn Phúc');
   const { approvedRoles, pendingRoles, setActiveRole } = useAuth();
   const navigate = useNavigate();
+  const sortedApprovedRoles = sortRoles(approvedRoles);
 
   const handleSelect = (slug: string) => {
     setActiveRole(slug);
@@ -42,7 +75,7 @@ export default function SelectRolePage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {approvedRoles.map((role) => {
+          {sortedApprovedRoles.map((role) => {
             const Icon = ROLE_ICONS[role.slug] || Shield;
             const meta = ROLE_MAP[role.slug];
             return (

@@ -1,233 +1,203 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, ArrowRight, Upload } from 'lucide-react';
+import { useState, type InputHTMLAttributes } from 'react';
+import { CheckCircle2, Home, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { svpAxios as api } from '../../services/svpAxios';
+import { useAuth } from '../../contexts/AuthContext';
 import { svpApi } from '../../services/svpApi';
-import type { SvpConfigGroup } from '../../types/svp';
-import { propertyFieldLabel } from '../../utils/fieldLabels';
 
-const STEPS = ['Thông tin nhà', 'Pháp lý & vị trí', 'Hình ảnh'];
+const PROVINCES = ['TP.HCM', 'Hà Nội', 'Đồng Nai', 'Bình Dương', 'Long An', 'Bà Rịa - Vũng Tàu'];
+const DISTRICTS = ['Quận 1', 'Quận 3', 'Quận 5', 'Quận 7', 'Quận 10', 'Quận 12', 'Bình Thạnh', 'Gò Vấp', 'Tân Bình', 'Tân Phú', 'Thủ Đức', 'Bình Tân', 'Nhà Bè', 'Hóc Môn'];
+const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường 5', 'Phường 7', 'Phường 10', 'Phường 12', 'Phường 15', 'Phường 17', 'Hiệp Bình Chánh', 'Linh Đông', 'Tân Sơn Nhì'];
 
-const emptyForm = {
-  propertyType: '',
-  street: '',
-  ward: '',
+const LEGAL_OPTIONS = [
+  { value: 'so_do_so_hong', label: 'Có sổ đỏ / sổ hồng' },
+  { value: 'giay_tay_hop_dong', label: 'Giấy tay / hợp đồng' },
+  { value: 'dang_hoan_thien', label: 'Đang hoàn thiện pháp lý' },
+  { value: 'chua_ro', label: 'Chưa rõ, cần chuyên gia kiểm tra' },
+];
+
+const RELATION_OPTIONS = [
+  { value: 'chinh_chu', label: 'Tôi là chính chủ' },
+  { value: 'nguoi_than', label: 'Người thân của chủ nhà' },
+  { value: 'uy_quyen', label: 'Được chủ nhà ủy quyền' },
+  { value: 'nguon_gioi_thieu', label: 'Tôi giới thiệu nguồn' },
+];
+
+const initialForm = {
+  expectedPrice: '',
+  province: 'TP.HCM',
   district: '',
-  gpsCoordinates: '',
-  area: '',
-  bedrooms: '',
-  bathrooms: '',
-  direction: '',
-  bookSerial: '',
-  bookSheet: '',
-  bookParcel: '',
+  ward: '',
   legalStatus: '',
-  planningStatus: '',
-  price: '',
-  videoUrl: '',
-  description: '',
+  ownerRelation: '',
+  note: '',
 };
 
 export default function OwnerSubmitPropertyPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [groups, setGroups] = useState<SvpConfigGroup[]>([]);
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState(emptyForm);
-  const [ownerConfirm, setOwnerConfirm] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    svpApi.getConfig().then(setGroups).catch(() => setGroups([]));
-  }, []);
-
-  const label = (key: string, fallback: string) => propertyFieldLabel(groups, key, fallback);
-  const update = (key: keyof typeof emptyForm, val: string) => setForm((current) => ({ ...current, [key]: val }));
+  const update = (key: keyof typeof initialForm, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
 
   const handleSubmit = async () => {
-    if (!form.propertyType || !form.street || !form.district) {
-      setMessage('Vui lòng nhập loại bất động sản, số nhà/tên đường và quận/huyện trước khi gửi.');
-      setStep(0);
+    if (!form.expectedPrice || !form.province || !form.district || !form.legalStatus || !form.ownerRelation) {
+      setMessage('Vui lòng nhập giá dự kiến, khu vực, pháp lý và vai trò của anh/chị với bất động sản.');
       return;
     }
-    if (!ownerConfirm) {
-      setMessage('Vui lòng xác nhận thông tin đã nhập là đúng để đội Chuyên gia liên hệ xác minh.');
-      setStep(2);
-      return;
-    }
+
     setSubmitting(true);
     setMessage('');
     try {
-      const typeLabel: Record<string, string> = {
-        nha_pho: 'nhà phố',
-        biet_thu: 'biệt thự',
-        can_ho: 'căn hộ',
-        dat_nen: 'đất nền',
-        nha_xuong: 'nhà xưởng',
-      };
-      const address = [form.street, form.ward, form.district].filter(Boolean).join(', ');
-      const res = await api.post('/properties', {
-        title: `Chủ nhà gửi bán ${typeLabel[form.propertyType] || 'bất động sản'} ${form.district || form.street}`,
-        description: form.description,
-        ownerName: user?.fullName,
-        ownerPhone: user?.phone,
-        bookSerial: [form.bookSerial, form.bookSheet ? `Tờ ${form.bookSheet}` : '', form.bookParcel ? `Thửa ${form.bookParcel}` : ''].filter(Boolean).join(' - '),
-        price: form.price ? Number(form.price) : 0,
-        areaM2: form.area ? Number(form.area) : null,
+      const location = [form.ward, form.district, form.province].filter(Boolean).join(', ');
+      await svpApi.createProperty({
+        title: `Chủ nhà gửi bán ${form.district || form.province || 'bất động sản'}`,
+        description: form.note,
+        ownerName: user?.fullName || 'Chủ nhà gửi bán',
+        ownerPhone: user?.phone || '',
+        bookSerial: '',
+        price: Number(form.expectedPrice) || 0,
+        priceUnit: 'VND',
+        areaM2: null,
         district: form.district,
         ward: form.ward,
-        address,
+        address: location,
+        hiddenAddress: location,
+        companyUnitId: '',
         statusId: 'st_new',
+        expertId: '',
+        assignedUserId: '',
+        signingScore: 0,
+        visibilityIds: ['management_admin'],
+        tagIds: [],
         extra: {
-          propertyType: form.propertyType,
-          bedrooms: form.bedrooms,
-          bathrooms: form.bathrooms,
-          direction: form.direction,
-          gpsCoordinates: form.gpsCoordinates,
-          bookSerial: form.bookSerial,
-          bookSheet: form.bookSheet,
-          bookParcel: form.bookParcel,
-          legalStatus: form.legalStatus,
-          planningStatus: form.planningStatus,
-          videoUrl: form.videoUrl,
-          ownerConfirm,
           sourceRole: 'chu_nha',
+          province: form.province,
+          expectedPrice: Number(form.expectedPrice) || 0,
+          legalStatus: form.legalStatus,
+          ownerRelation: form.ownerRelation,
+          note: form.note,
+          nextAction: 'cho_phan_cong_chuyen_gia',
+          submittedAt: new Date().toISOString(),
         },
       });
-      const propId = res.data?.item?.id;
-      if (propId && files.length) {
-        for (const file of files) {
-          const fd = new FormData();
-          fd.append('images', file);
-          fd.append('category', 'house_image');
-          await api.post(`/properties/${propId}/media-upload`, fd);
-        }
-      }
       navigate('/chu-nha/nha-cua-toi');
     } catch {
-      setMessage('Không gửi được yêu cầu. Vui lòng kiểm tra lại thông tin hoặc thử lại sau.');
+      setMessage('Chưa gửi được thông tin. Vui lòng kiểm tra kết nối và thử lại.');
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-24 pt-4">
-      <h1 className="mb-2 text-xl font-black text-[#25202a]">Gửi nhu cầu bán nhà</h1>
-      <p className="mb-4 text-sm font-medium leading-6 text-[#667085]">
-        Anh/chị nhập thông tin chính trước, đội Chuyên gia sẽ kiểm tra và liên hệ xác minh.
-      </p>
-      {message && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{message}</div>}
-
-      <div className="mb-6 flex items-center justify-center">
-        {STEPS.map((item, index) => (
-          <div key={item} className="flex items-center">
-            <div className={`grid h-8 w-8 place-items-center rounded-full text-sm font-black ${index <= step ? 'bg-[#c40012] text-white' : 'bg-gray-200 text-gray-500'}`}>{index + 1}</div>
-            {index < STEPS.length - 1 && <div className={`h-0.5 w-12 ${index < step ? 'bg-[#c40012]' : 'bg-gray-200'}`} />}
+    <div className="mx-auto max-w-lg px-3 pb-24 pt-3 sm:px-4">
+      <section className="mb-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-[#c40012]">
+            <Home className="h-6 w-6" />
           </div>
-        ))}
-      </div>
-      <p className="mb-6 text-center text-sm font-bold text-[#757575]">{STEPS[step]}</p>
-
-      {step === 0 && (
-        <div className="space-y-4">
-          <select className="w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" value={form.propertyType} onChange={(event) => update('propertyType', event.target.value)}>
-            <option value="">{label('propertyType', 'Loại bất động sản')}</option>
-            <option value="nha_pho">Nhà phố</option>
-            <option value="biet_thu">Biệt thự</option>
-            <option value="can_ho">Căn hộ</option>
-            <option value="dat_nen">Đất nền</option>
-            <option value="nha_xuong">Nhà xưởng</option>
-          </select>
-          <Field placeholder={label('street', 'Số nhà + Tên đường')} value={form.street} onChange={(value) => update('street', value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field placeholder={label('ward', 'Phường/Xã')} value={form.ward} onChange={(value) => update('ward', value)} />
-            <Field placeholder={label('district', 'Quận/Huyện')} value={form.district} onChange={(value) => update('district', value)} />
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#c40012]">Chủ nhà cần bán</p>
+            <h1 className="mt-1 text-xl font-black leading-tight text-[#25202a]">Gửi thông tin bán nhà</h1>
+            <p className="mt-1 text-sm font-semibold leading-5 text-[#747b88]">
+              Nhập phần chính trước, chuyên gia sẽ liên hệ bổ sung thông tin sâu.
+            </p>
           </div>
-          <Field placeholder={label('area', 'Diện tích (m²)')} type="number" value={form.area} onChange={(value) => update('area', value)} />
         </div>
-      )}
+      </section>
 
-      {step === 1 && (
-        <div className="space-y-4">
-          <Field placeholder={label('gpsCoordinates', 'Tọa độ/GPS nếu có')} value={form.gpsCoordinates} onChange={(value) => update('gpsCoordinates', value)} />
-          <div className="grid grid-cols-3 gap-3">
-            <Field placeholder={label('bedrooms', 'Phòng ngủ')} type="number" value={form.bedrooms} onChange={(value) => update('bedrooms', value)} />
-            <Field placeholder={label('bathrooms', 'WC')} type="number" value={form.bathrooms} onChange={(value) => update('bathrooms', value)} />
-            <select className="min-h-12 min-w-0 rounded-2xl border border-gray-200 px-2 text-sm font-semibold" value={form.direction} onChange={(event) => update('direction', event.target.value)}>
-              <option value="">{label('direction', 'Hướng')}</option>
-              <option value="dong">Đông</option>
-              <option value="tay">Tây</option>
-              <option value="nam">Nam</option>
-              <option value="bac">Bắc</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field placeholder={label('bookSheet', 'Số tờ')} value={form.bookSheet} onChange={(value) => update('bookSheet', value)} />
-            <Field placeholder={label('bookParcel', 'Thửa đất')} value={form.bookParcel} onChange={(value) => update('bookParcel', value)} />
-          </div>
-          <Field placeholder={label('bookSerial', 'Số sổ/Seri sổ')} value={form.bookSerial} onChange={(value) => update('bookSerial', value)} />
-          <select className="w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" value={form.legalStatus} onChange={(event) => update('legalStatus', event.target.value)}>
-            <option value="">{label('legalStatus', 'Tình trạng pháp lý')}</option>
-            <option value="so_do">Sổ đỏ</option>
-            <option value="so_hong">Sổ hồng</option>
-            <option value="hop_dong">Hợp đồng/giấy tờ khác</option>
-            <option value="chua_ro">Chưa rõ</option>
-          </select>
-          <Field placeholder={label('planningStatus', 'Thông tin quy hoạch nếu biết')} value={form.planningStatus} onChange={(value) => update('planningStatus', value)} />
-          <Field placeholder={label('price', 'Giá mong muốn (VNĐ)')} type="number" value={form.price} onChange={(value) => update('price', value)} />
-          <Field placeholder={label('videoUrl', 'Link video nhà nếu có')} value={form.videoUrl} onChange={(value) => update('videoUrl', value)} />
-          <textarea className="h-28 w-full rounded-2xl border border-gray-200 px-3 py-3 font-semibold" placeholder={label('description', 'Mô tả thêm về nhà')} value={form.description} onChange={(event) => update('description', event.target.value)} />
+      {message ? (
+        <div className="mb-3 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-sm font-bold leading-5 text-[#c40012]">
+          {message}
         </div>
-      )}
+      ) : null}
 
-      {step === 2 && (
-        <div>
-          <label className="block cursor-pointer rounded-3xl border-2 border-dashed border-gray-300 p-8 text-center hover:border-[#c40012]">
-            <Upload className="mx-auto mb-2 h-10 w-10 text-gray-400" />
-            <p className="font-bold text-[#25202a]">{label('houseImages', 'Ảnh nhà')}</p>
-            <p className="mt-1 text-sm text-[#757575]">Có thể chọn nhiều ảnh, định dạng JPG/PNG/WebP.</p>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => setFiles(Array.from(event.target.files || []))} />
-          </label>
-          {files.length > 0 && <p className="mt-3 text-sm font-bold text-[#757575]">Đã chọn {files.length} ảnh</p>}
-          <label className="mt-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-4">
-            <input
-              type="checkbox"
-              checked={ownerConfirm}
-              onChange={(event) => setOwnerConfirm(event.target.checked)}
-              className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#c40012]"
-            />
-            <span className="text-sm font-semibold leading-6 text-[#4a3b3b]">
-              Tôi xác nhận thông tin đã nhập là đúng và đồng ý để Sổ Đỏ Vạn Phúc liên hệ xác minh, ký hợp đồng và phân phối bán theo quy trình.
-            </span>
-          </label>
+      <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+        <Field label="Giá chào dự kiến" value={form.expectedPrice} onChange={(value) => update('expectedPrice', value)} inputMode="numeric" placeholder="VD: 6800000000" />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Select label="Tỉnh/Thành" value={form.province} onChange={(value) => update('province', value)} options={PROVINCES} />
+          <InputWithList label="Quận/Huyện" value={form.district} onChange={(value) => update('district', value)} options={DISTRICTS} listId="owner-districts" placeholder="Chọn hoặc nhập quận" />
+          <InputWithList label="Phường/Xã" value={form.ward} onChange={(value) => update('ward', value)} options={WARDS} listId="owner-wards" placeholder="Chọn hoặc nhập phường" />
         </div>
-      )}
 
-      <div className="mt-6 flex gap-3">
-        {step > 0 && <button type="button" onClick={() => setStep((current) => current - 1)} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-gray-300 py-3 font-black"><ArrowLeft className="h-4 w-4" />Quay lại</button>}
-        {step < 2 ? (
-          <button type="button" onClick={() => setStep((current) => current + 1)} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#c40012] py-3 font-black text-white">Tiếp theo<ArrowRight className="h-4 w-4" /></button>
-        ) : (
-          <button type="button" onClick={handleSubmit} disabled={submitting} className="flex-1 rounded-2xl bg-[#c40012] py-3 font-black text-white disabled:opacity-50">
-            {submitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
-          </button>
-        )}
-      </div>
+        <Select label="Tình trạng pháp lý" value={form.legalStatus} onChange={(value) => update('legalStatus', value)} options={LEGAL_OPTIONS.map((item) => item.label)} values={LEGAL_OPTIONS.map((item) => item.value)} />
+        <Select label="Vai trò với bất động sản" value={form.ownerRelation} onChange={(value) => update('ownerRelation', value)} options={RELATION_OPTIONS.map((item) => item.label)} values={RELATION_OPTIONS.map((item) => item.value)} />
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-black text-[#5f6672]">Ghi chú thêm</span>
+          <textarea
+            value={form.note}
+            onChange={(event) => update('note', event.target.value)}
+            placeholder="VD: cần bán nhanh, thời gian rảnh để chuyên gia gọi, thông tin đặc biệt..."
+            className="h-24 w-full rounded-2xl border border-gray-200 px-3 py-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white shadow-sm disabled:opacity-60"
+        >
+          {submitting ? <CheckCircle2 className="h-5 w-5 animate-pulse" /> : <Send className="h-5 w-5" />}
+          {submitting ? 'Đang gửi...' : 'Gửi cho chuyên gia'}
+        </button>
+      </section>
     </div>
   );
 }
 
-function Field({ placeholder, value, onChange, type = 'text' }: { placeholder: string; value: string; onChange: (value: string) => void; type?: string }) {
+function Field({ label, value, onChange, placeholder, inputMode }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'] }) {
   return (
-    <input
-      className="min-h-12 w-full rounded-2xl border border-gray-200 px-3 font-semibold outline-none focus:border-[#c40012]"
-      placeholder={placeholder}
-      type={type}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
+    <label className="block">
+      <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        inputMode={inputMode}
+        className="min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+      />
+    </label>
+  );
+}
+
+function InputWithList({ label, value, onChange, options, listId, placeholder }: { label: string; value: string; onChange: (value: string) => void; options: string[]; listId: string; placeholder?: string }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        list={listId}
+        placeholder={placeholder}
+        className="min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+      />
+      <datalist id={listId}>
+        {options.map((item) => <option key={item} value={item} />)}
+      </datalist>
+    </label>
+  );
+}
+
+function Select({ label, value, onChange, options, values }: { label: string; value: string; onChange: (value: string) => void; options: string[]; values?: string[] }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full rounded-2xl border border-gray-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+      >
+        <option value="">Chọn</option>
+        {options.map((item, index) => (
+          <option key={values?.[index] || item} value={values?.[index] || item}>{item}</option>
+        ))}
+      </select>
+    </label>
   );
 }

@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Heart, Home, MapPin, Search, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Building2, Heart, Home, MapPin, Search, Send, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { svpAxios as api } from '../../services/svpAxios';
+import { svpApi } from '../../services/svpApi';
 import { areaText, formatVndShort } from '../../utils/svpFormat';
 
 const SUGGESTIONS = ['Gần Metro', 'Ô tô ngủ trong nhà', 'Mở Spa', 'Dòng tiền', 'Mặt tiền', 'Chính chủ'];
 
 export default function BuyerDashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [needForm, setNeedForm] = useState({ area: '', budgetMin: '', budgetMax: '', purpose: '', note: '' });
+  const [needMessage, setNeedMessage] = useState('');
+  const [needBusy, setNeedBusy] = useState(false);
 
   useEffect(() => {
     api.get('/properties', { params: { statusId: 'st_active', limit: 12 } })
@@ -26,9 +32,54 @@ export default function BuyerDashboardPage() {
     navigate(`/khach-mua/tim-nha${suffix}`);
   };
 
+  const updateNeed = (key: keyof typeof needForm, value: string) => {
+    setNeedForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const submitNeed = async () => {
+    if (!user?.fullName || !user?.phone) {
+      setNeedMessage('Tài khoản cần có họ tên và số điện thoại để chuyên viên liên hệ.');
+      return;
+    }
+    if (!needForm.area || !needForm.budgetMax || !needForm.purpose) {
+      setNeedMessage('Vui lòng nhập khu vực, tầm tiền và mục đích mua.');
+      return;
+    }
+    setNeedBusy(true);
+    setNeedMessage('');
+    try {
+      const customer = await svpApi.createCustomer({
+        fullName: user.fullName,
+        phone: user.phone,
+        email: user.email,
+        source: 'khach_mua_tu_dang_ky',
+        statusId: 'cs_new',
+        assignedUserId: '',
+        note: `Khu vực: ${needForm.area}. Mục đích: ${needForm.purpose}. ${needForm.note}`,
+      });
+      await svpApi.createCustomerNeed({
+        customerId: customer.id,
+        districtIds: [needForm.area],
+        budgetMin: needForm.budgetMin ? Number(needForm.budgetMin) : null,
+        budgetMax: needForm.budgetMax ? Number(needForm.budgetMax) : null,
+        areaMin: null,
+        areaMax: null,
+        tagIds: [needForm.purpose],
+        description: needForm.note,
+        statusId: 'new',
+      });
+      setNeedForm({ area: '', budgetMin: '', budgetMax: '', purpose: '', note: '' });
+      setNeedMessage('Đã gửi nhu cầu. Chuyên viên sẽ có căn cứ xử lý tiếp.');
+    } catch {
+      setNeedMessage('Chưa lưu được nhu cầu. Vui lòng thử lại.');
+    } finally {
+      setNeedBusy(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
-      <section className="rounded-[28px] bg-gradient-to-br from-[#c40012] via-[#d91d2b] to-[#f26a4f] p-5 text-white shadow-lg shadow-red-100 sm:p-7">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#c40012] via-[#d91d2b] to-[#f26a4f] p-5 text-white shadow-lg shadow-red-100 sm:p-7">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">Khách tìm mua nhà</p>
@@ -43,26 +94,26 @@ export default function BuyerDashboardPage() {
         </div>
 
         <div className="rounded-2xl bg-white p-2 shadow-sm">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <Search className="ml-2 h-5 w-5 shrink-0 text-[#8a8f98]" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && goSearch()}
               placeholder="VD: nhà dưới 6 tỷ, gần Metro, ô tô vào nhà..."
-              className="min-h-11 flex-1 border-0 bg-transparent text-sm font-semibold text-[#25202a] outline-none placeholder:text-[#9aa1ad]"
+              className="min-h-11 min-w-0 flex-1 border-0 bg-transparent text-sm font-semibold text-[#25202a] outline-none placeholder:text-[#9aa1ad]"
             />
             <button
               type="button"
               onClick={() => goSearch()}
-              className="min-h-11 rounded-xl bg-[#25202a] px-4 text-sm font-black text-white"
+              className="min-h-11 shrink-0 rounded-xl bg-[#25202a] px-3 text-sm font-black text-white"
             >
               Tìm
             </button>
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="mt-4 flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {SUGGESTIONS.map((item) => (
             <button
               key={item}
@@ -80,6 +131,35 @@ export default function BuyerDashboardPage() {
         <QuickCard icon={SlidersHorizontal} title="Bộ lọc nhu cầu" desc="Giá, khu vực, diện tích" onClick={() => navigate('/khach-mua/tim-nha')} />
         <QuickCard icon={Heart} title="Nhà đã lưu" desc="Xem lại nguồn quan tâm" onClick={() => navigate('/khach-mua/yeu-thich')} />
         <QuickCard icon={Sparkles} title="Gợi ý phù hợp" desc={`${properties.length} nguồn đang mở`} onClick={() => navigate('/khach-mua/tim-nha')} />
+      </section>
+
+      <section className="mt-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
+        <div className="mb-3 flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-red-50 text-[#c40012]">
+            <Send className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-black text-[#25202a]">Gửi nhu cầu mua</h2>
+            <p className="mt-1 text-sm font-medium leading-5 text-[#747b88]">Nhập nhanh để chuyên viên có căn cứ lọc nguồn phù hợp.</p>
+          </div>
+        </div>
+        {needMessage ? <div className="mb-3 rounded-2xl bg-red-50 px-3 py-2 text-sm font-bold text-[#c40012]">{needMessage}</div> : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input className="min-h-11 rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]" placeholder="Khu vực ưu tiên" value={needForm.area} onChange={(event) => updateNeed('area', event.target.value)} />
+          <select className="min-h-11 rounded-2xl border border-gray-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#c40012]" value={needForm.purpose} onChange={(event) => updateNeed('purpose', event.target.value)}>
+            <option value="">Mục đích mua</option>
+            <option value="o_that">Ở thật</option>
+            <option value="dau_tu">Đầu tư</option>
+            <option value="kinh_doanh">Kinh doanh</option>
+            <option value="cho_thue">Cho thuê</option>
+          </select>
+          <input className="min-h-11 rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]" placeholder="Ngân sách từ" inputMode="numeric" value={needForm.budgetMin} onChange={(event) => updateNeed('budgetMin', event.target.value)} />
+          <input className="min-h-11 rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]" placeholder="Ngân sách đến" inputMode="numeric" value={needForm.budgetMax} onChange={(event) => updateNeed('budgetMax', event.target.value)} />
+        </div>
+        <textarea className="mt-3 h-20 w-full rounded-2xl border border-gray-200 px-3 py-3 text-sm font-semibold outline-none focus:border-[#c40012]" placeholder="Ghi chú thêm: hẻm, ô tô, gần trường, dòng tiền..." value={needForm.note} onChange={(event) => updateNeed('note', event.target.value)} />
+        <button onClick={submitNeed} disabled={needBusy} className="mt-3 min-h-11 w-full rounded-2xl bg-[#c40012] text-sm font-black text-white disabled:opacity-60">
+          {needBusy ? 'Đang gửi...' : 'Gửi nhu cầu'}
+        </button>
       </section>
 
       <section className="mt-6">

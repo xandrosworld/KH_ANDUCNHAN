@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Download, KeyRound, Lock, Search, Unlock, Users } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Download, KeyRound, Lock, Search, Unlock, UserRoundCheck, Users, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { getRoleDisplayName } from '../../data/roles';
 import { downloadAdminExport } from '../../utils/adminExport';
@@ -25,6 +25,8 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
   const [message, setMessage] = useState('');
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [referrerLookup, setReferrerLookup] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -35,6 +37,13 @@ export default function AdminUsersPage() {
   };
 
   useEffect(load, []);
+
+  useEffect(() => {
+    setSelectedUser((current) => {
+      if (!current) return current;
+      return items.find((item) => item.id === current.id) || current;
+    });
+  }, [items]);
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -87,6 +96,25 @@ export default function AdminUsersPage() {
       await downloadAdminExport('users');
     } catch {
       setMessage('Chưa xuất được danh sách người dùng.');
+    }
+  };
+
+  const updateReferrer = async () => {
+    if (!selectedUser || !referrerLookup.trim()) {
+      setMessage('Nhập mã giới thiệu, SVP ID, số điện thoại, email hoặc tên người giới thiệu.');
+      return;
+    }
+    setBusyId(`${selectedUser.id}-referrer`);
+    setMessage('');
+    try {
+      await api.patch(`/admin/users/${encodeURIComponent(selectedUser.id)}`, { referrerLookup: referrerLookup.trim() });
+      setMessage(`Đã cập nhật người giới thiệu cho ${selectedUser.fullName || selectedUser.email}.`);
+      setReferrerLookup('');
+      load();
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa cập nhật được người giới thiệu.');
+    } finally {
+      setBusyId('');
     }
   };
 
@@ -154,15 +182,29 @@ export default function AdminUsersPage() {
               onLock={() => updateAccountStatus(user, 'locked')}
               onUnlock={() => updateAccountStatus(user, 'active')}
               onReset={() => resetPassword(user)}
+              onOpen={() => {
+                setSelectedUser(user);
+                setReferrerLookup('');
+              }}
             />
           ))}
         </div>
       )}
+      {selectedUser ? (
+        <UserDetailPanel
+          user={selectedUser}
+          referrerLookup={referrerLookup}
+          setReferrerLookup={setReferrerLookup}
+          busy={busyId === `${selectedUser.id}-referrer`}
+          onSaveReferrer={updateReferrer}
+          onClose={() => setSelectedUser(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function UserCard({ user, busyId, onLock, onUnlock, onReset }: { user: any; busyId: string; onLock: () => void; onUnlock: () => void; onReset: () => void }) {
+function UserCard({ user, busyId, onLock, onUnlock, onReset, onOpen }: { user: any; busyId: string; onLock: () => void; onUnlock: () => void; onReset: () => void; onOpen: () => void }) {
   const initials = String(user.fullName || user.email || '?').trim().slice(0, 1).toUpperCase();
   const isLocked = user.accountStatus === 'locked';
   return (
@@ -174,7 +216,9 @@ function UserCard({ user, busyId, onLock, onUnlock, onReset }: { user: any; busy
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="truncate font-black text-[#25202a]">{user.fullName || 'Người dùng'}</p>
+              <button type="button" onClick={onOpen} className="max-w-full truncate text-left font-black text-[#25202a] underline-offset-4 hover:text-[#c40012] hover:underline">
+                {user.fullName || 'Người dùng'}
+              </button>
               <p className="mt-1 truncate text-sm font-semibold text-[#747b88]">{user.phone || user.email || 'Chưa có liên hệ'}</p>
             </div>
             <div className="flex min-w-0 flex-wrap gap-2">
@@ -216,6 +260,122 @@ function UserCard({ user, busyId, onLock, onUnlock, onReset }: { user: any; busy
       </div>
     </div>
   );
+}
+
+function UserDetailPanel({
+  user,
+  referrerLookup,
+  setReferrerLookup,
+  busy,
+  onSaveReferrer,
+  onClose,
+}: {
+  user: any;
+  referrerLookup: string;
+  setReferrerLookup: (value: string) => void;
+  busy: boolean;
+  onSaveReferrer: () => void;
+  onClose: () => void;
+}) {
+  const profile = user.profile || {};
+  const address = profile.address || {};
+  const bank = profile.bankInfo || {};
+  const referrer = user.referrer;
+  const certificateUrl = profile.certificateUrl || '';
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-black/35">
+      <aside className="ml-auto flex h-full w-full max-w-xl flex-col overflow-hidden bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chi tiết người dùng</p>
+            <h2 className="mt-1 truncate text-xl font-black text-[#25202a]">{user.fullName || 'Người dùng'}</h2>
+            <p className="mt-1 text-sm font-semibold text-[#7b8190]">{user.svpId || user.phone || user.email}</p>
+          </div>
+          <button onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gray-50 text-[#667085]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          <DetailSection title="Thông tin cơ bản">
+            <DetailRow label="Họ tên" value={user.fullName} />
+            <DetailRow label="Số điện thoại" value={user.phone} />
+            <DetailRow label="Email" value={user.email} />
+            <DetailRow label="CCCD" value={profile.cccd || user.cccd} />
+            <DetailRow label="Mã giới thiệu" value={user.referralCode} />
+          </DetailSection>
+
+          <DetailSection title="Hồ sơ">
+            <DetailRow label="Chứng chỉ" value={profile.hasCertificate ? 'Có' : 'Chưa có'} />
+            {certificateUrl ? (
+              <a href={certificateUrl} target="_blank" rel="noreferrer" className="block truncate text-sm font-bold text-[#c40012]">
+                Xem ảnh chứng chỉ
+              </a>
+            ) : null}
+            <DetailRow label="Học vấn" value={profile.educationLevel} />
+            <DetailRow label="Mô tả" value={profile.bio} />
+            <DetailRow label="Địa chỉ" value={formatAddress(address)} />
+          </DetailSection>
+
+          <DetailSection title="Ngân hàng">
+            <DetailRow label="Ngân hàng" value={bank.bankName} />
+            <DetailRow label="Số tài khoản" value={bank.accountNumber} />
+            <DetailRow label="Chủ tài khoản" value={bank.accountHolder} />
+          </DetailSection>
+
+          <DetailSection title="Người giới thiệu">
+            {referrer ? (
+              <div className="rounded-2xl bg-[#fff8f2] p-3">
+                <p className="font-black text-[#25202a]">{referrer.fullName || 'Chưa có tên'}</p>
+                <p className="mt-1 text-xs font-semibold text-[#7b8190]">{[referrer.svpId, referrer.phone, referrer.referralCode].filter(Boolean).join(' · ')}</p>
+              </div>
+            ) : (
+              <p className="text-sm font-semibold text-[#7b8190]">Chưa gán người giới thiệu.</p>
+            )}
+            <div className="mt-3 flex gap-2">
+              <input
+                value={referrerLookup}
+                onChange={(event) => setReferrerLookup(event.target.value)}
+                placeholder="Mã/SVP ID/SĐT/email/tên"
+                className="min-h-11 flex-1 rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+              />
+              <button
+                onClick={onSaveReferrer}
+                disabled={busy}
+                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white disabled:opacity-60"
+              >
+                <UserRoundCheck className="h-4 w-4" />
+                Lưu
+              </button>
+            </div>
+          </DetailSection>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 font-black text-[#25202a]">{title}</h3>
+      <div className="space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="flex gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+      <span className="w-28 shrink-0 text-xs font-black text-[#7b8190]">{label}</span>
+      <span className="min-w-0 flex-1 break-words text-sm font-semibold text-[#25202a]">{value || '-'}</span>
+    </div>
+  );
+}
+
+function formatAddress(address: any) {
+  return [address.houseNumber, address.street, address.ward, address.district, address.province].filter(Boolean).join(', ');
 }
 
 function UserSkeleton() {

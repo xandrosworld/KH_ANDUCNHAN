@@ -782,8 +782,24 @@ $router->add('GET', '/api/svp/admin/users', function () {
     svp_require_management_role();
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
+    if (function_exists('svp_v1_ensure_profile_columns')) {
+        svp_v1_ensure_profile_columns($db);
+    }
 
-    $stmt = $db->query("SELECT id, full_name, email, phone, svp_id, avatar_url, referral_code, account_status, created_at FROM users ORDER BY created_at DESC LIMIT 500");
+    $stmt = $db->query("
+        SELECT
+            u.id, u.full_name, u.email, u.phone, u.cccd, u.svp_id, u.avatar_url,
+            u.referral_code, u.referred_by, u.profile_json, u.account_status, u.created_at,
+            ref.svp_id AS referrer_svp_id,
+            ref.full_name AS referrer_name,
+            ref.phone AS referrer_phone,
+            ref.email AS referrer_email,
+            ref.referral_code AS referrer_referral_code
+        FROM users u
+        LEFT JOIN users ref ON ref.id = u.referred_by
+        ORDER BY u.created_at DESC
+        LIMIT 500
+    ");
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $result = [];
@@ -799,6 +815,18 @@ $router->add('GET', '/api/svp/admin/users', function () {
             'phone' => $u['phone'] ?? '',
             'svpId' => $u['svp_id'] ?? '',
             'avatar' => $u['avatar_url'] ?? '',
+            'cccd' => $u['cccd'] ?? '',
+            'referralCode' => $u['referral_code'] ?? '',
+            'referredBy' => $u['referred_by'] ?? '',
+            'profile' => function_exists('svp_v1_profile_from_user') ? svp_v1_profile_from_user($u) : [],
+            'referrer' => !empty($u['referred_by']) ? [
+                'id' => $u['referred_by'],
+                'svpId' => $u['referrer_svp_id'] ?? '',
+                'fullName' => $u['referrer_name'] ?? '',
+                'phone' => $u['referrer_phone'] ?? '',
+                'email' => $u['referrer_email'] ?? '',
+                'referralCode' => $u['referrer_referral_code'] ?? '',
+            ] : null,
             'accountStatus' => $u['account_status'] ?? 'active',
             'roles' => $roles,
             'createdAt' => $u['created_at'],
@@ -811,8 +839,16 @@ $router->add('GET', '/api/svp/admin/users', function () {
 $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
     $payload = svp_require_role('admin');
     $db = Database::getInstance();
+    if (function_exists('svp_v1_ensure_profile_columns')) {
+        svp_v1_ensure_profile_columns($db);
+    }
     $id = (string) ($params['id'] ?? '');
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $currentStmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+    $currentStmt->execute(['id' => $id]);
+    $oldUser = $currentStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$oldUser) Response::notFound('Khong tim thay tai khoan');
 
     $fields = [];
     $data = ['id' => $id];
@@ -827,10 +863,70 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
         $db->prepare("UPDATE users SET " . implode(', ', $fields) . " WHERE id = :id")->execute($data);
     }
 
+    $referrerLookup = trim((string) ($input['referrerLookup'] ?? $input['referrer'] ?? $input['referralCode'] ?? ''));
+    if ($referrerLookup !== '') {
+        $stmt = $db->prepare("
+            SELECT id, full_name, phone, email, svp_id, referral_code
+            FROM users
+            WHERE id <> :id
+              AND (
+                referral_code = :exact
+                OR svp_id = :exact
+                OR phone = :exact
+                OR email = :exact
+                OR full_name LIKE :like_name
+              )
+            ORDER BY
+              CASE
+                WHEN referral_code = :exact THEN 1
+                WHEN svp_id = :exact THEN 2
+                WHEN phone = :exact THEN 3
+                WHEN email = :exact THEN 4
+                ELSE 5
+              END,
+              created_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'id' => $id,
+            'exact' => $referrerLookup,
+            'like_name' => '%' . $referrerLookup . '%',
+        ]);
+        $referrer = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$referrer) Response::error('Khong tim thay nguoi gioi thieu phu hop', 404);
+
+        $db->prepare("UPDATE users SET referred_by = :ref WHERE id = :id")
+           ->execute(['ref' => $referrer['id'], 'id' => $id]);
+
+        $db->prepare("
+            INSERT INTO svp_referrals (id, referrer_user_id, referred_user_id, referral_code, referral_type, status)
+            VALUES (:id, :referrer_id, :referred_id, :code, 'other', 'activated')
+        ")->execute([
+            'id' => bin2hex(random_bytes(16)),
+            'referrer_id' => $referrer['id'],
+            'referred_id' => $id,
+            'code' => $referrer['referral_code'] ?: $referrerLookup,
+        ]);
+
+        svp_insert_audit($db, $payload['sub'], 'update_referrer', 'user', $id, [
+            'referredBy' => $oldUser['referred_by'] ?? null,
+        ], [
+            'referredBy' => $referrer['id'],
+            'lookup' => $referrerLookup,
+            'referrerName' => $referrer['full_name'] ?? '',
+            'referrerSvpId' => $referrer['svp_id'] ?? '',
+        ]);
+    }
+
     // Manage roles if provided
     if (isset($input['addRole'])) {
         $db->prepare("INSERT IGNORE INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at) VALUES (:uid, :role, 'approved', NOW(), :by, NOW())")
            ->execute(['uid' => $id, 'role' => $input['addRole'], 'by' => $payload['sub']]);
+    }
+
+    if (!empty($fields)) {
+        $currentStmt->execute(['id' => $id]);
+        svp_insert_audit($db, $payload['sub'], 'update', 'user', $id, $oldUser, $currentStmt->fetch(PDO::FETCH_ASSOC));
     }
 
     Response::json(['message' => 'Đã cập nhật']);
@@ -899,20 +995,61 @@ $router->add('GET', '/api/svp/admin/export', function () {
     svp_require_management_role();
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
+    if (function_exists('svp_v1_ensure_profile_columns')) {
+        svp_v1_ensure_profile_columns($db);
+    }
 
     $type = preg_replace('/[^a-z_]/', '', strtolower((string) ($_GET['type'] ?? 'users')));
     $today = date('Ymd-His');
 
     if ($type === 'users') {
         $stmt = $db->query("
-            SELECT u.svp_id, u.full_name, u.phone, u.email, u.account_status, GROUP_CONCAT(CONCAT(r.role_slug, ':', r.status) ORDER BY r.id SEPARATOR '; ') as roles, u.created_at
+            SELECT
+                u.svp_id, u.full_name, u.phone, u.email, u.cccd, u.profile_json,
+                u.referral_code, u.account_status,
+                ref.svp_id AS referrer_svp_id,
+                ref.full_name AS referrer_name,
+                GROUP_CONCAT(CONCAT(r.role_slug, ':', r.status) ORDER BY r.id SEPARATOR '; ') as roles,
+                u.created_at
             FROM users u
             LEFT JOIN svp_user_roles r ON r.user_id = u.id
-            GROUP BY u.id, u.svp_id, u.full_name, u.phone, u.email, u.account_status, u.created_at
+            LEFT JOIN users ref ON ref.id = u.referred_by
+            GROUP BY u.id, u.svp_id, u.full_name, u.phone, u.email, u.cccd, u.profile_json, u.referral_code, u.account_status, ref.svp_id, ref.full_name, u.created_at
             ORDER BY u.created_at DESC
             LIMIT 2000
         ");
-        svp_admin_csv_download("svp-users-{$today}.csv", ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'Trang thai', 'Vai tro', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+        $rows = array_map(function ($row) {
+            $profile = svp_v1_profile_from_user($row);
+            $address = $profile['address'] ?? [];
+            $bank = $profile['bankInfo'] ?? [];
+            return [
+                $row['svp_id'] ?? '',
+                $row['full_name'] ?? '',
+                $row['phone'] ?? '',
+                $row['email'] ?? '',
+                $row['cccd'] ?? '',
+                implode(', ', array_filter([
+                    $address['houseNumber'] ?? '',
+                    $address['street'] ?? '',
+                    $address['ward'] ?? '',
+                    $address['district'] ?? '',
+                    $address['province'] ?? '',
+                ])),
+                !empty($profile['hasCertificate']) ? 'Co' : 'Khong',
+                $profile['certificateUrl'] ?? '',
+                $profile['educationLevel'] ?? '',
+                $profile['bio'] ?? '',
+                $bank['bankName'] ?? '',
+                $bank['accountNumber'] ?? '',
+                $bank['accountHolder'] ?? '',
+                $row['referral_code'] ?? '',
+                trim(($row['referrer_svp_id'] ?? '') . ' ' . ($row['referrer_name'] ?? '')),
+                $row['account_status'] ?? '',
+                $row['roles'] ?? '',
+                $row['created_at'] ?? '',
+            ];
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+        svp_admin_csv_download("svp-users-{$today}.csv", ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'CCCD', 'Dia chi', 'Co chung chi', 'Anh chung chi', 'Hoc van', 'Mo ta', 'Ngan hang', 'So tai khoan', 'Chu tai khoan', 'Ma gioi thieu', 'Nguoi gioi thieu', 'Trang thai', 'Vai tro', 'Ngay tao'], $rows);
     }
 
     if ($type === 'properties') {

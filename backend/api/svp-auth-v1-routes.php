@@ -31,6 +31,49 @@ function svp_v1_ensure_account_status_column(PDO $db): void {
     }
 }
 
+function svp_v1_ensure_profile_columns(PDO $db): void {
+    try {
+        $db->exec("ALTER TABLE users ADD COLUMN cccd VARCHAR(20) DEFAULT NULL AFTER phone");
+    } catch (Throwable $e) {
+        // Column already exists.
+    }
+
+    try {
+        $db->exec("ALTER TABLE users ADD COLUMN profile_json LONGTEXT DEFAULT NULL AFTER avatar_url");
+    } catch (Throwable $e) {
+        // Column already exists.
+    }
+}
+
+function svp_v1_profile_from_user(array $user): array {
+    $profile = svp_json_decode($user['profile_json'] ?? null, []);
+    if (!is_array($profile)) $profile = [];
+
+    $defaults = [
+        'cccd' => (string) ($user['cccd'] ?? ''),
+        'hasCertificate' => false,
+        'certificateUrl' => '',
+        'address' => [
+            'province' => '',
+            'district' => '',
+            'ward' => '',
+            'street' => '',
+            'houseNumber' => '',
+        ],
+        'educationLevel' => '',
+        'bio' => '',
+        'bankInfo' => [
+            'bankName' => '',
+            'accountNumber' => '',
+            'accountHolder' => '',
+        ],
+    ];
+
+    $profile = array_replace_recursive($defaults, $profile);
+    if (!empty($user['cccd'])) $profile['cccd'] = (string) $user['cccd'];
+    return $profile;
+}
+
 function svp_v1_user_is_locked(array $user): bool {
     return strtolower((string) ($user['account_status'] ?? 'active')) === 'locked';
 }
@@ -134,7 +177,10 @@ function svp_v1_user_payload(array $user, array $roles, string $activeRole = '')
         'phone' => $user['phone'] ?? '',
         'fullName' => $user['full_name'] ?? '',
         'avatar' => $user['avatar_url'] ?? '',
+        'cccd' => $user['cccd'] ?? '',
         'referralCode' => $user['referral_code'] ?? '',
+        'referredBy' => $user['referred_by'] ?? '',
+        'profile' => svp_v1_profile_from_user($user),
         'accountStatus' => $user['account_status'] ?? 'active',
         'roles' => $roles,
         'activeRole' => $activeRole,
@@ -185,6 +231,7 @@ function svp_v1_login_payload(array $user, array $roles): array {
 $router->add('POST', '/api/svp/auth/register', function () {
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
+    svp_v1_ensure_profile_columns($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
     $fullName = trim($input['fullName'] ?? $input['full_name'] ?? '');
@@ -260,6 +307,8 @@ $router->add('POST', '/api/svp/auth/register', function () {
         'phone' => $phone,
         'full_name' => $fullName,
         'avatar_url' => '',
+        'cccd' => '',
+        'profile_json' => null,
         'referral_code' => $refCode,
     ];
     $roles = svp_v1_get_user_roles($db, $userId);
@@ -275,6 +324,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
 $router->add('POST', '/api/svp/auth/login', function () {
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
+    svp_v1_ensure_profile_columns($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $identifier = trim($input['email'] ?? $input['identifier'] ?? '');
     $password = trim($input['password'] ?? '');
@@ -300,6 +350,7 @@ $router->add('GET', '/api/svp/auth/me', function () {
     $payload = svp_v1_auth_require();
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
+    svp_v1_ensure_profile_columns($db);
 
     $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
     $stmt->execute(['id' => $payload['sub']]);
@@ -311,6 +362,71 @@ $router->add('GET', '/api/svp/auth/me', function () {
 
     $roles = svp_v1_get_user_roles($db, $user['id']);
     Response::json(['user' => svp_v1_user_payload($user, $roles, $payload['role'] ?? '')]);
+});
+
+$router->add('PATCH', '/api/svp/auth/profile', function () {
+    $payload = svp_v1_auth_require();
+    $db = Database::getInstance();
+    svp_v1_ensure_profile_columns($db);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $payload['sub']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) Response::error('Nguoi dung khong ton tai', 404);
+
+    $oldProfile = svp_v1_profile_from_user($user);
+    $nextProfile = $oldProfile;
+    $allowed = ['hasCertificate', 'certificateUrl', 'address', 'educationLevel', 'bio', 'bankInfo'];
+    foreach ($allowed as $key) {
+        if (array_key_exists($key, $input)) {
+            $nextProfile[$key] = $input[$key];
+        }
+    }
+
+    $cccd = trim((string) ($input['cccd'] ?? $input['profile']['cccd'] ?? $oldProfile['cccd'] ?? ''));
+    $nextProfile['cccd'] = $cccd;
+
+    $db->prepare("UPDATE users SET cccd = :cccd, profile_json = :profile WHERE id = :id")
+       ->execute([
+           'cccd' => $cccd,
+           'profile' => svp_json_encode($nextProfile),
+           'id' => $payload['sub'],
+       ]);
+
+    $stmt->execute(['id' => $payload['sub']]);
+    $updated = $stmt->fetch(PDO::FETCH_ASSOC);
+    $roles = svp_v1_get_user_roles($db, $payload['sub']);
+    svp_insert_audit($db, $payload['sub'], 'update', 'user_profile', $payload['sub'], $oldProfile, $nextProfile);
+
+    Response::json(['message' => 'Da luu ho so', 'user' => svp_v1_user_payload($updated, $roles, $payload['role'] ?? '')]);
+});
+
+$router->add('POST', '/api/svp/auth/certificate', function () {
+    $payload = svp_v1_auth_require();
+    $db = Database::getInstance();
+    svp_v1_ensure_profile_columns($db);
+    if (empty($_FILES['certificate'])) Response::error('Vui long chon anh chung chi', 400);
+
+    $urls = Upload::handleUpload($_FILES['certificate']);
+    $url = $urls[0] ?? '';
+    if ($url === '') Response::error('Khong tai duoc anh chung chi', 400);
+
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $payload['sub']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) Response::error('Nguoi dung khong ton tai', 404);
+
+    $profile = svp_v1_profile_from_user($user);
+    $oldProfile = $profile;
+    $profile['hasCertificate'] = true;
+    $profile['certificateUrl'] = $url;
+
+    $db->prepare("UPDATE users SET profile_json = :profile WHERE id = :id")
+       ->execute(['profile' => svp_json_encode($profile), 'id' => $payload['sub']]);
+    svp_insert_audit($db, $payload['sub'], 'upload', 'user_certificate', $payload['sub'], $oldProfile, $profile);
+
+    Response::json(['certificateUrl' => $url, 'profile' => $profile]);
 });
 
 $router->add('POST', '/api/svp/auth/change-password', function () {

@@ -112,7 +112,6 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const registerRef = useRef<HTMLDivElement>(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [legalModal, setLegalModal] = useState<LegalDocumentType | null>(null);
-  const [showRegisterOnMobile, setShowRegisterOnMobile] = useState(initialPanel === 'register');
 
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -133,13 +132,20 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const [registerLoading, setRegisterLoading] = useState(false);
 
   useEffect(() => {
-    setShowRegisterOnMobile(initialPanel === 'register');
+    if (initialPanel !== 'register') return;
+    window.setTimeout(() => {
+      registerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   }, [initialPanel]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     if (approvedRoles.length === 0) {
       navigate('/pending-approval');
+      return;
+    }
+    if (approvedRoles.length > 1) {
+      navigate('/select-role');
       return;
     }
     const activeRole = user?.activeRole || approvedRoles[0]?.slug;
@@ -227,20 +233,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     );
   };
 
-  const revealRegisterOnMobile = () => {
-    setShowRegisterOnMobile(true);
-    window.setTimeout(() => {
-      registerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
-  };
-
-  const registerVisibleOnMobile = initialPanel === 'register' || showRegisterOnMobile;
-  const loginColumnClass = initialPanel === 'register' ? 'order-2 lg:order-1' : 'order-1';
-  const registerColumnClass = registerVisibleOnMobile
-    ? initialPanel === 'register'
-      ? 'order-1 lg:order-2'
-      : 'order-2 lg:order-2'
-    : 'order-2 hidden lg:block';
+  const loginColumnClass = 'order-1';
+  const registerColumnClass = 'order-2 lg:order-2';
 
   return (
     <main className="svp-auth-page min-h-screen overflow-x-hidden bg-[#fff8f2] text-[#25202a]">
@@ -387,18 +381,6 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 <SocialButton label="Apple" href={SOCIAL_LOGIN_LINKS.apple} icon={<SvpAppleIcon className="h-6 w-6 text-black" />} />
                 <SocialButton label="Zalo" href={SOCIAL_LOGIN_LINKS.zalo} icon={<SvpZaloIcon className="h-6 w-6" />} />
               </div>
-
-              {!registerVisibleOnMobile ? (
-                <button
-                  type="button"
-                  data-testid="auth-show-register"
-                  onClick={revealRegisterOnMobile}
-                  className="mt-4 flex h-11 w-full items-center justify-center gap-1 rounded-xl border border-[#eadfd7] bg-white text-[13px] font-bold text-[#5f6672] transition hover:border-[#c40012]/35 hover:text-[#c40012] lg:hidden"
-                >
-                  <span>Chưa có tài khoản?</span>
-                  <span className="font-black text-[#c40012]">Đăng ký</span>
-                </button>
-              ) : null}
 
               <div className="mt-6 hidden rounded-xl border border-[#eadfd7] bg-[#fffaf7] p-4 sm:flex sm:items-start sm:gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-[#c40012]">

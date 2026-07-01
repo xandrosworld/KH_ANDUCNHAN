@@ -769,6 +769,15 @@ $router->add('GET', '/api/svp/properties/{id}/media', function ($params) {
             'createdAt' => (string) ($row['created_at'] ?? ''),
         ];
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    if (!$canSeeSensitiveMedia) {
+        $items = array_values(array_filter($items, function ($item) {
+            $caption = strtolower((string) ($item['caption'] ?? ''));
+            foreach (['private_approval', 'approval_document', 'red_book', 'contract_document', 'internal_only', 'duyet noi bo'] as $marker) {
+                if (str_contains($caption, $marker)) return false;
+            }
+            return true;
+        }));
+    }
     Response::json(['items' => $items]);
 });
 
@@ -835,7 +844,7 @@ $router->add('POST', '/api/svp/properties/{id}/media-upload', function ($params)
 
     foreach ($urls as $index => $url) {
         $id = svp_uid('media');
-        $itemCaption = $caption;
+        $itemCaption = str_contains($caption, $category . ':') ? $caption : ($category . ': ' . $caption);
         if (count($urls) > 1) {
             $itemCaption .= ' #' . ($index + 1);
         }
