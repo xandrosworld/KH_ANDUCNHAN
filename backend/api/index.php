@@ -2311,6 +2311,53 @@ $router->add('DELETE', '/api/schedules/{id}', function ($params) {
 //  AI — DESCRIPTION GENERATOR (proxy)
 // ═════════════════════════════════════════════════════════════════════════════
 
+function svp_ai_description_fallback(array $input): string
+{
+    $title = trim((string)($input['title'] ?? 'Nguồn nhà mới cần xử lý'));
+    $price = trim((string)($input['price'] ?? ''));
+    $area = trim((string)($input['area'] ?? $input['areaM2'] ?? $input['sqft'] ?? ''));
+    $district = trim((string)($input['district'] ?? $input['city'] ?? ''));
+    $ward = trim((string)($input['ward'] ?? ''));
+    $street = trim((string)($input['street'] ?? $input['address'] ?? ''));
+    $legal = trim((string)($input['legalStatus'] ?? $input['legal'] ?? ''));
+    $notes = trim((string)($input['notes'] ?? $input['description'] ?? ''));
+    $tags = trim((string)($input['amenities'] ?? $input['tag'] ?? $input['propertyFeature'] ?? ''));
+
+    $locationParts = array_filter([$street, $ward, $district], fn($value) => $value !== '');
+    $location = $locationParts ? implode(', ', $locationParts) : 'khu vực đang cập nhật';
+    $facts = [];
+    if ($area !== '') $facts[] = "diện tích {$area} m2";
+    if ($price !== '') $facts[] = "giá chào {$price}";
+    if ($legal !== '') $facts[] = "pháp lý {$legal}";
+    if ($tags !== '') $facts[] = "đặc điểm {$tags}";
+
+    $factLine = $facts ? implode(', ', $facts) : 'thông tin đang được bổ sung';
+    $noteLine = $notes !== '' ? "Ghi chú nội bộ: {$notes}" : 'Nên liên hệ chủ nhà để bổ sung hiện trạng, pháp lý và lịch xem phù hợp.';
+
+    return "Mô tả gợi ý: {$title} tại {$location}, {$factLine}. Nguồn nhà cần được trình bày ngắn gọn, rõ thông tin chính để chuyên viên/khách mua nắm nhanh trong vài giây đầu tiên.\n\nĐiểm cần nhấn mạnh: vị trí, hiện trạng, khả năng khai thác và mức độ phù hợp với nhu cầu mua ở/đầu tư. Nội dung nên giữ trung thực, không phóng đại quá mức và không cam kết pháp lý nếu chưa có xác minh.\n\n{$noteLine}";
+}
+
+function svp_ai_chat_fallback(array $input, string $lang): string
+{
+    $messages = $input['messages'] ?? [];
+    $lastUserText = '';
+    if (is_array($messages)) {
+        for ($i = count($messages) - 1; $i >= 0; $i--) {
+            $message = $messages[$i];
+            if (!is_array($message) || ($message['sender'] ?? '') !== 'me') continue;
+            $lastUserText = trim((string)($message['text'] ?? ''));
+            if ($lastUserText !== '') break;
+        }
+    }
+
+    if ($lang === 'vi') {
+        $suffix = $lastUserText !== '' ? " Yêu cầu gần nhất: {$lastUserText}" : '';
+        return 'Trợ lý AI đang dùng chế độ dự phòng. Hãy nhập rõ khu vực, tầm tiền, diện tích, pháp lý hoặc mục tiêu xử lý; hệ thống sẽ gợi ý nội dung ngắn gọn để đội vận hành tiếp tục làm việc.' . $suffix;
+    }
+
+    return 'The AI assistant is using fallback mode. Add the area, budget, size, legal status, or task goal so the system can suggest a concise next step.';
+}
+
 $router->add('POST', '/api/ai/description', function () use ($input) {
     // Rate limit: simple per-IP check using temp file
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -2388,7 +2435,10 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
     }
 
     if (!$description) {
-        Response::error('AI service unavailable. Please try again later.', 503);
+        Response::json([
+            'description' => svp_ai_description_fallback(is_array($input) ? $input : []),
+            'fallback' => true,
+        ]);
     }
 
     Response::json(['description' => $description]);
@@ -2491,7 +2541,10 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
     }
 
     if (!$reply) {
-        Response::error('AI chat service unavailable. Please try again later.', 503);
+        Response::json([
+            'reply' => svp_ai_chat_fallback(is_array($input) ? $input : [], $lang),
+            'fallback' => true,
+        ]);
     }
 
     Response::json(['reply' => $reply]);
