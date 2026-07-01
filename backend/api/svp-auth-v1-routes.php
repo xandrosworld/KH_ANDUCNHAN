@@ -393,6 +393,25 @@ $router->add('POST', '/api/svp/internal/repair-admin-v17', function () {
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
     svp_v1_ensure_profile_columns($db);
+    $uniqueAdminValue = function (string $column, string $base, string $currentUserId = '') use ($db): string {
+        if (!in_array($column, ['svp_id', 'referral_code'], true)) {
+            throw new InvalidArgumentException('Invalid unique column');
+        }
+
+        $candidate = strtoupper(substr(preg_replace('/[^A-Z0-9_]/', '', strtoupper($base)), 0, 58));
+        if ($candidate === '') $candidate = 'SVPADMIN';
+
+        for ($i = 0; $i < 12; $i++) {
+            $value = $i === 0 ? $candidate : substr($candidate, 0, 50) . strtoupper(bin2hex(random_bytes(3)));
+            $stmt = $db->prepare("SELECT id FROM users WHERE {$column} = :value AND id <> :id LIMIT 1");
+            $stmt->execute(['value' => $value, 'id' => $currentUserId]);
+            if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+                return $value;
+            }
+        }
+
+        return substr($candidate, 0, 42) . strtoupper(bin2hex(random_bytes(8)));
+    };
 
     $db->beginTransaction();
     try {
@@ -405,8 +424,8 @@ $router->add('POST', '/api/svp/internal/repair-admin-v17', function () {
             $userId = (string) $user['id'];
             $svpId = (string) ($user['svp_id'] ?? '');
             $refCode = (string) ($user['referral_code'] ?? '');
-            if ($svpId === '') $svpId = svp_v1_generate_svp_id($db);
-            if ($refCode === '') $refCode = svp_v1_generate_referral_code($svpId);
+            if ($svpId === '') $svpId = $uniqueAdminValue('svp_id', 'SVPADMIN' . substr(hash('sha256', $userId), 0, 10), $userId);
+            if ($refCode === '') $refCode = $uniqueAdminValue('referral_code', 'ADMIN' . substr(hash('sha256', $email), 0, 10), $userId);
 
             $db->prepare(
                 "UPDATE users
@@ -431,8 +450,8 @@ $router->add('POST', '/api/svp/internal/repair-admin-v17', function () {
             ]);
         } else {
             $userId = 'svp_admin_' . bin2hex(random_bytes(8));
-            $svpId = svp_v1_generate_svp_id($db);
-            $refCode = svp_v1_generate_referral_code($svpId);
+            $svpId = $uniqueAdminValue('svp_id', 'SVPADMIN' . bin2hex(random_bytes(4)));
+            $refCode = $uniqueAdminValue('referral_code', 'ADMIN' . bin2hex(random_bytes(4)));
             $db->prepare(
                 "INSERT INTO users
                  (id, full_name, email, phone, password_hash, role, status, svp_id, referral_code, account_status, created_at)
@@ -475,7 +494,11 @@ $router->add('POST', '/api/svp/internal/repair-admin-v17', function () {
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         error_log('[SVP_ADMIN_REPAIR] ' . $e->getMessage());
-        Response::error('Could not repair admin account', 500);
+        Response::json([
+            'ok' => false,
+            'error' => 'Could not repair admin account',
+            'detail' => $e->getMessage(),
+        ], 500);
     }
 });
 
