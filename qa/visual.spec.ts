@@ -124,6 +124,44 @@ const referrals = [
 
 const configGroups = [
   {
+    id: 'company_units',
+    group: 'company_units',
+    name: 'Cong ty thanh vien',
+    options: [
+      { id: 'vp_hn', key: 'vp_hn', label: 'Van Phuc Ha Noi', value: 'vp_hn', isActive: true },
+      { id: 'vp_hcm', key: 'vp_hcm', label: 'Van Phuc TP.HCM', value: 'vp_hcm', isActive: true },
+    ],
+  },
+  {
+    id: 'visibility_levels',
+    group: 'visibility_levels',
+    name: 'Quyen xem',
+    options: [
+      { id: 'vl_quan_ly', key: 'vl_quan_ly', label: 'Quan ly/Admin', value: 'management_admin', isActive: true },
+      { id: 'vl_cong_khai', key: 'vl_cong_khai', label: 'Cong khai cho khach mua', value: 'public_buyer', isActive: true },
+    ],
+  },
+  {
+    id: 'property_tags',
+    group: 'property_tags',
+    name: 'Tag nha',
+    options: [
+      { id: 'tag_oto', key: 'tag_oto', label: 'O to', value: 'oto', isActive: true },
+      { id: 'tag_dau_tu', key: 'tag_dau_tu', label: 'Dau tu', value: 'dau_tu', isActive: true },
+    ],
+  },
+  {
+    id: 'signing_criteria',
+    group: 'signing_criteria',
+    name: 'Diem ky nha',
+    options: [
+      { id: 'sign_owner', key: 'sign_owner', label: 'Ky voi nguoi dung ten tren so', value: 'owner_on_book', score: 1, isActive: true },
+      { id: 'sign_non_owner', key: 'sign_non_owner', label: 'Ky voi nguoi khong dung ten tren so', value: 'non_owner', score: -1, isActive: true },
+      { id: 'sign_low_commission', key: 'sign_low_commission', label: 'Hoa hong nho hon 3%', value: 'low_commission', score: -1, isActive: true },
+      { id: 'sign_e_contract', key: 'sign_e_contract', label: 'Hop dong dien tu', value: 'e_contract', score: -3, isActive: true },
+    ],
+  },
+  {
     id: 'company_unit',
     group: 'company_unit',
     name: 'Cong ty thanh vien',
@@ -316,7 +354,21 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
       return ok(route, { item: { ...current, requiresApproval: !!body?.requiresApproval } });
     }
 
-    if (path === '/properties/check-duplicate' && method === 'POST') return ok(route, { matches: [properties[0]] });
+    if (path === '/properties/check-duplicate' && method === 'POST') {
+      return ok(route, {
+        matches: [],
+        total: 0,
+        rule: {
+          hasDuplicates: false,
+          canSubmit: true,
+          currentExpertCount: 0,
+          maxExpertsAllowed: 3,
+          highestSigningScore: null,
+          submittedSigningScore: 0,
+          message: 'Chua thay nguon trung theo du lieu da nhap.',
+        },
+      });
+    }
     if (path === '/properties' && method === 'GET') return ok(route, { items: filterByQuery(url, properties), total: properties.length });
     if (path === '/properties' && method === 'POST') return ok(route, { item: { ...properties[0], id: 'prop_new', code: 'SVP000003' } });
     if (/^\/properties\/[^/]+\/status$/.test(path) && method === 'PATCH') return ok(route, { message: 'Da cap nhat trang thai' });
@@ -573,15 +625,18 @@ test.describe('V1 core workflows', () => {
     for (const width of [320, 360, 375, 390, 412, 430]) {
       await page.setViewportSize({ width, height: 844 });
       await page.goto('/register', { waitUntil: 'networkidle' });
+      await page.getByTestId('auth-role-option-khach_mua').click();
+      await expect(page.getByTestId('auth-buyer-need-inline')).toBeVisible();
 
       const layoutIsSafe = await page.evaluate(() => {
         const viewportWidth = document.documentElement.clientWidth;
         const registerCard = document.querySelector('[data-testid="auth-register-card"]');
         const roleList = document.querySelector('[data-testid="auth-role-list"]');
+        const buyerNeed = document.querySelector('[data-testid="auth-buyer-need-inline"]');
         const roleOptions = Array.from(document.querySelectorAll('[data-testid^="auth-role-option-"]'));
         const roleChecks = Array.from(document.querySelectorAll('[data-testid^="auth-role-check-"]'));
 
-        if (!(registerCard instanceof HTMLElement) || !(roleList instanceof HTMLElement)) return false;
+        if (!(registerCard instanceof HTMLElement) || !(roleList instanceof HTMLElement) || !(buyerNeed instanceof HTMLElement)) return false;
         if (roleOptions.length < 8 || roleChecks.length < 8) return false;
 
         const fitsViewport = (element: Element) => {
@@ -605,6 +660,7 @@ test.describe('V1 core workflows', () => {
           document.documentElement.scrollWidth <= viewportWidth + 1 &&
           fitsViewport(registerCard) &&
           fitsViewport(roleList) &&
+          fitsViewport(buyerNeed) &&
           roleOptions.every((option) => fitsViewport(option) && fitsParent(option, registerCard)) &&
           roleChecks.every((check) => fitsViewport(check) && fitsParent(check, registerCard))
         );
@@ -678,6 +734,8 @@ test.describe('V1 core workflows', () => {
   test('expert can use AI description and submit a property', async ({ page }, testInfo) => {
     await installMocks(page, 'chuyen_gia');
     await page.goto('/chuyen-gia/dang-nha', { waitUntil: 'networkidle' });
+    await expect(page.getByText(/Thông tin phụ của chủ nhà|Th.ng tin ph. c.a ch. nh./i)).toBeVisible();
+    await expect(page.getByLabel(/Email chủ nhà|Email ch. nh./i)).toBeHidden();
 
     await page.getByLabel(/Tên chủ nhà|T.n ch. nh./i).fill('Chu nha QA');
     await page.getByLabel(/SĐT chủ nhà|S.T ch. nh./i).fill('0909000000');
@@ -690,11 +748,11 @@ test.describe('V1 core workflows', () => {
     await page.getByRole('textbox', { name: /Diện tích m2|Di.n t.ch m2/i }).fill('72');
     await page.getByLabel(/Ghi chú nội bộ|Ghi ch. n.i b./i).fill('Đã rà trùng, nguồn QA có ghi chú xử lý rõ ràng.');
 
-    await page.getByRole('button', { name: /Kiem tra trung|Ki.m tra tr.ng|Kiểm tra trùng/i }).click();
     const checkboxes = page.getByRole('checkbox');
     for (let i = 0; i < await checkboxes.count(); i += 1) {
       await checkboxes.nth(i).check();
     }
+    await page.getByRole('button', { name: /Kiem tra trung|Ki.m tra tr.ng|Kiểm tra trùng/i }).click();
     await page.getByRole('button', { name: /AI/i }).click();
     await expect(page.locator('textarea').nth(1)).toHaveValue(/Mo ta AI/);
     await page.getByRole('button', { name: /Gui duyet|G.i duy.t/i }).click();

@@ -74,7 +74,7 @@ INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `metadata_
 ('field_label_houseImages', 'property_field_labels', 'Ảnh nhà', 'houseImages', '{"scope":"property","editableLabel":true}', 260, 1),
 ('field_label_bookImages', 'property_field_labels', 'Ảnh sổ đỏ/sổ hồng', 'bookImages', '{"scope":"property","editableLabel":true}', 270, 1),
 ('field_label_contractImages', 'property_field_labels', 'Hợp đồng/tài liệu', 'contractImages', '{"scope":"property","editableLabel":true}', 280, 1),
-('field_label_ownerSelfie', 'property_field_labels', 'Ảnh selfie với chủ nhà', 'ownerSelfie', '{"scope":"property","editableLabel":true}', 290, 1)
+('field_label_ownerSelfie', 'property_field_labels', 'Ảnh tự sướng với nhà', 'ownerSelfie', '{"scope":"property","editableLabel":true}', 290, 1)
 ON DUPLICATE KEY UPDATE
 `sort_order` = VALUES(`sort_order`),
 `is_active` = VALUES(`is_active`),

@@ -196,7 +196,7 @@ function svp_property_field_label_definitions(): array
         ['key' => 'houseImages', 'label' => 'Ảnh nhà', 'sortOrder' => 290],
         ['key' => 'bookImages', 'label' => 'Ảnh sổ đỏ/sổ hồng', 'sortOrder' => 300],
         ['key' => 'contractImages', 'label' => 'Hợp đồng/tài liệu', 'sortOrder' => 310],
-        ['key' => 'ownerSelfie', 'label' => 'Ảnh selfie với chủ nhà', 'sortOrder' => 320],
+        ['key' => 'ownerSelfie', 'label' => 'Ảnh tự sướng với nhà', 'sortOrder' => 320],
     ];
 }
 
@@ -235,6 +235,15 @@ function svp_ensure_property_field_label_config(PDO $db): void
             'sort_order' => (int) $field['sortOrder'],
         ]);
     }
+
+    $legacyOwnerSelfieLabel = 'Ảnh selfie với ' . 'chủ nhà';
+    $db->prepare(
+        "UPDATE svp_config_options
+         SET label = 'Ảnh tự sướng với nhà'
+         WHERE id = 'field_label_ownerSelfie'
+           AND group_id = 'property_field_labels'
+           AND label = :legacy_label"
+    )->execute(['legacy_label' => $legacyOwnerSelfieLabel]);
 }
 
 function svp_ensure_v1_visibility_labels(PDO $db): void
@@ -920,7 +929,8 @@ $router->add('GET', '/api/svp/customers', function () {
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
     if (!$canSeeSensitiveMedia) {
-        $sensitiveCaptions = ['approval_document', 'red_book', 'contract_document', 'owner_selfie', 'Ảnh duyệt hồ sơ', 'Sổ đỏ / giấy tờ', 'Hợp đồng / tài liệu', 'Ảnh selfie với chủ nhà'];
+        $legacyOwnerSelfieCaption = 'Ảnh selfie với ' . 'chủ nhà';
+        $sensitiveCaptions = ['approval_document', 'red_book', 'contract_document', 'owner_selfie', 'Ảnh duyệt hồ sơ', 'Sổ đỏ / giấy tờ', 'Hợp đồng / tài liệu', $legacyOwnerSelfieCaption, 'Ảnh tự sướng với nhà'];
         $items = array_values(array_filter($items, function ($item) use ($sensitiveCaptions) {
             return !in_array((string) ($item['caption'] ?? ''), $sensitiveCaptions, true);
         }));

@@ -59,7 +59,7 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
       ['houseImages', 'Ảnh nhà'],
       ['bookImages', 'Ảnh sổ đỏ/sổ hồng'],
       ['contractImages', 'Hợp đồng/tài liệu'],
-      ['ownerSelfie', 'Ảnh selfie với chủ nhà'],
+      ['ownerSelfie', 'Ảnh tự sướng với nhà'],
     ].map(([value, label], index) => ({
       id: `field_label_${value}`,
       groupId: 'property_field_labels',

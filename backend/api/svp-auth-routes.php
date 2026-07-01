@@ -1147,57 +1147,137 @@ $router->add('GET', '/api/svp/notifications', function () {
     Response::json(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 });
 
-$router->add('POST', '/api/svp/properties/check-duplicate', function () {
-    svp_auth_require();
-    $db = Database::getInstance();
-    $input = json_decode(file_get_contents('php://input'), true) ?: [];
-
-    $address = trim($input['address'] ?? '');
-    $bookSerial = trim($input['bookSerial'] ?? '');
-    $bookSheet = trim($input['bookSheet'] ?? '');
-    $bookParcel = trim($input['bookParcel'] ?? '');
-    $ownerPhone = trim($input['ownerPhone'] ?? '');
-    $gpsCoordinates = trim($input['gpsCoordinates'] ?? '');
+function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId = null): array
+{
+    $address = trim((string) ($input['address'] ?? ''));
+    $bookSerial = trim((string) ($input['bookSerial'] ?? $input['book_serial'] ?? ''));
+    $bookSheet = trim((string) ($input['bookSheet'] ?? ''));
+    $bookParcel = trim((string) ($input['bookParcel'] ?? ''));
+    $ownerPhone = trim((string) ($input['ownerPhone'] ?? $input['owner_phone'] ?? ''));
+    $gpsCoordinates = trim((string) ($input['gpsCoordinates'] ?? ''));
+    $submittedSigningScore = (float) ($input['signingScore'] ?? $input['signing_score'] ?? 0);
 
     $conditions = [];
     $params = [];
 
-    if ($address) {
+    if ($address !== '') {
         $conditions[] = "address LIKE :addr";
         $params['addr'] = '%' . $address . '%';
     }
-    if ($bookSerial) {
+    if ($bookSerial !== '') {
         $conditions[] = "book_serial = :bs";
         $params['bs'] = $bookSerial;
     }
-    if ($bookSheet) {
+    if ($bookSheet !== '') {
         $conditions[] = "extra_json LIKE :book_sheet";
         $params['book_sheet'] = '%' . $bookSheet . '%';
     }
-    if ($bookParcel) {
+    if ($bookParcel !== '') {
         $conditions[] = "extra_json LIKE :book_parcel";
         $params['book_parcel'] = '%' . $bookParcel . '%';
     }
-    if ($ownerPhone) {
+    if ($ownerPhone !== '') {
         $conditions[] = "owner_phone = :op";
         $params['op'] = $ownerPhone;
     }
-    if ($gpsCoordinates) {
+    if ($gpsCoordinates !== '') {
         $conditions[] = "extra_json LIKE :gps";
         $params['gps'] = '%' . $gpsCoordinates . '%';
     }
 
+    $emptyRule = [
+        'hasDuplicates' => false,
+        'canSubmit' => true,
+        'currentExpertCount' => 0,
+        'maxExpertsAllowed' => 3,
+        'highestSigningScore' => null,
+        'submittedSigningScore' => $submittedSigningScore,
+        'message' => 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.',
+    ];
+
     if (empty($conditions)) {
-        Response::json(['matches' => [], 'total' => 0]);
-        return;
+        return ['matches' => [], 'total' => 0, 'rule' => $emptyRule];
     }
 
     $where = '(' . implode(' OR ', $conditions) . ') AND deleted_at IS NULL';
-    $stmt = $db->prepare("SELECT id, code, title, address, district, book_serial, status_id FROM svp_properties WHERE {$where} LIMIT 10");
-    $stmt->execute($params);
-    $matches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($excludeId !== null && $excludeId !== '') {
+        $where .= ' AND id <> :exclude_id';
+        $params['exclude_id'] = $excludeId;
+    }
 
-    Response::json(['matches' => $matches, 'total' => count($matches)]);
+    $stmt = $db->prepare("
+        SELECT id, code, title, address, district, book_serial, status_id, expert_id, created_by, signing_score, extra_json
+        FROM svp_properties
+        WHERE {$where}
+        ORDER BY signing_score DESC, created_at ASC
+        LIMIT 20
+    ");
+    $stmt->execute($params);
+    $rawMatches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $expertKeys = [];
+    $highestSigningScore = null;
+    $matches = array_map(function ($row) use (&$expertKeys, &$highestSigningScore) {
+        $score = (float) ($row['signing_score'] ?? 0);
+        if ($highestSigningScore === null || $score > $highestSigningScore) {
+            $highestSigningScore = $score;
+        }
+        $expertKey = (string) ($row['expert_id'] ?: $row['created_by'] ?: $row['id']);
+        if ($expertKey !== '') {
+            $expertKeys[$expertKey] = true;
+        }
+        return [
+            'id' => (string) $row['id'],
+            'code' => (string) ($row['code'] ?? ''),
+            'title' => (string) ($row['title'] ?? ''),
+            'address' => (string) ($row['address'] ?? ''),
+            'district' => (string) ($row['district'] ?? ''),
+            'bookSerial' => (string) ($row['book_serial'] ?? ''),
+            'statusId' => (string) ($row['status_id'] ?? ''),
+            'expertId' => (string) ($row['expert_id'] ?? ''),
+            'createdBy' => (string) ($row['created_by'] ?? ''),
+            'signingScore' => $score,
+        ];
+    }, $rawMatches);
+
+    $expertCount = count($expertKeys);
+    $hasDuplicates = count($matches) > 0;
+    $maxExpertsAllowed = 3;
+    $canSubmit = true;
+    $message = 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.';
+
+    if ($hasDuplicates) {
+        if ($expertCount >= $maxExpertsAllowed) {
+            $canSubmit = false;
+            $message = 'Nguồn trùng đã đủ tối đa 3 Chuyên gia quản lý. Vui lòng báo admin xử lý.';
+        } elseif ($highestSigningScore !== null && $submittedSigningScore <= $highestSigningScore) {
+            $canSubmit = false;
+            $message = 'Nguồn trùng đang có điểm ký cao nhất ' . $highestSigningScore . '. Điểm hiện tại ' . $submittedSigningScore . ' phải cao hơn mới được gửi duyệt.';
+        } else {
+            $message = 'Nguồn trùng nhưng điểm ký hiện tại cao hơn nguồn cũ. Có thể gửi duyệt, admin vẫn cần kiểm tra trước khi hiển thị.';
+        }
+    }
+
+    return [
+        'matches' => $matches,
+        'total' => count($matches),
+        'rule' => [
+            'hasDuplicates' => $hasDuplicates,
+            'canSubmit' => $canSubmit,
+            'currentExpertCount' => $expertCount,
+            'maxExpertsAllowed' => $maxExpertsAllowed,
+            'highestSigningScore' => $highestSigningScore,
+            'submittedSigningScore' => $submittedSigningScore,
+            'message' => $message,
+        ],
+    ];
+}
+
+$router->add('POST', '/api/svp/properties/check-duplicate', function () {
+    svp_auth_require();
+    $db = Database::getInstance();
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    Response::json(svp_property_duplicate_rule($db, $input));
 });
 
 $router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
@@ -1209,10 +1289,38 @@ $router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
 
     if (!$id || !$statusId) Response::error('Thong tin khong hop le', 400);
 
-    $stmt = $db->prepare("SELECT status_id FROM svp_properties WHERE id = :id AND deleted_at IS NULL");
+    $stmt = $db->prepare("
+        SELECT id, status_id, address, book_serial, owner_phone, signing_score, extra_json
+        FROM svp_properties
+        WHERE id = :id AND deleted_at IS NULL
+    ");
     $stmt->execute(['id' => $id]);
     $old = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$old) Response::notFound();
+
+    if ($statusId === 'st_active') {
+        $extra = svp_json_decode($old['extra_json'] ?? null, []);
+        $ruleResult = svp_property_duplicate_rule($db, [
+            'address' => (string) ($old['address'] ?? ''),
+            'bookSerial' => (string) ($old['book_serial'] ?? ''),
+            'ownerPhone' => (string) ($old['owner_phone'] ?? ''),
+            'gpsCoordinates' => (string) ($extra['gpsCoordinates'] ?? ''),
+            'signingScore' => (float) ($old['signing_score'] ?? 0),
+        ], $id);
+        if (!($ruleResult['rule']['canSubmit'] ?? true)) {
+            http_response_code(409);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok' => false,
+                'error' => (string) ($ruleResult['rule']['message'] ?? 'Nguồn trùng chưa đủ điều kiện duyệt'),
+                'data' => [
+                    'duplicateRule' => $ruleResult['rule'],
+                    'matches' => $ruleResult['matches'],
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
 
     $db->prepare("UPDATE svp_properties SET status_id = :s, updated_by = :actor WHERE id = :id")
        ->execute(['s' => $statusId, 'actor' => $payload['sub'], 'id' => $id]);

@@ -10,6 +10,15 @@ import type { SvpConfigGroup, SvpConfigOption } from '../../types/svp';
 const DISTRICTS = ['Quận 1', 'Quận 3', 'Quận 5', 'Quận 7', 'Quận 10', 'Quận 12', 'Bình Thạnh', 'Gò Vấp', 'Tân Bình', 'Tân Phú', 'Thủ Đức', 'Bình Tân', 'Nhà Bè', 'Hóc Môn'];
 const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường 5', 'Phường 7', 'Phường 10', 'Phường 12', 'Phường 15', 'Phường 17', 'Hiệp Bình Chánh', 'Linh Đông', 'Tân Sơn Nhì'];
 const LEGAL_STATUS = ['Sổ đỏ / sổ hồng', 'Hợp đồng mua bán', 'Giấy tay', 'Đang hoàn thiện', 'Cần kiểm tra thêm'];
+type DuplicateRule = {
+  hasDuplicates: boolean;
+  canSubmit: boolean;
+  currentExpertCount: number;
+  maxExpertsAllowed: number;
+  highestSigningScore: number | null;
+  submittedSigningScore: number;
+  message: string;
+};
 
 const initialForm = {
   ownerName: '',
@@ -43,6 +52,7 @@ export default function ExpertAddPropertyPage() {
   const [privateFiles, setPrivateFiles] = useState<File[]>([]);
   const [publicFiles, setPublicFiles] = useState<File[]>([]);
   const [duplicates, setDuplicates] = useState<any[]>([]);
+  const [duplicateRule, setDuplicateRule] = useState<DuplicateRule | null>(null);
   const [duplicateChecked, setDuplicateChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
@@ -70,11 +80,15 @@ export default function ExpertAddPropertyPage() {
     setForm((current) => ({ ...current, [key]: value }));
     if (['ownerPhone', 'street', 'ward', 'district', 'gpsCoordinates', 'bookSerial'].includes(key)) {
       setDuplicateChecked(false);
+      setDuplicateRule(null);
       setDuplicates([]);
     }
   };
 
   const toggleSigning = (id: string) => {
+    setDuplicateChecked(false);
+    setDuplicateRule(null);
+    setDuplicates([]);
     setSigningCriteriaIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   };
 
@@ -87,14 +101,17 @@ export default function ExpertAddPropertyPage() {
         bookSerial: form.bookSerial,
         ownerPhone: form.ownerPhone,
         gpsCoordinates: form.gpsCoordinates,
+        signingScore,
       });
       setDuplicates(response.data?.matches || []);
+      setDuplicateRule(response.data?.rule || null);
       setDuplicateChecked(true);
       if ((response.data?.matches || []).length > 0) {
-        setMessage('Nguồn có dấu hiệu trùng. Hệ thống vẫn lưu điểm ký để admin xét duyệt theo quy trình.');
+        setMessage(response.data?.rule?.message || 'Nguồn có dấu hiệu trùng. Hệ thống vẫn lưu điểm ký để admin xét duyệt theo quy trình.');
       }
     } catch {
       setDuplicateChecked(false);
+      setDuplicateRule(null);
       setMessage('Chưa kiểm tra trùng được. Vui lòng thử lại.');
     }
   };
@@ -154,6 +171,10 @@ export default function ExpertAddPropertyPage() {
       setMessage('Vui lòng bấm kiểm tra trùng trước khi gửi duyệt.');
       return;
     }
+    if (duplicateRule?.hasDuplicates && !duplicateRule.canSubmit) {
+      setMessage(duplicateRule.message || 'Nguồn trùng chưa đủ điều kiện gửi duyệt theo điểm ký và giới hạn tối đa 3 Chuyên gia.');
+      return;
+    }
 
     setSubmitting(true);
     setMessage('');
@@ -195,6 +216,7 @@ export default function ExpertAddPropertyPage() {
           signingScore,
           duplicateChecked,
           duplicateMatches: duplicates,
+          duplicateRule,
           duplicateRuleNote: 'Nguoi sau co diem ky cao hon moi nen duyet; toi da 3 chuyen gia tren mot nguon trung.',
           submittedAt: new Date().toISOString(),
         },
@@ -230,9 +252,14 @@ export default function ExpertAddPropertyPage() {
           <div className="grid gap-3">
             <Field label="Tên chủ nhà" value={form.ownerName} onChange={(value) => update('ownerName', value)} />
             <Field label="SĐT chủ nhà" value={form.ownerPhone} onChange={(value) => update('ownerPhone', value)} inputMode="tel" />
-            <Field label="Email chủ nhà (không bắt buộc)" value={form.ownerEmail} onChange={(value) => update('ownerEmail', value)} type="email" />
-            <Textarea label="Ghi chú về chủ" value={form.ownerNote} onChange={(value) => update('ownerNote', value)} rows={3} />
           </div>
+          <details className="mt-3 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2">
+            <summary className="cursor-pointer text-xs font-black text-[#5f6672]">Thông tin phụ của chủ nhà</summary>
+            <div className="mt-3 grid gap-3">
+              <Field label="Email chủ nhà (không bắt buộc)" value={form.ownerEmail} onChange={(value) => update('ownerEmail', value)} type="email" />
+              <Textarea label="Ghi chú về chủ" value={form.ownerNote} onChange={(value) => update('ownerNote', value)} rows={3} />
+            </div>
+          </details>
         </section>
 
         <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
@@ -337,8 +364,16 @@ export default function ExpertAddPropertyPage() {
           </button>
         </div>
         {duplicateChecked ? (
-          <div className={`mt-3 rounded-2xl px-3 py-2 text-sm font-bold ${duplicates.length ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-            {duplicates.length ? `Có ${duplicates.length} nguồn nghi trùng. Admin sẽ xét điểm ký và tối đa 3 chuyên gia.` : 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.'}
+          <div className={`mt-3 rounded-2xl px-3 py-2 text-sm font-bold ${
+            duplicates.length
+              ? duplicateRule?.canSubmit
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-red-50 text-[#c40012]'
+              : 'bg-emerald-50 text-emerald-700'
+          }`}>
+            {duplicates.length
+              ? duplicateRule?.message || `Có ${duplicates.length} nguồn nghi trùng. Admin sẽ xét điểm ký và tối đa 3 chuyên gia.`
+              : 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.'}
           </div>
         ) : null}
         <Textarea className="mt-3" label="Ghi chú nội bộ" value={form.internalNote} onChange={(value) => update('internalNote', value)} rows={3} placeholder="Cách xử lý trùng, lưu ý chủ nhà, điều kiện dẫn khách..." />

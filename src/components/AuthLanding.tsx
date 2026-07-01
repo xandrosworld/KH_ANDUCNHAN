@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { getRoleDashboardPath, PUBLIC_REGISTRATION_ROLES } from '../data/roles';
 import type { LegalDocumentType } from '../data/legalDocuments';
 import { useAuth } from '../contexts/AuthContext';
+import { svpApi } from '../services/svpApi';
 import LegalModal from './LegalModal';
 import {
   SvpAppleIcon,
@@ -126,6 +127,16 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const [registerPassword, setRegisterPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [buyerNeed, setBuyerNeed] = useState({
+    city: '',
+    district: '',
+    ward: '',
+    street: '',
+    budgetMin: '',
+    budgetMax: '',
+    purpose: '',
+    note: '',
+  });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [registerError, setRegisterError] = useState('');
@@ -199,6 +210,11 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return setRegisterError('Email chưa đúng định dạng.');
     if (registerPassword.length < 6) return setRegisterError('Mật khẩu cần tối thiểu 6 ký tự.');
     if (selectedRoles.length === 0) return setRegisterError('Vui lòng chọn ít nhất một nhu cầu hoặc vai trò.');
+    if (selectedRoles.includes('khach_mua')) {
+      if (!buyerNeed.city.trim() || !buyerNeed.district.trim() || !buyerNeed.budgetMax.trim() || !buyerNeed.purpose) {
+        return setRegisterError('Vui lòng nhập khu vực, tầm tiền và mục đích mua để môi giới hỗ trợ nhanh hơn.');
+      }
+    }
     if (!acceptedTerms) return setRegisterError('Vui lòng đồng ý với Điều khoản sử dụng và Chính sách bảo mật.');
 
     setRegisterLoading(true);
@@ -214,6 +230,9 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
       });
 
       if (response.user?.roles?.length) {
+        if (selectedRoles.includes('khach_mua')) {
+          await saveBuyerNeedAfterRegister(response.user.id);
+        }
         routeAfterAuth(response.user.roles);
         return;
       }
@@ -231,6 +250,50 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     setSelectedRoles((current) =>
       current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug],
     );
+  };
+
+  const updateBuyerNeed = (key: keyof typeof buyerNeed, value: string) => {
+    setRegisterError('');
+    setBuyerNeed((current) => ({ ...current, [key]: value }));
+  };
+
+  const saveBuyerNeedAfterRegister = async (userId: string) => {
+    const areaParts = [buyerNeed.city, buyerNeed.district, buyerNeed.ward, buyerNeed.street]
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const areaText = areaParts.join(', ');
+    const customer = await svpApi.createCustomer({
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      email: email.trim().toLowerCase(),
+      source: 'khach_mua_tu_dang_ky',
+      statusId: 'new',
+      assignedUserId: '',
+      note: [
+        `User ID: ${userId}`,
+        referralCode.trim() ? `Mã giới thiệu: ${referralCode.trim()}` : '',
+        `Khu vực ưu tiên: ${areaText}`,
+        `Mục đích mua: ${buyerNeed.purpose}`,
+        buyerNeed.note.trim(),
+      ].filter(Boolean).join('. '),
+    });
+
+    await svpApi.createCustomerNeed({
+      customerId: customer.id,
+      districtIds: areaParts.length ? areaParts : [areaText || 'Chưa xác định'],
+      budgetMin: buyerNeed.budgetMin ? Number(buyerNeed.budgetMin) : null,
+      budgetMax: buyerNeed.budgetMax ? Number(buyerNeed.budgetMax) : null,
+      areaMin: null,
+      areaMax: null,
+      tagIds: buyerNeed.purpose ? [buyerNeed.purpose] : [],
+      description: [
+        `Khu vực ưu tiên: ${areaText}`,
+        `Tầm tiền: ${buyerNeed.budgetMin || '0'} - ${buyerNeed.budgetMax}`,
+        `Mục đích: ${buyerNeed.purpose}`,
+        buyerNeed.note.trim(),
+      ].filter(Boolean).join('\n'),
+      statusId: 'new',
+    });
   };
 
   const loginColumnClass = 'order-1';
@@ -453,6 +516,10 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   </div>
                 </div>
 
+                {selectedRoles.includes('khach_mua') ? (
+                  <BuyerNeedInlineForm value={buyerNeed} onChange={updateBuyerNeed} />
+                ) : null}
+
                 <div className="flex min-w-0 items-start gap-2 pt-1 text-[13px] font-semibold leading-[1.35] text-[#3d424c] sm:text-sm sm:leading-5">
                   <input
                     id="accepted-legal"
@@ -580,6 +647,91 @@ function AlertMessage({ children }: { children: ReactNode }) {
     <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[#b90416]">
       {children}
     </div>
+  );
+}
+
+function BuyerNeedInlineForm({
+  value,
+  onChange,
+}: {
+  value: {
+    city: string;
+    district: string;
+    ward: string;
+    street: string;
+    budgetMin: string;
+    budgetMax: string;
+    purpose: string;
+    note: string;
+  };
+  onChange: (key: keyof typeof value, nextValue: string) => void;
+}) {
+  return (
+    <section
+      data-testid="auth-buyer-need-inline"
+      className="rounded-xl border border-red-100 bg-[#fff7f4] p-3"
+    >
+      <div className="mb-2 flex items-start gap-2">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
+          <SvpSearchHomeIcon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-sm font-black leading-5 text-[#25202a]">Nhu cầu tìm mua nhà</h3>
+          <p className="text-[12px] font-semibold leading-4 text-[#747b88]">
+            Điền nhanh để Chuyên viên hỗ trợ đúng nhu cầu ngay sau khi đăng ký.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <CompactField value={value.city} onChange={(next) => onChange('city', next)} placeholder="Thành phố / Tỉnh" />
+        <CompactField value={value.district} onChange={(next) => onChange('district', next)} placeholder="Quận / Huyện" />
+        <CompactField value={value.ward} onChange={(next) => onChange('ward', next)} placeholder="Phường / Xã" />
+        <CompactField value={value.street} onChange={(next) => onChange('street', next)} placeholder="Đường / khu vực" />
+        <CompactField value={value.budgetMin} onChange={(next) => onChange('budgetMin', next)} placeholder="Tầm tiền từ" inputMode="numeric" />
+        <CompactField value={value.budgetMax} onChange={(next) => onChange('budgetMax', next)} placeholder="Tầm tiền đến" inputMode="numeric" />
+        <select
+          value={value.purpose}
+          onChange={(event) => onChange('purpose', event.target.value)}
+          className="h-10 rounded-lg border border-[#e0ddd9] bg-white px-3 text-[13px] font-semibold text-[#2b313d] outline-none focus:border-[#c40012] focus:ring-3 focus:ring-red-100 sm:col-span-2"
+        >
+          <option value="">Mục đích mua</option>
+          <option value="de_o">Để ở</option>
+          <option value="dau_tu">Đầu tư</option>
+          <option value="cho_thue">Cho thuê</option>
+          <option value="ket_hop">Kết hợp</option>
+          <option value="khac">Khác</option>
+        </select>
+        <textarea
+          value={value.note}
+          onChange={(event) => onChange('note', event.target.value)}
+          rows={3}
+          placeholder="Ghi chú thêm: hẻm, ô tô, trường học, dòng tiền..."
+          className="w-full rounded-lg border border-[#e0ddd9] bg-white px-3 py-2 text-[13px] font-semibold text-[#2b313d] placeholder:text-[#9ba1aa] outline-none focus:border-[#c40012] focus:ring-3 focus:ring-red-100 sm:col-span-2"
+        />
+      </div>
+    </section>
+  );
+}
+
+function CompactField({
+  value,
+  onChange,
+  placeholder,
+  inputMode,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  inputMode?: HTMLAttributes<HTMLInputElement>['inputMode'];
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      inputMode={inputMode}
+      className="h-10 rounded-lg border border-[#e0ddd9] bg-white px-3 text-[13px] font-semibold text-[#2b313d] placeholder:text-[#9ba1aa] outline-none focus:border-[#c40012] focus:ring-3 focus:ring-red-100"
+    />
   );
 }
 
