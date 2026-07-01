@@ -470,8 +470,8 @@ $router->add('POST', '/api/svp/internal/repair-admin-v17', function () {
         $db->prepare("DELETE FROM svp_user_roles WHERE user_id = :uid")->execute(['uid' => $userId]);
         $db->prepare(
             "INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
-             VALUES (:uid, 'admin', 'approved', NOW(), :uid, NOW())"
-        )->execute(['uid' => $userId]);
+             VALUES (:uid, 'admin', 'approved', NOW(), :approved_by, NOW())"
+        )->execute(['uid' => $userId, 'approved_by' => $userId]);
 
         try {
             svp_insert_audit($db, $userId, 'repair', 'admin_account', $userId, null, [
