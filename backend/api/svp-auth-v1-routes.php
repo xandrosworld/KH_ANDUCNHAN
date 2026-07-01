@@ -207,13 +207,18 @@ function svp_v1_login_payload(array $user, array $roles): array {
         ];
     }
 
-    $token = JwtAuth::createToken([
-        'sub' => $user['id'],
-        'email' => $user['email'],
-        'fullName' => $user['full_name'],
-        'roles' => $roles,
-        'role' => $activeRole,
-    ]);
+    try {
+        $token = JwtAuth::createToken([
+            'sub' => $user['id'],
+            'email' => $user['email'],
+            'fullName' => $user['full_name'],
+            'roles' => $roles,
+            'role' => $activeRole,
+        ]);
+    } catch (Throwable $e) {
+        error_log('SVP V1 auth token error: ' . $e->getMessage());
+        Response::error('May chu chua san sang tao phien dang nhap. Vui long lien he quan tri vien.', 503);
+    }
 
     return [
         'status' => 200,
@@ -334,7 +339,8 @@ $router->add('POST', '/api/svp/auth/login', function () {
     $stmt = $db->prepare("SELECT * FROM users WHERE email = :email OR phone = :phone LIMIT 1");
     $stmt->execute(['email' => $identifier, 'phone' => $identifier]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$user || !password_verify($password, $user['password_hash'] ?? '')) {
+    $storedHash = is_array($user) ? (string)($user['password_hash'] ?? '') : '';
+    if (!$user || $storedHash === '' || !password_verify($password, $storedHash)) {
         Response::error('Email, số điện thoại hoặc mật khẩu không đúng', 401);
     }
     if (svp_v1_user_is_locked($user)) {
