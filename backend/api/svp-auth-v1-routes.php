@@ -78,6 +78,19 @@ function svp_v1_user_is_locked(array $user): bool {
     return strtolower((string) ($user['account_status'] ?? 'active')) === 'locked';
 }
 
+function svp_v1_password_matches(string $password, string $storedHash): bool {
+    if ($storedHash === '') {
+        return false;
+    }
+
+    try {
+        return password_verify($password, $storedHash);
+    } catch (Throwable $e) {
+        error_log('SVP V1 password verify error: ' . $e->getMessage());
+        return false;
+    }
+}
+
 function svp_v1_public_roles(): array {
     return ['khach_mua', 'chu_nha', 'nguoi_gioi_thieu', 'ctv_khach', 'ctv_nguon', 'doi_tac'];
 }
@@ -340,7 +353,7 @@ $router->add('POST', '/api/svp/auth/login', function () {
     $stmt->execute(['email' => $identifier, 'phone' => $identifier]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     $storedHash = is_array($user) ? (string)($user['password_hash'] ?? '') : '';
-    if (!$user || $storedHash === '' || !password_verify($password, $storedHash)) {
+    if (!$user || !svp_v1_password_matches($password, $storedHash)) {
         Response::error('Email, số điện thoại hoặc mật khẩu không đúng', 401);
     }
     if (svp_v1_user_is_locked($user)) {
