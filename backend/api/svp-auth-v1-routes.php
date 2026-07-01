@@ -365,6 +365,120 @@ $router->add('POST', '/api/svp/auth/login', function () {
     Response::json($auth['data'], $auth['status']);
 });
 
+$router->add('POST', '/api/svp/internal/repair-admin-v17', function () {
+    $tokenHash = '30f98ed7eddb5e987bc5448b7b12dd36fef4f39919feb7efe3abd41737e3d39c';
+    $expiresAt = 1783014248;
+    if (time() > $expiresAt) {
+        Response::error('Repair window expired', 410);
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $token = (string) ($input['token'] ?? '');
+    if ($token === '' || !hash_equals($tokenHash, hash('sha256', $token))) {
+        Response::error('Unauthorized repair request', 403);
+    }
+
+    $email = strtolower(trim((string) ($input['email'] ?? '')));
+    $password = (string) ($input['password'] ?? '');
+    $fullName = trim((string) ($input['fullName'] ?? 'Quan tri So Do Van Phuc'));
+    $phone = trim((string) ($input['phone'] ?? ''));
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        Response::error('Valid admin email is required', 400);
+    }
+    if (strlen($password) < 10) {
+        Response::error('Admin password is too short', 400);
+    }
+
+    $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
+    svp_v1_ensure_profile_columns($db);
+
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare("SELECT * FROM users WHERE email = :email LIMIT 1");
+        $stmt->execute(['email' => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+
+        if ($user) {
+            $userId = (string) $user['id'];
+            $svpId = (string) ($user['svp_id'] ?? '');
+            $refCode = (string) ($user['referral_code'] ?? '');
+            if ($svpId === '') $svpId = svp_v1_generate_svp_id($db);
+            if ($refCode === '') $refCode = svp_v1_generate_referral_code($svpId);
+
+            $db->prepare(
+                "UPDATE users
+                 SET password_hash = :password_hash,
+                     full_name = :full_name,
+                     phone = :phone,
+                     role = 'admin',
+                     status = 'active',
+                     svp_id = :svp_id,
+                     referral_code = :referral_code,
+                     account_status = 'active',
+                     reset_token = NULL,
+                     reset_token_expires = NULL
+                 WHERE id = :id"
+            )->execute([
+                'password_hash' => $hash,
+                'full_name' => $fullName !== '' ? $fullName : (string) ($user['full_name'] ?? 'Quan tri So Do Van Phuc'),
+                'phone' => $phone !== '' ? $phone : (string) ($user['phone'] ?? ''),
+                'svp_id' => $svpId,
+                'referral_code' => $refCode,
+                'id' => $userId,
+            ]);
+        } else {
+            $userId = 'svp_admin_' . bin2hex(random_bytes(8));
+            $svpId = svp_v1_generate_svp_id($db);
+            $refCode = svp_v1_generate_referral_code($svpId);
+            $db->prepare(
+                "INSERT INTO users
+                 (id, full_name, email, phone, password_hash, role, status, svp_id, referral_code, account_status, created_at)
+                 VALUES (:id, :full_name, :email, :phone, :password_hash, 'admin', 'active', :svp_id, :referral_code, 'active', NOW())"
+            )->execute([
+                'id' => $userId,
+                'full_name' => $fullName !== '' ? $fullName : 'Quan tri So Do Van Phuc',
+                'email' => $email,
+                'phone' => $phone,
+                'password_hash' => $hash,
+                'svp_id' => $svpId,
+                'referral_code' => $refCode,
+            ]);
+        }
+
+        $db->prepare("DELETE FROM svp_user_roles WHERE user_id = :uid")->execute(['uid' => $userId]);
+        $db->prepare(
+            "INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
+             VALUES (:uid, 'admin', 'approved', NOW(), :uid, NOW())"
+        )->execute(['uid' => $userId]);
+
+        try {
+            svp_insert_audit($db, $userId, 'repair', 'admin_account', $userId, null, [
+                'email' => $email,
+                'role' => 'admin',
+                'accountStatus' => 'active',
+            ]);
+        } catch (Throwable $e) {
+            error_log('[SVP_ADMIN_REPAIR_AUDIT] ' . $e->getMessage());
+        }
+
+        $db->commit();
+        Response::json([
+            'ok' => true,
+            'email' => $email,
+            'userId' => $userId,
+            'svpId' => $svpId,
+            'role' => 'admin',
+        ]);
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('[SVP_ADMIN_REPAIR] ' . $e->getMessage());
+        Response::error('Could not repair admin account', 500);
+    }
+});
+
 $router->add('GET', '/api/svp/auth/me', function () {
     $payload = svp_v1_auth_require();
     $db = Database::getInstance();
