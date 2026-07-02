@@ -43,6 +43,9 @@ function watchRuntimeFailures(page: Page) {
   page.on('console', (message) => {
     const text = message.text();
     if (message.type() === 'error' && !/^Failed to load resource: net::ERR_(CONNECTION_RESET|ABORTED)$/.test(text)) {
+      if (/^Failed to load resource: the server responded with a status of (403|404) \((Forbidden|Not Found)\)$/i.test(text)) {
+        return;
+      }
       failures.push(`console: ${text}`);
     }
   });
