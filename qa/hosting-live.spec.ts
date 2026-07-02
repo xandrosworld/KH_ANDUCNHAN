@@ -191,6 +191,14 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await page.locator('#identifier').fill(adminUsername);
     await page.locator('#password').fill(adminPassword);
     await page.getByRole('button', { name: /^Đăng nhập$/ }).click();
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+
+    if (/\/select-role$/.test(page.url())) {
+      const adminRole = page.getByRole('button', { name: /Quản trị|Admin/i }).first();
+      if (await adminRole.count()) {
+        await adminRole.click();
+      }
+    }
 
     try {
       await page.waitForURL(/\/quan-tri$/, { timeout: 20_000 });
