@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Plus, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { svpAxios as api } from '../../services/svpAxios';
@@ -18,6 +18,8 @@ const STATUS_MAP: Record<string, string[]> = {
 export default function ExpertMyPropertiesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const createdState = location.state as { createdPropertyId?: string; createdPropertyCode?: string; createdPropertyTitle?: string } | null;
   const [tab, setTab] = useState('Tất cả');
   const [items, setItems] = useState<any[]>([]);
   const [query, setQuery] = useState('');
@@ -34,7 +36,7 @@ export default function ExpertMyPropertiesPage() {
     const tabbed = tab === 'Tất cả' ? items : items.filter((item) => STATUS_MAP[tab]?.includes(item.statusId || item.status));
     const keyword = query.trim().toLowerCase();
     if (!keyword) return tabbed;
-    return tabbed.filter((item) => [item.title, item.code, item.ownerName, item.ownerPhone, item.district, item.ward].some((value) => String(value || '').toLowerCase().includes(keyword)));
+    return tabbed.filter((item) => [item.title, item.code, item.ownerName, item.ownerPhone, item.extra?.province, item.district, item.ward, item.price].some((value) => String(value || '').toLowerCase().includes(keyword)));
   }, [items, query, tab]);
 
   return (
@@ -63,6 +65,12 @@ export default function ExpertMyPropertiesPage() {
         </div>
       </section>
 
+      {createdState?.createdPropertyId ? (
+        <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold leading-6 text-emerald-700">
+          Đã gửi duyệt nguồn {createdState.createdPropertyCode || createdState.createdPropertyTitle || 'vừa đăng'}. Nguồn đã nằm trong kho nhà cá nhân để tiếp tục theo dõi.
+        </div>
+      ) : null}
+
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {TABS.map((item) => (
           <button key={item} onClick={() => setTab(item)} className={`shrink-0 rounded-full px-3 py-2 text-sm font-black ${tab === item ? 'bg-[#c40012] text-white' : 'bg-white text-[#747b88] ring-1 ring-gray-100'}`}>
@@ -83,7 +91,7 @@ export default function ExpertMyPropertiesPage() {
         </div>
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
-          {filtered.map((item) => <ExpertPropertyCard key={item.id} item={item} onClick={() => navigate(`/chuyen-gia/nha/${item.id}`)} />)}
+          {filtered.map((item) => <ExpertPropertyCard key={item.id} item={item} highlight={item.id === createdState?.createdPropertyId} onClick={() => navigate(`/chuyen-gia/nha/${item.id}`)} />)}
         </div>
       )}
 
@@ -94,10 +102,10 @@ export default function ExpertMyPropertiesPage() {
   );
 }
 
-function ExpertPropertyCard({ item, onClick }: { item: any; onClick: () => void }) {
+function ExpertPropertyCard({ item, onClick, highlight = false }: { item: any; onClick: () => void; highlight?: boolean }) {
   const status = item.statusId || item.status;
   return (
-    <button onClick={onClick} className="rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md">
+    <button onClick={onClick} className={`rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${highlight ? 'ring-2 ring-emerald-400' : 'ring-1 ring-gray-100'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-black text-[#9aa1ad]">{item.code || shortId(item.id)}</p>
@@ -109,7 +117,7 @@ function ExpertPropertyCard({ item, onClick }: { item: any; onClick: () => void 
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-[#747b88]">
         <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{formatVndShort(item.price)}</span>
-        <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{item.district || item.ward || 'Chưa rõ khu vực'}</span>
+        <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{[item.extra?.province, item.district || item.ward].filter(Boolean).join(' - ') || 'Chưa rõ khu vực'}</span>
         <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{areaText(item)}</span>
       </div>
     </button>

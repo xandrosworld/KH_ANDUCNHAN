@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { getRoleDashboardPath, PUBLIC_REGISTRATION_ROLES } from '../data/roles';
 import type { LegalDocumentType } from '../data/legalDocuments';
@@ -109,6 +109,7 @@ const BRAND_TITLE_FONT = '"UTM Avo", "SVN-Avo", "Avo", "Montserrat", "Inter", "A
 
 export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, register, isAuthenticated, approvedRoles, user } = useAuth();
   const registerRef = useRef<HTMLDivElement>(null);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -148,6 +149,14 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
       registerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
   }, [initialPanel]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const ref = (params.get('ref') || '').trim();
+    if (ref && !referralCode) {
+      setReferralCode(ref);
+    }
+  }, [location.search, referralCode]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -626,6 +635,14 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             •{' '}
             <button type="button" onClick={() => setLegalModal('privacy')} className="font-bold text-[#c40012] hover:underline">
               Chính sách bảo mật
+            </button>{' '}
+            •{' '}
+            <button type="button" onClick={() => navigate('/gioi-thieu-cong-ty')} className="font-bold text-[#c40012] hover:underline">
+              Giới thiệu
+            </button>{' '}
+            •{' '}
+            <button type="button" onClick={() => navigate('/tin-tuc')} className="font-bold text-[#c40012] hover:underline">
+              Tin tức
             </button>{' '}
             • Liên hệ
           </footer>

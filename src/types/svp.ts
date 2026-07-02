@@ -40,6 +40,7 @@ export interface SvpProperty {
   price: number;
   priceUnit: string;
   areaM2?: number | null;
+  province?: string;
   district?: string;
   ward?: string;
   address?: string;

@@ -313,6 +313,7 @@ function svp_option_to_response(array $row): array
 
 function svp_property_to_response(array $row): array
 {
+    $extra = svp_json_decode($row['extra_json'] ?? null, []);
     return [
         'id'             => (string) $row['id'],
         'code'           => (string) $row['code'],
@@ -326,6 +327,7 @@ function svp_property_to_response(array $row): array
         'areaM2'         => $row['area_m2'] === null ? null : (float) $row['area_m2'],
         'district'       => (string) ($row['district'] ?? ''),
         'ward'           => (string) ($row['ward'] ?? ''),
+        'province'       => (string) ($extra['province'] ?? ''),
         'address'        => (string) ($row['address'] ?? ''),
         'hiddenAddress'  => (string) ($row['hidden_address'] ?? ''),
         'companyUnitId'  => (string) ($row['company_unit_id'] ?? ''),
@@ -335,7 +337,7 @@ function svp_property_to_response(array $row): array
         'signingScore'   => (float) ($row['signing_score'] ?? 0),
         'visibilityIds'  => svp_json_decode($row['visibility_json'] ?? null, []),
         'tagIds'         => svp_json_decode($row['tags_json'] ?? null, []),
-        'extra'          => svp_json_decode($row['extra_json'] ?? null, []),
+        'extra'          => $extra,
         'createdBy'      => (string) ($row['created_by'] ?? ''),
         'updatedBy'      => (string) ($row['updated_by'] ?? ''),
         'createdAt'      => (string) ($row['created_at'] ?? ''),
@@ -408,6 +410,22 @@ function svp_insert_property_timeline(PDO $db, string $propertyId, string $event
         'actor_id'     => $actorId,
         'payload_json' => svp_json_encode($payload),
     ]);
+}
+
+function svp_ensure_comments_table(PDO $db): void
+{
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS svp_comments (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          entity_type VARCHAR(80) NOT NULL DEFAULT 'property',
+          entity_id VARCHAR(80) NOT NULL,
+          body TEXT NOT NULL,
+          created_by VARCHAR(64) DEFAULT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          deleted_at DATETIME DEFAULT NULL,
+          INDEX idx_comments_entity (entity_type, entity_id, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
 }
 
 $router->add('GET', '/api/svp/config', function () {
@@ -636,6 +654,111 @@ $router->add('GET', '/api/svp/properties/{id}', function ($params) {
     $item = svp_apply_property_access_filter(svp_property_to_response($row));
     if (empty($item)) Response::notFound('Property not found');
     Response::json(['item' => $item]);
+});
+
+$router->add('GET', '/api/svp/properties/{id}/comments', function ($params) {
+    $db = Database::getInstance();
+    svp_ensure_comments_table($db);
+    $propertyId = (string) ($params['id'] ?? '');
+    if ($propertyId === '') Response::error('Property id is required', 400);
+
+    $stmt = $db->prepare("
+        SELECT c.id, c.entity_id, c.body, c.created_by, c.created_at, u.full_name, u.svp_id
+        FROM svp_comments c
+        LEFT JOIN users u ON u.id = c.created_by
+        WHERE c.entity_type = 'property' AND c.entity_id = :property_id AND c.deleted_at IS NULL
+        ORDER BY c.created_at ASC
+        LIMIT 100
+    ");
+    $stmt->execute(['property_id' => $propertyId]);
+
+    $items = array_map(function ($row) {
+        return [
+            'id' => (string) $row['id'],
+            'propertyId' => (string) $row['entity_id'],
+            'body' => (string) $row['body'],
+            'createdBy' => (string) ($row['created_by'] ?? ''),
+            'authorName' => (string) ($row['full_name'] ?? 'Thành viên'),
+            'authorSvpId' => (string) ($row['svp_id'] ?? ''),
+            'createdAt' => (string) $row['created_at'],
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    Response::json(['items' => $items, 'total' => count($items)]);
+});
+
+$router->add('POST', '/api/svp/properties/{id}/comments', function ($params) {
+    $payload = function_exists('svp_auth_require') ? svp_auth_require() : (Auth::getPayload() ?: null);
+    if (!$payload) Response::error('Phiên đăng nhập hết hạn', 401);
+    $db = Database::getInstance();
+    svp_ensure_comments_table($db);
+    $propertyId = (string) ($params['id'] ?? '');
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $body = trim((string) ($input['body'] ?? ''));
+    if ($propertyId === '' || $body === '') Response::error('Vui lòng nhập nội dung bình luận', 400);
+    if (mb_strlen($body, 'UTF-8') > 1000) Response::error('Bình luận quá dài', 400);
+
+    $db->prepare("
+        INSERT INTO svp_comments (entity_type, entity_id, body, created_by, created_at)
+        VALUES ('property', :property_id, :body, :created_by, NOW())
+    ")->execute([
+        'property_id' => $propertyId,
+        'body' => $body,
+        'created_by' => (string) ($payload['sub'] ?? ''),
+    ]);
+    $id = (string) $db->lastInsertId();
+    svp_insert_audit($db, (string) ($payload['sub'] ?? ''), 'create', 'property_comment', $id, null, [
+        'propertyId' => $propertyId,
+        'body' => $body,
+    ]);
+
+    Response::json([
+        'item' => [
+            'id' => $id,
+            'propertyId' => $propertyId,
+            'body' => $body,
+            'createdBy' => (string) ($payload['sub'] ?? ''),
+            'authorName' => (string) ($payload['fullName'] ?? $payload['name'] ?? 'Bạn'),
+            'createdAt' => date('Y-m-d H:i:s'),
+        ],
+    ], 201);
+});
+
+$router->add('DELETE', '/api/svp/properties/{id}/comments/{commentId}', function ($params) {
+    $payload = function_exists('svp_auth_require') ? svp_auth_require() : (Auth::getPayload() ?: null);
+    if (!$payload) Response::error('Phiên đăng nhập hết hạn', 401);
+    $db = Database::getInstance();
+    svp_ensure_comments_table($db);
+    $propertyId = (string) ($params['id'] ?? '');
+    $commentId = (string) ($params['commentId'] ?? '');
+    if ($propertyId === '' || $commentId === '') Response::error('Thông tin bình luận không hợp lệ', 400);
+
+    $stmt = $db->prepare("SELECT * FROM svp_comments WHERE id = :id AND entity_type = 'property' AND entity_id = :property_id AND deleted_at IS NULL LIMIT 1");
+    $stmt->execute(['id' => $commentId, 'property_id' => $propertyId]);
+    $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$comment) Response::notFound('Comment not found');
+
+    $propStmt = $db->prepare('SELECT created_by, expert_id FROM svp_properties WHERE id = :id LIMIT 1');
+    $propStmt->execute(['id' => $propertyId]);
+    $property = $propStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $actorId = (string) ($payload['sub'] ?? '');
+    $roles = $payload['roles'] ?? [];
+    $isAdmin = false;
+    foreach ($roles as $role) {
+        if (($role['slug'] ?? '') === 'admin' && ($role['status'] ?? '') === 'approved') {
+            $isAdmin = true;
+            break;
+        }
+    }
+    $canDelete = $isAdmin
+        || $actorId === (string) ($comment['created_by'] ?? '')
+        || $actorId === (string) ($property['created_by'] ?? '')
+        || $actorId === (string) ($property['expert_id'] ?? '');
+    if (!$canDelete) Response::error('Bạn không có quyền xóa bình luận này', 403);
+
+    $db->prepare('UPDATE svp_comments SET deleted_at = NOW() WHERE id = :id')->execute(['id' => $commentId]);
+    svp_insert_audit($db, $actorId, 'delete', 'property_comment', $commentId, $comment, ['deleted' => true]);
+    Response::json(['deleted' => true]);
 });
 
 $router->add('PUT', '/api/svp/properties/{id}', function ($params) use ($input) {

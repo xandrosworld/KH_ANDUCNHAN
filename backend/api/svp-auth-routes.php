@@ -1105,17 +1105,32 @@ $router->add('POST', '/api/svp/admin/notifications', function () {
 
     $title = trim((string) ($input['title'] ?? ''));
     $body = trim((string) ($input['body'] ?? ''));
+    $recipient = trim((string) ($input['recipient'] ?? $input['userId'] ?? ''));
     if ($title === '') Response::error('Vui long nhap tieu de thong bao', 400);
 
-    $db->prepare("INSERT INTO svp_notifications (user_id, title, body, kind, is_read, created_at) VALUES (NULL, :title, :body, 'admin_notice', 0, NOW())")
-       ->execute(['title' => $title, 'body' => $body]);
+    $userId = null;
+    if ($recipient !== '') {
+        $stmt = $db->prepare("
+            SELECT id
+            FROM users
+            WHERE id = :exact OR svp_id = :exact OR phone = :exact OR email = :exact
+            LIMIT 1
+        ");
+        $stmt->execute(['exact' => $recipient]);
+        $resolved = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$resolved) Response::error('Khong tim thay nguoi nhan thong bao', 404);
+        $userId = (string) $resolved['id'];
+    }
+
+    $db->prepare("INSERT INTO svp_notifications (user_id, title, body, kind, is_read, created_at) VALUES (:user_id, :title, :body, 'admin_notice', 0, NOW())")
+       ->execute(['user_id' => $userId, 'title' => $title, 'body' => $body]);
     $id = (string) $db->lastInsertId();
 
-    svp_insert_audit($db, $payload['sub'], 'create', 'notification', $id, null, ['title' => $title, 'body' => $body]);
+    svp_insert_audit($db, $payload['sub'], 'create', 'notification', $id, null, ['title' => $title, 'body' => $body, 'userId' => $userId]);
 
     Response::json([
         'message' => 'Da gui thong bao',
-        'item' => ['id' => $id, 'title' => $title, 'body' => $body, 'kind' => 'admin_notice'],
+        'item' => ['id' => $id, 'user_id' => $userId, 'title' => $title, 'body' => $body, 'kind' => 'admin_notice'],
     ]);
 });
 

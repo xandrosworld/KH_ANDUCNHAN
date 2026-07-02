@@ -52,6 +52,7 @@ export default function AdminConfigPage() {
   const [notices, setNotices] = useState<AdminNotice[]>([]);
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeBody, setNoticeBody] = useState('');
+  const [noticeRecipient, setNoticeRecipient] = useState('');
   const [noticeSaving, setNoticeSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -195,11 +196,12 @@ export default function AdminConfigPage() {
     setNoticeSaving(true);
     setMessage('');
     try {
-      const response = await api.post('/admin/notifications', { title, body });
+      const response = await api.post('/admin/notifications', { title, body, recipient: noticeRecipient.trim() || undefined });
       const next = response.data?.item as AdminNotice | undefined;
       setNotices((current) => next ? [{ ...next, createdAt: new Date().toISOString() }, ...current] : current);
       setNoticeTitle('');
       setNoticeBody('');
+      setNoticeRecipient('');
       setMessage('Đã gửi thông báo nội bộ.');
     } catch {
       setMessage('Chưa gửi được thông báo. Vui lòng thử lại.');
@@ -245,6 +247,13 @@ export default function AdminConfigPage() {
               placeholder="Tiêu đề thông báo"
               value={noticeTitle}
               onChange={(event) => setNoticeTitle(event.target.value)}
+            />
+            <input
+              className="svp-input"
+              data-testid="admin-notice-recipient"
+              placeholder="Người nhận cụ thể (SVP ID / SĐT / email), bỏ trống để gửi tất cả"
+              value={noticeRecipient}
+              onChange={(event) => setNoticeRecipient(event.target.value)}
             />
             <textarea
               className="min-h-28 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-[#25202a] outline-none focus:border-[#c40012]"

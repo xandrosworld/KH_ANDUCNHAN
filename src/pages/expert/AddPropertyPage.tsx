@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Sparkles, UploadCloud } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { svpAxios as api } from '../../services/svpAxios';
 import { svpApi } from '../../services/svpApi';
 import type { SvpConfigGroup, SvpConfigOption } from '../../types/svp';
 
+const PROVINCES = ['TP.HCM', 'Hà Nội', 'Đà Nẵng', 'Thủ Đức', 'Bình Dương', 'Đồng Nai', 'Long An', 'Bà Rịa - Vũng Tàu', 'Cần Thơ', 'Hải Phòng', 'Khánh Hòa', 'Thanh Hóa'];
 const DISTRICTS = ['Quận 1', 'Quận 3', 'Quận 5', 'Quận 7', 'Quận 10', 'Quận 12', 'Bình Thạnh', 'Gò Vấp', 'Tân Bình', 'Tân Phú', 'Thủ Đức', 'Bình Tân', 'Nhà Bè', 'Hóc Môn'];
 const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường 5', 'Phường 7', 'Phường 10', 'Phường 12', 'Phường 15', 'Phường 17', 'Hiệp Bình Chánh', 'Linh Đông', 'Tân Sơn Nhì'];
 const LEGAL_STATUS = ['Sổ đỏ / sổ hồng', 'Hợp đồng mua bán', 'Giấy tay', 'Đang hoàn thiện', 'Cần kiểm tra thêm'];
@@ -26,6 +27,7 @@ const initialForm = {
   ownerEmail: '',
   ownerNote: '',
   title: '',
+  province: 'TP.HCM',
   district: '',
   ward: '',
   street: '',
@@ -49,6 +51,8 @@ export default function ExpertAddPropertyPage() {
   const [groups, setGroups] = useState<SvpConfigGroup[]>([]);
   const [form, setForm] = useState(initialForm);
   const [signingCriteriaIds, setSigningCriteriaIds] = useState<string[]>([]);
+  const [selectedVisibilityIds, setSelectedVisibilityIds] = useState<string[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [privateFiles, setPrivateFiles] = useState<File[]>([]);
   const [publicFiles, setPublicFiles] = useState<File[]>([]);
   const [duplicates, setDuplicates] = useState<any[]>([]);
@@ -78,7 +82,7 @@ export default function ExpertAddPropertyPage() {
 
   const update = (key: keyof typeof initialForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
-    if (['ownerPhone', 'street', 'ward', 'district', 'gpsCoordinates', 'bookSerial'].includes(key)) {
+    if (['ownerPhone', 'street', 'ward', 'district', 'province', 'gpsCoordinates', 'bookSerial'].includes(key)) {
       setDuplicateChecked(false);
       setDuplicateRule(null);
       setDuplicates([]);
@@ -92,10 +96,14 @@ export default function ExpertAddPropertyPage() {
     setSigningCriteriaIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   };
 
+  const toggleMultiOption = (id: string, setter: Dispatch<SetStateAction<string[]>>) => {
+    setter((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
+
   const checkDuplicate = async () => {
     setMessage('');
     try {
-      const address = [form.street, form.ward, form.district].filter(Boolean).join(', ');
+      const address = [form.street, form.ward, form.district, form.province].filter(Boolean).join(', ');
       const response = await api.post('/properties/check-duplicate', {
         address,
         bookSerial: form.bookSerial,
@@ -122,11 +130,14 @@ export default function ExpertAddPropertyPage() {
     try {
       const result = await apiPost<{ description: string }>('/api/ai/description', {
         title: form.title,
-        propertyType: form.propertyFeature,
+        propertyType: selectedTagIds
+          .map((id) => propertyTags.find((item) => item.id === id)?.label)
+          .filter(Boolean)
+          .join(', '),
         price: form.price,
         sqft: form.area,
-        address: [form.street, form.ward].filter(Boolean).join(', '),
-        city: form.district,
+        address: [form.street, form.ward, form.district].filter(Boolean).join(', '),
+        city: form.province,
         amenities: [form.legalStatus, form.commission, form.internalNote].filter(Boolean).join(', '),
         notes: form.description || form.ownerNote,
       });
@@ -163,8 +174,8 @@ export default function ExpertAddPropertyPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.ownerName || !form.ownerPhone || !form.title || !form.district || !form.price) {
-      setMessage('Vui lòng nhập tên chủ, SĐT chủ, tiêu đề, quận/huyện và giá chào.');
+    if (!form.ownerName || !form.ownerPhone || !form.title || !form.province || !form.district || !form.price) {
+      setMessage('Vui lòng nhập tên chủ, SĐT chủ, tiêu đề, tỉnh/thành, quận/huyện và giá chào.');
       return;
     }
     if (!duplicateChecked) {
@@ -179,7 +190,7 @@ export default function ExpertAddPropertyPage() {
     setSubmitting(true);
     setMessage('');
     try {
-      const address = [form.street, form.ward, form.district].filter(Boolean).join(', ');
+      const address = [form.street, form.ward, form.district, form.province].filter(Boolean).join(', ');
       const property = await svpApi.createProperty({
         title: form.title,
         description: form.description,
@@ -189,6 +200,7 @@ export default function ExpertAddPropertyPage() {
         price: Number(form.price) || 0,
         priceUnit: 'VND',
         areaM2: form.area ? Number(form.area) : null,
+        province: form.province,
         district: form.district,
         ward: form.ward,
         address,
@@ -198,10 +210,11 @@ export default function ExpertAddPropertyPage() {
         expertId: user?.id || '',
         assignedUserId: '',
         signingScore,
-        visibilityIds: form.viewPermission ? [form.viewPermission] : [],
-        tagIds: form.propertyFeature ? [form.propertyFeature] : [],
+        visibilityIds: selectedVisibilityIds,
+        tagIds: selectedTagIds,
         extra: {
           sourceRole: 'chuyen_gia',
+          province: form.province,
           ownerEmail: form.ownerEmail,
           ownerNote: form.ownerNote,
           street: form.street,
@@ -210,6 +223,8 @@ export default function ExpertAddPropertyPage() {
           commission: form.commission,
           internalNote: form.internalNote,
           listingDescription: form.description,
+          visibilityIds: selectedVisibilityIds,
+          tagIds: selectedTagIds,
           publicMediaCount: publicFiles.length,
           privateApprovalMediaCount: privateFiles.length,
           signingCriteriaIds,
@@ -222,7 +237,13 @@ export default function ExpertAddPropertyPage() {
         },
       });
       await uploadMediaGroups(property.id);
-      navigate('/chuyen-gia/kho-nha');
+      navigate('/chuyen-gia/kho-nha', {
+        state: {
+          createdPropertyId: property.id,
+          createdPropertyCode: property.code,
+          createdPropertyTitle: property.title,
+        },
+      });
     } catch {
       setMessage('Chưa gửi duyệt được nguồn nhà. Vui lòng kiểm tra lại dữ liệu.');
     } finally {
@@ -266,6 +287,7 @@ export default function ExpertAddPropertyPage() {
           <h2 className="mb-3 font-black text-[#25202a]">Thông tin nhà</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field className="sm:col-span-2" label="Tiêu đề tin" value={form.title} onChange={(value) => update('title', value)} />
+            <InputWithList label="Tỉnh/Thành phố" value={form.province} onChange={(value) => update('province', value)} listId="expert-provinces" options={PROVINCES} />
             <InputWithList label="Quận/Huyện" value={form.district} onChange={(value) => update('district', value)} listId="expert-districts" options={DISTRICTS} />
             <InputWithList label="Phường/Xã" value={form.ward} onChange={(value) => update('ward', value)} listId="expert-wards" options={WARDS} />
             <Field label="Số nhà + tên đường" value={form.street} onChange={(value) => update('street', value)} />
@@ -277,8 +299,8 @@ export default function ExpertAddPropertyPage() {
             <Select label="Pháp lý" value={form.legalStatus} onChange={(value) => update('legalStatus', value)} options={LEGAL_STATUS} />
             <Field label="Hoa hồng / thỏa thuận" value={form.commission} onChange={(value) => update('commission', value)} />
             <SelectFromOptions label="Công ty thành viên" value={form.companyUnitId} onChange={(value) => update('companyUnitId', value)} options={companyUnits} />
-            <SelectFromOptions label="Quyền xem" value={form.viewPermission} onChange={(value) => update('viewPermission', value)} options={visibilityOptions} />
-            <SelectFromOptions label="Đặc điểm / tag chính" value={form.propertyFeature} onChange={(value) => update('propertyFeature', value)} options={propertyTags} />
+            <MultiOptionPicker label="Quyền xem" selectedIds={selectedVisibilityIds} options={visibilityOptions} onToggle={(id) => toggleMultiOption(id, setSelectedVisibilityIds)} />
+            <MultiOptionPicker label="Đặc điểm / tag chính" selectedIds={selectedTagIds} options={propertyTags} onToggle={(id) => toggleMultiOption(id, setSelectedTagIds)} />
           </div>
         </section>
       </div>
@@ -450,6 +472,38 @@ function SelectFromOptions({ label, value, onChange, options }: { label: string;
         {options.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
       </select>
     </label>
+  );
+}
+
+function MultiOptionPicker({ label, selectedIds, options, onToggle }: { label: string; selectedIds: string[]; options: SvpConfigOption[]; onToggle: (id: string) => void }) {
+  return (
+    <div className="block sm:col-span-2">
+      <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+        {options.length ? options.map((item) => {
+          const selected = selectedIds.includes(item.id);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onToggle(item.id)}
+              className={`min-h-9 rounded-xl px-3 text-xs font-black transition ${
+                selected
+                  ? 'bg-[#c40012] text-white shadow-sm'
+                  : 'bg-[#fff8f2] text-[#6b4f52] ring-1 ring-red-100'
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        }) : (
+          <span className="px-1 py-2 text-xs font-semibold text-[#7b8190]">Chưa có lựa chọn trong cấu hình.</span>
+        )}
+      </div>
+      {selectedIds.length ? (
+        <p className="mt-1 text-[11px] font-semibold text-[#7b8190]">Đã chọn {selectedIds.length} mục.</p>
+      ) : null}
+    </div>
   );
 }
 

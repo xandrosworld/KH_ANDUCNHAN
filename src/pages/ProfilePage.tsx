@@ -63,10 +63,13 @@ export default function ProfilePage() {
   const initials = user.fullName
     ? user.fullName.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
     : 'SV';
+  const referralLink = user.referralCode
+    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://sodovanphuc.vn'}/register?ref=${encodeURIComponent(user.referralCode)}`
+    : '';
 
   const copyCode = async () => {
-    if (!user.referralCode) return;
-    await navigator.clipboard.writeText(user.referralCode);
+    if (!referralLink) return;
+    await navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
@@ -218,8 +221,11 @@ export default function ProfilePage() {
       <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-black text-[#25202a]">Mã giới thiệu</h3>
         <div className="flex items-center gap-2">
-          <code className="flex-1 rounded-xl bg-[#fff8f2] px-3 py-2 text-sm font-bold text-[#25202a]">{user.referralCode || 'Chưa có'}</code>
-          <button onClick={copyCode} className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-[#c40012]" aria-label="Sao chép mã giới thiệu">
+          <div className="min-w-0 flex-1 rounded-xl bg-[#fff8f2] px-3 py-2">
+            <code className="block text-sm font-bold text-[#25202a]">{user.referralCode || 'Chưa có'}</code>
+            {referralLink ? <p className="mt-1 truncate text-xs font-semibold text-[#7b8190]">{referralLink}</p> : null}
+          </div>
+          <button onClick={copyCode} className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-[#c40012]" aria-label="Sao chép link giới thiệu">
             {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
           </button>
         </div>

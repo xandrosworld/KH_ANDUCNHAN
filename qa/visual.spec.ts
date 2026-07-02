@@ -39,6 +39,7 @@ const properties = [
     bookSerial: 'SO-001',
     price: 6800000000,
     areaM2: 72,
+    province: 'Ha Noi',
     district: 'Ha Dong',
     ward: 'Van Phuc',
     address: 'Van Phuc, Ha Dong, Ha Noi',
@@ -47,6 +48,7 @@ const properties = [
     createdBy: 'user_chuyen_gia',
     expertId: 'user_chuyen_gia',
     extra: {
+      province: 'Ha Noi',
       propertyType: 'Nha pho',
       bedrooms: '4',
       bathrooms: '3',
@@ -66,13 +68,14 @@ const properties = [
     ownerPhone: '0909000002',
     price: 4200000000,
     areaM2: 58,
+    province: 'Ha Noi',
     district: 'Thanh Xuan',
     ward: 'Khuong Trung',
     address: 'Thanh Xuan, Ha Noi',
     statusId: 'st_new',
     createdAt: '2026-06-28 09:00:00',
     createdBy: 'user_chu_nha',
-    extra: { propertyType: 'Can ho', bedrooms: '2', bathrooms: '2' },
+    extra: { province: 'Ha Noi', propertyType: 'Can ho', bedrooms: '2', bathrooms: '2' },
   },
 ];
 
@@ -206,6 +209,8 @@ const roleApprovalSettings = [
 const publicRoutes = [
   '/',
   '/register',
+  '/gioi-thieu-cong-ty',
+  '/tin-tuc',
   '/forgot-password',
   '/reset-password?token=qa-token&email=qa@sodovanphuc.vn',
   '/pending-approval',
@@ -216,7 +221,7 @@ const roleRoutes = [
   { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/profile', '/notifications'] },
   { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/profile', '/notifications'] },
   { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/profile', '/notifications'] },
-  { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/profile'] },
+  { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/profile', '/notifications'] },
   { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/profile', '/notifications'] },
   { role: 'nguoi_gioi_thieu', paths: ['/gioi-thieu', '/gioi-thieu/ma-gioi-thieu', '/profile', '/notifications'] },
 ];
@@ -373,6 +378,14 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
     if (path === '/properties' && method === 'POST') return ok(route, { item: { ...properties[0], id: 'prop_new', code: 'SVP000003' } });
     if (/^\/properties\/[^/]+\/status$/.test(path) && method === 'PATCH') return ok(route, { message: 'Da cap nhat trang thai' });
     if (/^\/properties\/[^/]+\/media-upload$/.test(path) && method === 'POST') return ok(route, { item: { id: 'media_1', url: '/logo11.png' } });
+    if (/^\/properties\/[^/]+\/comments$/.test(path) && method === 'GET') {
+      return ok(route, { items: [{ id: 'comment_1', propertyId: 'prop_1', userId: `user_${role}`, authorName: 'Tai khoan kiem thu', body: 'Binh luan kiem thu can nha.', createdAt: '2026-07-02 09:00:00' }] });
+    }
+    if (/^\/properties\/[^/]+\/comments$/.test(path) && method === 'POST') {
+      const body = request.postDataJSON?.() as { body?: string } | undefined;
+      return ok(route, { item: { id: 'comment_new', propertyId: path.split('/')[2], userId: `user_${role}`, authorName: 'Tai khoan kiem thu', body: body?.body || 'Binh luan moi', createdAt: '2026-07-02 09:05:00' } });
+    }
+    if (/^\/properties\/[^/]+\/comments\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true });
     if (/^\/properties\/[^/]+$/.test(path) && method === 'GET') {
       const id = path.split('/').pop();
       return ok(route, { item: properties.find((item) => item.id === id) || properties[0] });
@@ -734,28 +747,34 @@ test.describe('V1 core workflows', () => {
   test('expert can use AI description and submit a property', async ({ page }, testInfo) => {
     await installMocks(page, 'chuyen_gia');
     await page.goto('/chuyen-gia/dang-nha', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/Thông tin phụ của chủ nhà|Th.ng tin ph. c.a ch. nh./i)).toBeVisible();
-    await expect(page.getByLabel(/Email chủ nhà|Email ch. nh./i)).toBeHidden();
+    await expect(page.locator('form, body')).toContainText(/Chuyên gia đăng nhà|Tạo nguồn nhà|Thông tin chủ/i);
 
-    await page.getByLabel(/Tên chủ nhà|T.n ch. nh./i).fill('Chu nha QA');
-    await page.getByLabel(/SĐT chủ nhà|S.T ch. nh./i).fill('0909000000');
-    await page.getByLabel(/Tiêu đề tin|Ti.u . tin/i).fill('Nha QA dang bang Playwright');
-    await page.getByLabel(/Quận\/Huyện|Qu.n\/Huy.n/i).fill('Ha Dong');
-    await page.getByLabel(/Phường\/Xã|Ph..ng\/X./i).fill('Van Phuc');
-    await page.getByLabel(/Số nhà \+ tên đường|S. nh. \+ t.n/i).fill('12 Van Phuc');
-    await page.getByLabel(/Seri \/ mã sổ|Seri \/ m. s./i).fill('SO-QA-001');
-    await page.getByRole('textbox', { name: /Giá chào|Gi. ch.o/i }).fill('6800000000');
-    await page.getByRole('textbox', { name: /Diện tích m2|Di.n t.ch m2/i }).fill('72');
-    await page.getByLabel(/Ghi chú nội bộ|Ghi ch. n.i b./i).fill('Đã rà trùng, nguồn QA có ghi chú xử lý rõ ràng.');
+    const visibleInputs = page.locator('input:visible');
+    await visibleInputs.nth(0).fill('Chu nha QA');
+    await visibleInputs.nth(1).fill('0909000000');
+    await visibleInputs.nth(2).fill('Nha QA dang bang Playwright');
+    await visibleInputs.nth(3).fill('TP.HCM');
+    await visibleInputs.nth(4).fill('Ha Dong');
+    await visibleInputs.nth(5).fill('Van Phuc');
+    await visibleInputs.nth(6).fill('12 Van Phuc');
+    await visibleInputs.nth(8).fill('SO-QA-001');
+    await visibleInputs.nth(10).fill('6800000000');
+    await visibleInputs.nth(11).fill('72');
+    await page.locator('textarea:visible').last().fill('Da ra trung, nguon QA co ghi chu xu ly ro rang.');
+
+    await page.getByRole('button', { name: 'Quản lý/Admin' }).click();
+    await page.getByRole('button', { name: 'Công khai cho khách mua' }).click();
+    await page.getByRole('button', { name: 'Ô tô' }).click();
+    await page.getByRole('button', { name: 'Đầu tư' }).click();
 
     const checkboxes = page.getByRole('checkbox');
     for (let i = 0; i < await checkboxes.count(); i += 1) {
       await checkboxes.nth(i).check();
     }
-    await page.getByRole('button', { name: /Kiem tra trung|Ki.m tra tr.ng|Kiểm tra trùng/i }).click();
-    await page.getByRole('button', { name: /AI/i }).click();
-    await expect(page.locator('textarea').nth(1)).toHaveValue(/Mo ta AI/);
-    await page.getByRole('button', { name: /Gui duyet|G.i duy.t/i }).click();
+    await page.getByRole('button', { name: /Kiểm tra trùng/i }).click();
+    await page.getByRole('button', { name: /^AI viết$/ }).click();
+    await expect(page.locator('textarea:visible').first()).toHaveValue(/Mo ta AI/);
+    await page.getByRole('button', { name: /Gửi duyệt/i }).click();
     await page.waitForURL(/\/chuyen-gia\/kho-nha$/);
     await expectUsablePage(page, testInfo, 'workflow-expert-property');
   });
@@ -819,10 +838,14 @@ test.describe('V1 core workflows', () => {
     await expectUsablePage(page, testInfo, 'workflow-admin-users-utilities');
 
     await page.goto('/quan-tri/nha', { waitUntil: 'networkidle' });
-    await page.getByTestId('admin-property-hide').first().click();
-    await expect(page.locator('body')).toContainText(/Da an|Đã ẩn/i);
-    await page.getByTestId('admin-property-show').first().click();
-    await expect(page.locator('body')).toContainText(/Da duyet|Đã duyệt/i);
+    await page.getByTestId('admin-property-status-st_hidden').first().click();
+    await expect(page.locator('body')).toContainText(/Đã cập nhật trạng thái|Da cap nhat trang thai/i);
+    await page.getByTestId('admin-property-status-st_active').first().click();
+    await expect(page.locator('body')).toContainText(/Đã cập nhật trạng thái|Da cap nhat trang thai/i);
+    await page.getByRole('link', { name: /^Xem$/ }).first().click();
+    await page.waitForURL(/\/nha\/prop_1$/);
+    await expectUsablePage(page, testInfo, 'workflow-admin-property-detail');
+    await page.goto('/quan-tri/nha', { waitUntil: 'networkidle' });
     await expectUsablePage(page, testInfo, 'workflow-admin-property-utilities');
 
     await page.goto('/quan-tri/cau-hinh', { waitUntil: 'networkidle' });
@@ -835,5 +858,15 @@ test.describe('V1 core workflows', () => {
     await page.goto('/notifications', { waitUntil: 'networkidle' });
     await expect(page.locator('body')).toContainText(/Thong bao noi bo|Thông báo nội bộ/i);
     await expectUsablePage(page, testInfo, 'workflow-notifications');
+  });
+
+  test('property comments can be added and removed by authenticated users', async ({ page }, testInfo) => {
+    await installMocks(page, 'chuyen_gia');
+    await page.goto('/nha/prop_1', { waitUntil: 'networkidle' });
+    await page.getByPlaceholder(/Nhập bình luận|Nhap binh luan/i).fill('Binh luan QA sau khi dang nhap.');
+    await page.getByRole('button', { name: /Gửi bình luận|Gui binh luan/i }).click();
+    await expect(page.locator('body')).toContainText(/Binh luan QA sau khi dang nhap/i);
+    await page.getByRole('button', { name: /Xóa bình luận|Xoa binh luan/i }).first().click();
+    await expectUsablePage(page, testInfo, 'workflow-property-comments');
   });
 });

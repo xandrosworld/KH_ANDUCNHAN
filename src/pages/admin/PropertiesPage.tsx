@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Download, Eye, EyeOff, Home, MapPin, Search } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { areaText, formatVndShort, isPropertyActive, propertyStatusLabel } from '../../utils/svpFormat';
@@ -7,8 +8,19 @@ import { downloadAdminExport } from '../../utils/adminExport';
 const FILTERS = [
   { label: 'Tất cả', value: 'all' },
   { label: 'Đang hiển thị', value: 'active' },
-  { label: 'Đang ẩn', value: 'hidden' },
   { label: 'Chờ xử lý', value: 'pending' },
+  { label: 'Đang ẩn', value: 'hidden' },
+  { label: 'Dừng bán', value: 'paused' },
+  { label: 'Đã cọc', value: 'deposit' },
+  { label: 'Đã bán', value: 'sold' },
+];
+
+const STATUS_ACTIONS = [
+  { label: 'Hiển thị', statusId: 'st_active', className: 'bg-emerald-600 text-white' },
+  { label: 'Ẩn', statusId: 'st_hidden', className: 'border border-red-100 bg-red-50 text-[#c40012]' },
+  { label: 'Dừng bán', statusId: 'st_paused', className: 'border border-amber-100 bg-amber-50 text-amber-700' },
+  { label: 'Đã cọc', statusId: 'st_deposit', className: 'border border-blue-100 bg-blue-50 text-blue-700' },
+  { label: 'Đã bán', statusId: 'st_sold', className: 'border border-gray-200 bg-gray-100 text-gray-700' },
 ];
 
 export default function AdminPropertiesPage() {
@@ -30,24 +42,27 @@ export default function AdminPropertiesPage() {
     const keyword = query.trim().toLowerCase();
     return items.filter((item) => {
       const status = item.statusId || item.status || '';
-      const matchesKeyword = !keyword || [item.title, item.code, item.ownerName, item.ownerPhone, item.district, item.ward]
+      const matchesKeyword = !keyword || [item.title, item.code, item.ownerName, item.ownerPhone, item.extra?.province, item.district, item.ward, item.price, ...(item.tagIds || [])]
         .some((value) => String(value || '').toLowerCase().includes(keyword));
       const matchesFilter =
         filter === 'all' ||
         (filter === 'active' && isPropertyActive(status)) ||
         (filter === 'hidden' && status === 'st_hidden') ||
-        (filter === 'pending' && !isPropertyActive(status) && status !== 'st_hidden');
+        (filter === 'paused' && status === 'st_paused') ||
+        (filter === 'deposit' && status === 'st_deposit') ||
+        (filter === 'sold' && status === 'st_sold') ||
+        (filter === 'pending' && ['st_new', 'new', 'draft', 'pending'].includes(status));
       return matchesKeyword && matchesFilter;
     });
   }, [items, query, filter]);
 
-  const updateStatus = async (item: any, statusId: 'st_active' | 'st_hidden') => {
+  const updateStatus = async (item: any, statusId: string) => {
     setBusyId(`${item.id}-${statusId}`);
     setMessage('');
     try {
       await api.patch(`/properties/${encodeURIComponent(item.id)}/status`, { statusId });
       setItems((current) => current.map((row) => row.id === item.id ? { ...row, statusId, status: statusId } : row));
-      setMessage(statusId === 'st_active' ? `Đã duyệt/hiển thị nguồn ${item.code || item.title}.` : `Đã ẩn nguồn ${item.code || item.title}.`);
+      setMessage(`Đã cập nhật trạng thái nguồn ${item.code || item.title}.`);
     } catch (error: any) {
       setMessage(error?.response?.data?.message || 'Chưa cập nhật được trạng thái nguồn nhà.');
     } finally {
@@ -123,8 +138,7 @@ export default function AdminPropertiesPage() {
               key={item.id}
               item={item}
               busyId={busyId}
-              onShow={() => updateStatus(item, 'st_active')}
-              onHide={() => updateStatus(item, 'st_hidden')}
+              onStatus={(statusId) => updateStatus(item, statusId)}
             />
           ))}
         </div>
@@ -133,7 +147,7 @@ export default function AdminPropertiesPage() {
   );
 }
 
-function PropertyCard({ item, busyId, onShow, onHide }: { item: any; busyId: string; onShow: () => void; onHide: () => void }) {
+function PropertyCard({ item, busyId, onStatus }: { item: any; busyId: string; onStatus: (statusId: string) => void }) {
   const status = item.statusId || item.status;
   const active = isPropertyActive(status);
   const hidden = status === 'st_hidden';
@@ -149,29 +163,33 @@ function PropertyCard({ item, busyId, onShow, onHide }: { item: any; busyId: str
               <p className="text-xs font-black text-[#9aa1ad]">{item.code || shortId(item.id)}</p>
               <p className="mt-1 line-clamp-2 font-black leading-5 text-[#25202a]">{item.title || 'Nguồn nhà'}</p>
             </div>
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${active ? 'bg-emerald-50 text-emerald-700' : hidden ? 'bg-rose-50 text-[#c40012]' : 'bg-amber-50 text-amber-700'}`}>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${active ? 'bg-emerald-50 text-emerald-700' : hidden ? 'bg-rose-50 text-[#c40012]' : status === 'st_sold' ? 'bg-gray-100 text-gray-700' : status === 'st_deposit' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
               {hidden ? 'Đang ẩn' : propertyStatusLabel(status)}
             </span>
           </div>
           <p className="mt-2 font-black text-[#c40012]">{formatVndShort(item.price)}</p>
           <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-[#747b88]">
             <MapPin className="h-3.5 w-3.5" />
-            <span className="truncate">{item.district || item.ward || 'Khu vực đang cập nhật'}</span>
+            <span className="truncate">{[item.extra?.province, item.district || item.ward].filter(Boolean).join(' - ') || 'Khu vực đang cập nhật'}</span>
           </p>
           <p className="mt-1 text-xs font-semibold text-[#747b88]">{areaText(item)} · {formatDate(item.createdAt || item.created_at)}</p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {!active && (
-              <button data-testid="admin-property-show" disabled={busyId === `${item.id}-st_active`} onClick={onShow} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white disabled:opacity-60">
-                <Eye className="h-4 w-4" />
-                Hiển thị
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Link to={`/nha/${encodeURIComponent(item.id)}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a]">
+              <Eye className="h-4 w-4" />
+              Xem
+            </Link>
+            {STATUS_ACTIONS.filter((action) => action.statusId !== status).map((action) => (
+              <button
+                key={action.statusId}
+                data-testid={`admin-property-status-${action.statusId}`}
+                disabled={busyId === `${item.id}-${action.statusId}`}
+                onClick={() => onStatus(action.statusId)}
+                className={`inline-flex min-h-10 items-center justify-center rounded-xl px-3 text-xs font-black disabled:opacity-60 ${action.className}`}
+              >
+                {action.statusId === 'st_hidden' ? <EyeOff className="mr-1.5 h-4 w-4" /> : null}
+                {action.label}
               </button>
-            )}
-            {!hidden && (
-              <button data-testid="admin-property-hide" disabled={busyId === `${item.id}-st_hidden`} onClick={onHide} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-[#c40012] disabled:opacity-60 ${active ? 'col-span-2' : ''}`}>
-                <EyeOff className="h-4 w-4" />
-                Ẩn tin
-              </button>
-            )}
+            ))}
           </div>
         </div>
       </div>

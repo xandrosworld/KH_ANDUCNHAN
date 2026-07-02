@@ -81,6 +81,7 @@ function getMenuForRole(role: string): MenuItem[] {
         { path: '/chuyen-vien/khach-hang', label: 'Khách hàng', icon: Users },
         { path: '/chuyen-vien/tim-nha', label: 'Tìm nhà', icon: Search },
         { path: '/chuyen-vien/lich-xem', label: 'Lịch xem', icon: Calendar },
+        { path: '/notifications', label: 'Thông báo', icon: Bell },
       ];
     case 'ctv_khach':
     case 'ctv_nguon':
