@@ -6,6 +6,7 @@ interface ConfigOption {
   id: string;
   label: string;
   value: string;
+  score?: number | null;
   isActive?: boolean;
   sortOrder: number;
   metadata?: Record<string, unknown> | null;
@@ -59,6 +60,22 @@ const emptyRoleDraft = {
 
 type RoleDraft = typeof emptyRoleDraft;
 
+const emptyOptionDraft = {
+  label: '',
+  value: '',
+  score: '',
+};
+
+type OptionDraft = typeof emptyOptionDraft;
+
+const emptyPublicPageDraft = {
+  title: '',
+  body: '',
+  imageUrl: '',
+  videoUrl: '',
+  linkUrl: '',
+};
+
 function optionMetadata(option: ConfigOption): Record<string, unknown> {
   return option.metadata && typeof option.metadata === 'object' ? option.metadata : {};
 }
@@ -76,6 +93,10 @@ export default function AdminConfigPage() {
   const [roleDraft, setRoleDraft] = useState<RoleDraft>(emptyRoleDraft);
   const [newRole, setNewRole] = useState<RoleDraft>(emptyRoleDraft);
   const [creatingRole, setCreatingRole] = useState(false);
+  const [newOptions, setNewOptions] = useState<Record<string, OptionDraft>>({});
+  const [creatingOptionGroup, setCreatingOptionGroup] = useState('');
+  const [newPublicPage, setNewPublicPage] = useState(emptyPublicPageDraft);
+  const [creatingPublicPage, setCreatingPublicPage] = useState(false);
   const [editingOptionId, setEditingOptionId] = useState('');
   const [editingLabel, setEditingLabel] = useState('');
   const [savingOptionId, setSavingOptionId] = useState('');
@@ -122,6 +143,7 @@ export default function AdminConfigPage() {
   const siteDisplayGroup = groups.find((group) => group.id === 'site_display');
   const publicPagesGroup = groups.find((group) => group.id === 'public_pages');
   const otherGroups = groups.filter((group) => !['account_role_approval', 'site_display', 'public_pages'].includes(group.id));
+  const editableCatalogGroups = new Set(['company_units', 'property_tags', 'property_statuses', 'visibility_levels', 'signing_criteria', 'price_segments', 'customer_statuses']);
   const toggleGroup = (groupId: string) => {
     setExpanded((current) =>
       current.includes(groupId) ? current.filter((item) => item !== groupId) : [...current, groupId],
@@ -244,6 +266,55 @@ export default function AdminConfigPage() {
     );
   };
 
+  const addOptionToGroup = (groupId: string, option: ConfigOption) => {
+    setGroups((current) =>
+      current.map((group) => group.id === groupId
+        ? {
+            ...group,
+            options: [...(group.options || []), option].sort((first, second) => first.sortOrder - second.sortOrder || first.label.localeCompare(second.label, 'vi')),
+          }
+        : group,
+      ),
+    );
+  };
+
+  const updateNewOption = (groupId: string, updates: Partial<OptionDraft>) => {
+    setNewOptions((current) => ({
+      ...current,
+      [groupId]: { ...(current[groupId] || emptyOptionDraft), ...updates },
+    }));
+  };
+
+  const createConfigOption = async (group: ConfigGroup) => {
+    if (creatingOptionGroup) return;
+    const draft = newOptions[group.id] || emptyOptionDraft;
+    const label = draft.label.trim();
+    if (!label) {
+      setMessage('Nhập tên lựa chọn trước khi thêm.');
+      return;
+    }
+    setCreatingOptionGroup(group.id);
+    setMessage('');
+    try {
+      const response = await api.post('/config/options', {
+        groupId: group.id,
+        label,
+        value: draft.value.trim() || undefined,
+        score: group.id === 'signing_criteria' && draft.score.trim() !== '' ? Number(draft.score) : undefined,
+        sortOrder: ((group.options || []).length + 1) * 10,
+        isActive: true,
+      });
+      const created = response.data?.item as ConfigOption | undefined;
+      if (created) addOptionToGroup(group.id, created);
+      setNewOptions((current) => ({ ...current, [group.id]: emptyOptionDraft }));
+      setMessage('Đã thêm lựa chọn mới.');
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa thêm được lựa chọn. Vui lòng kiểm tra lại.');
+    } finally {
+      setCreatingOptionGroup('');
+    }
+  };
+
   const updateOptionLocal = (optionId: string, updates: Partial<ConfigOption>) => {
     setGroups((current) =>
       current.map((group) => ({
@@ -265,6 +336,7 @@ export default function AdminConfigPage() {
       const response = await api.put(`/config/options/${encodeURIComponent(option.id)}`, {
         label: option.label,
         value: option.value,
+        score: option.score ?? null,
         metadata: option.metadata || null,
         isActive: option.isActive !== false,
       });
@@ -297,6 +369,7 @@ export default function AdminConfigPage() {
       const response = await api.put(`/config/options/${encodeURIComponent(option.id)}`, {
         label: nextLabel,
         value: option.value,
+        score: option.score ?? null,
         metadata: option.metadata || null,
         isActive: option.isActive !== false,
       });
@@ -324,6 +397,7 @@ export default function AdminConfigPage() {
       const response = await api.put(`/config/options/${encodeURIComponent(option.id)}`, {
         label: option.label,
         value: option.value,
+        score: option.score ?? null,
         metadata: option.metadata || null,
         isActive: option.isActive === false,
       });
@@ -358,6 +432,42 @@ export default function AdminConfigPage() {
       setMessage('Chưa gửi được thông báo. Vui lòng thử lại.');
     } finally {
       setNoticeSaving(false);
+    }
+  };
+
+  const createPublicNews = async () => {
+    if (creatingPublicPage) return;
+    const title = newPublicPage.title.trim();
+    const body = newPublicPage.body.trim();
+    if (!title || !body) {
+      setMessage('Nhập tiêu đề và nội dung tin tức trước khi thêm.');
+      return;
+    }
+    setCreatingPublicPage(true);
+    setMessage('');
+    try {
+      const response = await api.post('/config/options', {
+        groupId: 'public_pages',
+        label: title,
+        value: `news_${Date.now()}`,
+        metadata: {
+          type: 'news',
+          body,
+          imageUrl: newPublicPage.imageUrl.trim(),
+          videoUrl: newPublicPage.videoUrl.trim(),
+          linkUrl: newPublicPage.linkUrl.trim(),
+        },
+        sortOrder: ((publicPagesGroup?.options || []).length + 1) * 10,
+        isActive: true,
+      });
+      const created = response.data?.item as ConfigOption | undefined;
+      if (created) addOptionToGroup('public_pages', created);
+      setNewPublicPage(emptyPublicPageDraft);
+      setMessage('Đã thêm tin tức đơn giản.');
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa thêm được tin tức. Vui lòng thử lại.');
+    } finally {
+      setCreatingPublicPage(false);
     }
   };
 
@@ -511,6 +621,26 @@ export default function AdminConfigPage() {
                   {creatingRole ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                   Thêm
                 </button>
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <label className="flex min-h-10 items-center gap-2 rounded-xl bg-white px-3 text-xs font-black text-[#667085] ring-1 ring-red-50">
+                  <input
+                    type="checkbox"
+                    checked={newRole.requiresApproval}
+                    onChange={(event) => setNewRole((current) => ({ ...current, requiresApproval: event.target.checked }))}
+                    className="h-4 w-4 accent-[#c40012]"
+                  />
+                  Vai trò này cần duyệt trước khi dùng đầy đủ
+                </label>
+                <label className="flex min-h-10 items-center gap-2 rounded-xl bg-white px-3 text-xs font-black text-[#667085] ring-1 ring-red-50">
+                  <input
+                    type="checkbox"
+                    checked={newRole.registrationEnabled}
+                    onChange={(event) => setNewRole((current) => ({ ...current, registrationEnabled: event.target.checked }))}
+                    className="h-4 w-4 accent-[#c40012]"
+                  />
+                  Hiển thị vai trò này ở form đăng ký
+                </label>
               </div>
             </div>
 
@@ -675,6 +805,53 @@ export default function AdminConfigPage() {
             </div>
           </div>
           <div className="space-y-3">
+            <div className="rounded-2xl border border-red-100 bg-[#fff8f2] p-3">
+              <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#25202a]">
+                <Plus className="h-4 w-4 text-[#c40012]" />
+                Thêm tin tức đơn giản
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                <input
+                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012] md:col-span-2"
+                  value={newPublicPage.title}
+                  onChange={(event) => setNewPublicPage((current) => ({ ...current, title: event.target.value }))}
+                  placeholder="Tiêu đề tin tức"
+                />
+                <textarea
+                  className="min-h-20 rounded-xl border border-red-100 bg-white px-3 py-2 text-sm font-semibold leading-6 outline-none focus:border-[#c40012] md:col-span-2"
+                  value={newPublicPage.body}
+                  onChange={(event) => setNewPublicPage((current) => ({ ...current, body: event.target.value }))}
+                  placeholder="Nội dung ngắn"
+                />
+                <input
+                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                  value={newPublicPage.imageUrl}
+                  onChange={(event) => setNewPublicPage((current) => ({ ...current, imageUrl: event.target.value }))}
+                  placeholder="Link ảnh nếu có"
+                />
+                <input
+                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                  value={newPublicPage.videoUrl}
+                  onChange={(event) => setNewPublicPage((current) => ({ ...current, videoUrl: event.target.value }))}
+                  placeholder="Link video nếu có"
+                />
+                <input
+                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012] md:col-span-2"
+                  value={newPublicPage.linkUrl}
+                  onChange={(event) => setNewPublicPage((current) => ({ ...current, linkUrl: event.target.value }))}
+                  placeholder="Link xem thêm nếu có"
+                />
+                <button
+                  type="button"
+                  onClick={createPublicNews}
+                  disabled={creatingPublicPage}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#c40012] px-4 text-xs font-black text-white disabled:opacity-60 md:col-span-2"
+                >
+                  {creatingPublicPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Thêm tin tức
+                </button>
+              </div>
+            </div>
             {[...(publicPagesGroup.options || [])].sort((a, b) => a.sortOrder - b.sortOrder).map((option) => {
               const meta = optionMetadata(option);
               const isAbout = option.value === 'about' || meta.type === 'about';
@@ -767,6 +944,50 @@ export default function AdminConfigPage() {
               </button>
               {expanded.includes(group.id) && (
                 <div className="border-t border-gray-100 px-4 pb-3">
+                  {editableCatalogGroups.has(group.id) ? (
+                    <div className="my-3 rounded-2xl border border-red-100 bg-[#fff8f2] p-3">
+                      <div className="mb-2 flex items-center gap-2 text-sm font-black text-[#25202a]">
+                        <Plus className="h-4 w-4 text-[#c40012]" />
+                        Thêm lựa chọn
+                      </div>
+                      <div className={`grid gap-2 ${group.id === 'signing_criteria' ? 'md:grid-cols-[1fr_160px_100px_auto]' : 'md:grid-cols-[1fr_180px_auto]'}`}>
+                        <input
+                          className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                          value={(newOptions[group.id] || emptyOptionDraft).label}
+                          onChange={(event) => updateNewOption(group.id, { label: event.target.value })}
+                          placeholder="Tên hiển thị"
+                        />
+                        <input
+                          className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                          value={(newOptions[group.id] || emptyOptionDraft).value}
+                          onChange={(event) => updateNewOption(group.id, { value: event.target.value })}
+                          placeholder="Mã nội bộ (có thể bỏ trống)"
+                        />
+                        {group.id === 'signing_criteria' ? (
+                          <input
+                            className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                            value={(newOptions[group.id] || emptyOptionDraft).score}
+                            onChange={(event) => updateNewOption(group.id, { score: event.target.value })}
+                            placeholder="Điểm"
+                            inputMode="numeric"
+                          />
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => createConfigOption(group)}
+                          disabled={creatingOptionGroup === group.id}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#c40012] px-4 text-xs font-black text-white disabled:opacity-60"
+                        >
+                          {creatingOptionGroup === group.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                          Thêm
+                        </button>
+                      </div>
+                    </div>
+                  ) : group.id === 'property_field_labels' ? (
+                    <div className="my-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-[#735a18]">
+                      V1 cho phép sửa tên và ẩn/hiện các trường không bắt buộc. Tạo field hoàn toàn mới được tách sang phase cấu hình nâng cao để tránh phá form nghiệp vụ.
+                    </div>
+                  ) : null}
                   {(group.options || []).map((option) => {
                     const locked = isLockedOption(group.id, option);
                     return (
@@ -780,6 +1001,15 @@ export default function AdminConfigPage() {
                               className="min-h-10 min-w-0 flex-1 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold text-[#25202a] outline-none focus:border-[#c40012]"
                               autoFocus
                             />
+                            {group.id === 'signing_criteria' ? (
+                              <input
+                                value={option.score ?? ''}
+                                onChange={(event) => updateOptionLocal(option.id, { score: event.target.value === '' ? null : Number(event.target.value) })}
+                                className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold text-[#25202a] outline-none focus:border-[#c40012] sm:w-24"
+                                placeholder="Điểm"
+                                inputMode="numeric"
+                              />
+                            ) : null}
                             <div className="flex gap-2">
                               <button
                                 type="button"
@@ -807,6 +1037,11 @@ export default function AdminConfigPage() {
                               {locked ? (
                                 <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-black text-amber-700">
                                   Bắt buộc
+                                </span>
+                              ) : null}
+                              {group.id === 'signing_criteria' && option.score != null ? (
+                                <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black text-blue-700">
+                                  {Number(option.score) > 0 ? '+' : ''}{option.score} điểm
                                 </span>
                               ) : null}
                             </div>

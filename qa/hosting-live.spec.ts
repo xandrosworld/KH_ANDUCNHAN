@@ -212,6 +212,16 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     const token = await page.evaluate(() => localStorage.getItem('svp_token'));
     expect(token, 'admin login should store a JWT in localStorage').toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     await assertHealthyPage(page, '/quan-tri');
+
+    await page.goto('/quan-tri/cau-hinh', { waitUntil: 'domcontentloaded' });
+    await waitForLiveApp(page);
+    await expect(page.getByRole('heading', { name: /Cấu hình vận hành/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('body')).toContainText(/Thêm vai trò đăng ký/i);
+    await expect(page.locator('body')).toContainText(/Thêm tin tức đơn giản/i);
+    await page.getByRole('button', { name: /Danh mục dữ liệu|Đặc điểm|Trạng thái|Quyền xem|Công ty/i }).first().click().catch(() => undefined);
+    await expect(page.locator('body')).toContainText(/Thêm lựa chọn|Tạo field hoàn toàn mới/i);
+    await assertHealthyPage(page, '/quan-tri/cau-hinh');
+
     expect(failures, 'admin login form should not throw runtime, asset, or HTTP failures').toEqual([]);
   });
 
