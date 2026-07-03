@@ -6,6 +6,7 @@ import { apiPost } from '../../services/apiClient';
 import { svpAxios as api } from '../../services/svpAxios';
 import { svpApi } from '../../services/svpApi';
 import type { SvpConfigGroup, SvpConfigOption } from '../../types/svp';
+import { propertyFieldLabel, propertyFieldVisible } from '../../utils/fieldLabels';
 
 const PROVINCES = ['TP.HCM', 'Hà Nội', 'Đà Nẵng', 'Thủ Đức', 'Bình Dương', 'Đồng Nai', 'Long An', 'Bà Rịa - Vũng Tàu', 'Cần Thơ', 'Hải Phòng', 'Khánh Hòa', 'Thanh Hóa'];
 const DISTRICTS = ['Quận 1', 'Quận 3', 'Quận 5', 'Quận 7', 'Quận 10', 'Quận 12', 'Bình Thạnh', 'Gò Vấp', 'Tân Bình', 'Tân Phú', 'Thủ Đức', 'Bình Tân', 'Nhà Bè', 'Hóc Môn'];
@@ -73,6 +74,8 @@ export default function ExpertAddPropertyPage() {
   const companyUnits = optionsOf('company_units');
   const visibilityOptions = optionsOf('visibility_levels');
   const propertyTags = optionsOf('property_tags');
+  const fieldLabel = (key: string, fallback: string) => propertyFieldLabel(groups, key, fallback);
+  const showField = (key: string) => propertyFieldVisible(groups, key);
 
   const signingScore = useMemo(() => {
     return signingCriteria
@@ -271,14 +274,14 @@ export default function ExpertAddPropertyPage() {
         <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
           <h2 className="mb-3 font-black text-[#25202a]">Thông tin chủ</h2>
           <div className="grid gap-3">
-            <Field label="Tên chủ nhà" value={form.ownerName} onChange={(value) => update('ownerName', value)} />
-            <Field label="SĐT chủ nhà" value={form.ownerPhone} onChange={(value) => update('ownerPhone', value)} inputMode="tel" />
+            <Field label={fieldLabel('ownerName', 'Tên chủ nhà')} value={form.ownerName} onChange={(value) => update('ownerName', value)} />
+            <Field label={fieldLabel('ownerPhone', 'SĐT chủ nhà')} value={form.ownerPhone} onChange={(value) => update('ownerPhone', value)} inputMode="tel" />
           </div>
           <details className="mt-3 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2">
             <summary className="cursor-pointer text-xs font-black text-[#5f6672]">Thông tin phụ của chủ nhà</summary>
             <div className="mt-3 grid gap-3">
-              <Field label="Email chủ nhà (không bắt buộc)" value={form.ownerEmail} onChange={(value) => update('ownerEmail', value)} type="email" />
-              <Textarea label="Ghi chú về chủ" value={form.ownerNote} onChange={(value) => update('ownerNote', value)} rows={3} />
+              {showField('ownerEmail') ? <Field label={fieldLabel('ownerEmail', 'Email chủ nhà (không bắt buộc)')} value={form.ownerEmail} onChange={(value) => update('ownerEmail', value)} type="email" /> : null}
+              {showField('ownerNote') ? <Textarea label={fieldLabel('ownerNote', 'Ghi chú về chủ')} value={form.ownerNote} onChange={(value) => update('ownerNote', value)} rows={3} /> : null}
             </div>
           </details>
         </section>
@@ -286,18 +289,18 @@ export default function ExpertAddPropertyPage() {
         <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
           <h2 className="mb-3 font-black text-[#25202a]">Thông tin nhà</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field className="sm:col-span-2" label="Tiêu đề tin" value={form.title} onChange={(value) => update('title', value)} />
-            <InputWithList label="Tỉnh/Thành phố" value={form.province} onChange={(value) => update('province', value)} listId="expert-provinces" options={PROVINCES} />
-            <InputWithList label="Quận/Huyện" value={form.district} onChange={(value) => update('district', value)} listId="expert-districts" options={DISTRICTS} />
-            <InputWithList label="Phường/Xã" value={form.ward} onChange={(value) => update('ward', value)} listId="expert-wards" options={WARDS} />
-            <Field label="Số nhà + tên đường" value={form.street} onChange={(value) => update('street', value)} />
-            <Field label="Địa chỉ ẩn nội bộ" value={form.hiddenAddress} onChange={(value) => update('hiddenAddress', value)} />
-            <Field label="Seri / mã sổ" value={form.bookSerial} onChange={(value) => update('bookSerial', value)} />
-            <Field label="Tọa độ GPS" value={form.gpsCoordinates} onChange={(value) => update('gpsCoordinates', value)} />
-            <Field label="Giá chào" value={form.price} onChange={(value) => update('price', value)} inputMode="numeric" />
-            <Field label="Diện tích m2" value={form.area} onChange={(value) => update('area', value)} inputMode="decimal" />
-            <Select label="Pháp lý" value={form.legalStatus} onChange={(value) => update('legalStatus', value)} options={LEGAL_STATUS} />
-            <Field label="Hoa hồng / thỏa thuận" value={form.commission} onChange={(value) => update('commission', value)} />
+            <Field className="sm:col-span-2" label={fieldLabel('title', 'Tiêu đề tin')} value={form.title} onChange={(value) => update('title', value)} />
+            <InputWithList label={fieldLabel('province', 'Tỉnh/Thành phố')} value={form.province} onChange={(value) => update('province', value)} listId="expert-provinces" options={PROVINCES} />
+            <InputWithList label={fieldLabel('district', 'Quận/Huyện')} value={form.district} onChange={(value) => update('district', value)} listId="expert-districts" options={DISTRICTS} />
+            <InputWithList label={fieldLabel('ward', 'Phường/Xã')} value={form.ward} onChange={(value) => update('ward', value)} listId="expert-wards" options={WARDS} />
+            {showField('street') ? <Field label={fieldLabel('street', 'Số nhà + tên đường')} value={form.street} onChange={(value) => update('street', value)} /> : null}
+            {showField('hiddenAddress') ? <Field label={fieldLabel('hiddenAddress', 'Địa chỉ ẩn nội bộ')} value={form.hiddenAddress} onChange={(value) => update('hiddenAddress', value)} /> : null}
+            {showField('bookSerial') ? <Field label={fieldLabel('bookSerial', 'Seri / mã sổ')} value={form.bookSerial} onChange={(value) => update('bookSerial', value)} /> : null}
+            {showField('gpsCoordinates') ? <Field label={fieldLabel('gpsCoordinates', 'Tọa độ GPS')} value={form.gpsCoordinates} onChange={(value) => update('gpsCoordinates', value)} /> : null}
+            <Field label={fieldLabel('price', 'Giá chào')} value={form.price} onChange={(value) => update('price', value)} inputMode="numeric" />
+            {showField('area') ? <Field label={fieldLabel('area', 'Diện tích m2')} value={form.area} onChange={(value) => update('area', value)} inputMode="decimal" /> : null}
+            {showField('legalStatus') ? <Select label={fieldLabel('legalStatus', 'Pháp lý')} value={form.legalStatus} onChange={(value) => update('legalStatus', value)} options={LEGAL_STATUS} /> : null}
+            {showField('commission') ? <Field label={fieldLabel('commission', 'Hoa hồng / thỏa thuận')} value={form.commission} onChange={(value) => update('commission', value)} /> : null}
             <SelectFromOptions label="Công ty thành viên" value={form.companyUnitId} onChange={(value) => update('companyUnitId', value)} options={companyUnits} />
             <MultiOptionPicker label="Quyền xem" selectedIds={selectedVisibilityIds} options={visibilityOptions} onToggle={(id) => toggleMultiOption(id, setSelectedVisibilityIds)} />
             <MultiOptionPicker label="Đặc điểm / tag chính" selectedIds={selectedTagIds} options={propertyTags} onToggle={(id) => toggleMultiOption(id, setSelectedTagIds)} />
@@ -308,7 +311,7 @@ export default function ExpertAddPropertyPage() {
       <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-black text-[#25202a]">Mô tả chi tiết</h2>
+            <h2 className="font-black text-[#25202a]">{fieldLabel('description', 'Mô tả chi tiết')}</h2>
             <p className="mt-1 text-xs font-semibold text-[#7b8190]">Có thể nhập dài theo mẫu trợ lý gửi.</p>
           </div>
           <button
@@ -347,23 +350,25 @@ export default function ExpertAddPropertyPage() {
         </div>
       </section>
 
+      {showField('houseImages') || showField('bookImages') || showField('contractImages') || showField('ownerSelfie') ? (
       <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
         <h2 className="mb-3 font-black text-[#25202a]">Ảnh và tài liệu</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <FileBox
-            title="Ảnh duyệt nội bộ"
+            title={fieldLabel('bookImages', 'Ảnh duyệt nội bộ')}
             desc="Sổ đỏ, hợp đồng, tự sướng với nhà. Chỉ admin/chuyên gia phụ trách xem."
             files={privateFiles}
             onChange={setPrivateFiles}
           />
           <FileBox
-            title="Ảnh công khai"
+            title={fieldLabel('houseImages', 'Ảnh công khai')}
             desc="Ảnh nhà dùng cho người xem theo phân quyền."
             files={publicFiles}
             onChange={setPublicFiles}
           />
         </div>
       </section>
+      ) : null}
 
       <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -398,7 +403,7 @@ export default function ExpertAddPropertyPage() {
               : 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.'}
           </div>
         ) : null}
-        <Textarea className="mt-3" label="Ghi chú nội bộ" value={form.internalNote} onChange={(value) => update('internalNote', value)} rows={3} placeholder="Cách xử lý trùng, lưu ý chủ nhà, điều kiện dẫn khách..." />
+        {showField('internalNote') ? <Textarea className="mt-3" label={fieldLabel('internalNote', 'Ghi chú nội bộ')} value={form.internalNote} onChange={(value) => update('internalNote', value)} rows={3} placeholder="Cách xử lý trùng, lưu ý chủ nhà, điều kiện dẫn khách..." /> : null}
       </section>
     </div>
   );

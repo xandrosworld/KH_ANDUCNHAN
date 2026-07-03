@@ -75,6 +75,12 @@ function svp_role_requires_approval(string $roleSlug): bool {
 }
 
 function svp_role_name(string $roleSlug): string {
+    try {
+        return svp_role_display_name_from_config(Database::getInstance(), $roleSlug);
+    } catch (Throwable $e) {
+        error_log('[SVP_ROLE_NAME_CONFIG] ' . $e->getMessage());
+    }
+
     $names = [
         'admin' => 'Quản trị',
         'giam_doc' => 'Giám đốc Khu vực',
@@ -565,18 +571,7 @@ $router->add('GET', '/api/svp/admin/role-approval-settings', function () {
     );
     $stmt->execute();
 
-    $items = array_map(function ($row) {
-        $option = svp_option_to_response($row);
-        $metadata = $option['metadata'] ?? [];
-        return [
-            'id' => $option['id'],
-            'slug' => $option['value'],
-            'label' => $option['label'],
-            'roleGroup' => $metadata['roleGroup'] ?? 'Khác',
-            'requiresApproval' => (bool) ($metadata['requiresApproval'] ?? true),
-            'sortOrder' => $option['sortOrder'],
-        ];
-    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    $items = array_map('svp_role_setting_from_option', $stmt->fetchAll(PDO::FETCH_ASSOC));
 
     Response::json(['items' => $items, 'total' => count($items)]);
 });
@@ -588,7 +583,7 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
 
     $slug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) ($params['slug'] ?? ''))));
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
-    if ($slug === '' || !array_key_exists('requiresApproval', $input)) {
+    if ($slug === '') {
         Response::error('Thông tin cấu hình không hợp lệ', 400);
     }
 
@@ -603,15 +598,40 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
     if (!$old) Response::notFound('Không tìm thấy loại tài khoản');
 
     $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
-    $metadata['requiresApproval'] = (bool) $input['requiresApproval'];
+    if (array_key_exists('requiresApproval', $input)) {
+        $metadata['requiresApproval'] = (bool) $input['requiresApproval'];
+    }
+    if (array_key_exists('description', $input)) {
+        $metadata['description'] = trim((string) $input['description']);
+    }
+    if (array_key_exists('roleGroup', $input)) {
+        $metadata['roleGroup'] = trim((string) $input['roleGroup']) ?: ($metadata['roleGroup'] ?? 'Khác');
+    }
+
+    $label = array_key_exists('label', $input) ? trim((string) $input['label']) : (string) $old['label'];
+    if ($label === '') Response::error('Tên vai trò không được để trống', 400);
+    $sortOrder = array_key_exists('sortOrder', $input) ? (int) $input['sortOrder'] : (int) $old['sort_order'];
+    $isActive = (int) ($old['is_active'] ?? 1);
+    if (array_key_exists('registrationEnabled', $input)) {
+        if ($slug === 'admin' && !(bool) $input['registrationEnabled']) {
+            Response::error('Vai trò quản trị hệ thống không thể ẩn.', 400);
+        }
+        $isActive = $slug === 'admin' ? 1 : (int) (bool) $input['registrationEnabled'];
+    }
 
     $update = $db->prepare(
         "UPDATE svp_config_options
-         SET metadata_json = :metadata_json
+         SET label = :label,
+             metadata_json = :metadata_json,
+             sort_order = :sort_order,
+             is_active = :is_active
          WHERE id = :id"
     );
     $update->execute([
+        'label' => $label,
         'metadata_json' => svp_json_encode($metadata),
+        'sort_order' => $sortOrder,
+        'is_active' => $isActive,
         'id' => $old['id'],
     ]);
 
@@ -619,17 +639,56 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
     $next = $stmt->fetch(PDO::FETCH_ASSOC);
     svp_insert_audit($db, $payload['sub'] ?? null, 'update', 'role_approval_setting', $slug, $old, $next);
 
-    $option = svp_option_to_response($next);
-    Response::json([
-        'item' => [
-            'id' => $option['id'],
-            'slug' => $option['value'],
-            'label' => $option['label'],
-            'roleGroup' => $option['metadata']['roleGroup'] ?? 'Khác',
-            'requiresApproval' => (bool) ($option['metadata']['requiresApproval'] ?? true),
-            'sortOrder' => $option['sortOrder'],
-        ],
-    ]);
+    Response::json(['item' => svp_role_setting_from_option($next)]);
+});
+
+$router->add('POST', '/api/svp/admin/role-approval-settings', function () {
+    $payload = svp_require_management_role();
+    $db = Database::getInstance();
+    svp_ensure_role_approval_config($db);
+
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $label = trim((string) ($input['label'] ?? ''));
+    $slug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) ($input['slug'] ?? ''))));
+    if ($slug === '' && $label !== '') {
+        $base = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $label) ?: $label;
+        $slug = preg_replace('/[^a-z0-9_]+/', '_', strtolower(trim($base)));
+        $slug = trim($slug, '_');
+    }
+    if ($label === '' || $slug === '' || $slug === 'admin') {
+        Response::error('Tên hoặc mã vai trò không hợp lệ', 400);
+    }
+
+    $check = $db->prepare("SELECT id FROM svp_config_options WHERE group_id = 'account_role_approval' AND value = :slug LIMIT 1");
+    $check->execute(['slug' => $slug]);
+    if ($check->fetch()) Response::error('Mã vai trò đã tồn tại', 409);
+
+    $metadata = [
+        'requiresApproval' => array_key_exists('requiresApproval', $input) ? (bool) $input['requiresApproval'] : true,
+        'roleGroup' => trim((string) ($input['roleGroup'] ?? 'Khác')) ?: 'Khác',
+        'description' => trim((string) ($input['description'] ?? '')),
+        'systemRole' => false,
+        'customRole' => true,
+    ];
+    $item = [
+        'id' => 'role_approval_' . $slug,
+        'group_id' => 'account_role_approval',
+        'label' => $label,
+        'value' => $slug,
+        'score' => null,
+        'metadata_json' => svp_json_encode($metadata),
+        'sort_order' => (int) ($input['sortOrder'] ?? 500),
+        'is_active' => array_key_exists('registrationEnabled', $input) ? (int) (bool) $input['registrationEnabled'] : 1,
+    ];
+
+    $insert = $db->prepare(
+        "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
+         VALUES (:id, :group_id, :label, :value, :metadata_json, :sort_order, :is_active)"
+    );
+    $insert->execute($item);
+    svp_insert_audit($db, $payload['sub'] ?? null, 'create', 'role_approval_setting', $slug, null, $item);
+
+    Response::json(['item' => svp_role_setting_from_option($item)], 201);
 });
 
 function svp_admin_random_password(int $length = 14): string {

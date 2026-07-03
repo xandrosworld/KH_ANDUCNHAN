@@ -95,6 +95,84 @@ function svp_role_approval_default_for(string $roleSlug): bool
     return true;
 }
 
+function svp_role_definition_by_slug(string $roleSlug): ?array
+{
+    foreach (svp_role_approval_definitions() as $role) {
+        if ($role['slug'] === $roleSlug) {
+            return $role;
+        }
+    }
+    return null;
+}
+
+function svp_role_setting_from_option(array $row): array
+{
+    $option = svp_option_to_response($row);
+    $metadata = is_array($option['metadata'] ?? null) ? $option['metadata'] : [];
+    $slug = (string) $option['value'];
+    $definition = svp_role_definition_by_slug($slug);
+
+    return [
+        'id' => $option['id'],
+        'slug' => $slug,
+        'label' => $option['label'],
+        'description' => (string) ($metadata['description'] ?? $definition['description'] ?? ''),
+        'roleGroup' => (string) ($metadata['roleGroup'] ?? $definition['group'] ?? 'Khác'),
+        'requiresApproval' => (bool) ($metadata['requiresApproval'] ?? $definition['requiresApproval'] ?? true),
+        'registrationEnabled' => $slug !== 'admin' && $option['isActive'] !== false,
+        'systemRole' => (bool) ($metadata['systemRole'] ?? (bool) $definition),
+        'customRole' => (bool) ($metadata['customRole'] ?? !$definition),
+        'sortOrder' => $option['sortOrder'],
+    ];
+}
+
+function svp_role_registration_enabled_from_config(PDO $db, string $roleSlug): bool
+{
+    $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim($roleSlug)));
+    if ($roleSlug === '' || $roleSlug === 'admin') return false;
+
+    try {
+        svp_ensure_role_approval_config($db);
+        $stmt = $db->prepare(
+            "SELECT is_active
+             FROM svp_config_options
+             WHERE group_id = 'account_role_approval' AND value = :role
+             LIMIT 1"
+        );
+        $stmt->execute(['role' => $roleSlug]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? ((int) ($row['is_active'] ?? 0) === 1) : false;
+    } catch (Throwable $e) {
+        error_log('[SVP_ROLE_REGISTRATION_CONFIG] ' . $e->getMessage());
+    }
+
+    return false;
+}
+
+function svp_role_display_name_from_config(PDO $db, string $roleSlug): string
+{
+    $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim($roleSlug)));
+    if ($roleSlug === '') return '';
+
+    try {
+        svp_ensure_role_approval_config($db);
+        $stmt = $db->prepare(
+            "SELECT label
+             FROM svp_config_options
+             WHERE group_id = 'account_role_approval' AND value = :role
+             LIMIT 1"
+        );
+        $stmt->execute(['role' => $roleSlug]);
+        $label = (string) ($stmt->fetchColumn() ?: '');
+        if (trim($label) !== '') return $label;
+    } catch (Throwable $e) {
+        error_log('[SVP_ROLE_DISPLAY_CONFIG] ' . $e->getMessage());
+    }
+
+    $definition = svp_role_definition_by_slug($roleSlug);
+    return $definition['label'] ?? $roleSlug;
+}
+
 function svp_ensure_role_approval_config(PDO $db): void
 {
     $db->prepare(
@@ -111,9 +189,7 @@ function svp_ensure_role_approval_config(PDO $db): void
         "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
          VALUES (:id, 'account_role_approval', :label, :value, :metadata_json, :sort_order, 1)
          ON DUPLICATE KEY UPDATE
-           label = VALUES(label),
            sort_order = VALUES(sort_order),
-           is_active = 1,
            metadata_json = CASE
              WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
              ELSE metadata_json
@@ -128,10 +204,28 @@ function svp_ensure_role_approval_config(PDO $db): void
             'metadata_json' => svp_json_encode([
                 'requiresApproval' => (bool) $role['requiresApproval'],
                 'roleGroup' => $role['group'],
+                'description' => $role['description'] ?? '',
+                'systemRole' => true,
+                'customRole' => false,
             ]),
             'sort_order' => (int) $role['sortOrder'],
         ]);
     }
+}
+
+function svp_property_field_locked_keys(): array
+{
+    return [
+        'ownerName',
+        'ownerPhone',
+        'title',
+        'province',
+        'district',
+        'ward',
+        'price',
+        'description',
+        'houseImages',
+    ];
 }
 
 function svp_role_requires_approval_from_config(PDO $db, string $roleSlug): bool
@@ -172,6 +266,7 @@ function svp_property_field_label_definitions(): array
         ['key' => 'ownerNote', 'label' => 'Ghi chú về chủ nhà', 'sortOrder' => 50],
         ['key' => 'title', 'label' => 'Tiêu đề tin', 'sortOrder' => 60],
         ['key' => 'propertyType', 'label' => 'Loại bất động sản', 'sortOrder' => 70],
+        ['key' => 'province', 'label' => 'Tỉnh/Thành phố', 'sortOrder' => 75],
         ['key' => 'street', 'label' => 'Số nhà + Tên đường', 'sortOrder' => 80],
         ['key' => 'ward', 'label' => 'Phường/Xã', 'sortOrder' => 90],
         ['key' => 'district', 'label' => 'Quận/Huyện', 'sortOrder' => 100],
@@ -216,7 +311,6 @@ function svp_ensure_property_field_label_config(PDO $db): void
          VALUES (:id, 'property_field_labels', :label, :value, :metadata_json, :sort_order, 1)
          ON DUPLICATE KEY UPDATE
            sort_order = VALUES(sort_order),
-           is_active = 1,
            metadata_json = CASE
              WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
              ELSE metadata_json
@@ -231,6 +325,7 @@ function svp_ensure_property_field_label_config(PDO $db): void
             'metadata_json' => svp_json_encode([
                 'scope' => 'property',
                 'editableLabel' => true,
+                'locked' => in_array($field['key'], svp_property_field_locked_keys(), true),
             ]),
             'sort_order' => (int) $field['sortOrder'],
         ]);
@@ -244,6 +339,136 @@ function svp_ensure_property_field_label_config(PDO $db): void
            AND group_id = 'property_field_labels'
            AND label = :legacy_label"
     )->execute(['legacy_label' => $legacyOwnerSelfieLabel]);
+}
+
+function svp_ensure_site_display_config(PDO $db): void
+{
+    $db->prepare(
+        "INSERT INTO svp_config_groups (id, name, description, sort_order, is_system)
+         VALUES ('site_display', 'Hiển thị website', 'Logo, tên hệ thống, khẩu hiệu và nội dung chân trang hiển thị công khai.', 7, 1)
+         ON DUPLICATE KEY UPDATE
+           description = VALUES(description),
+           sort_order = VALUES(sort_order),
+           is_system = VALUES(is_system)"
+    )->execute();
+
+    $defaults = [
+        ['id' => 'site_logo_url', 'label' => 'Logo', 'value' => '/logo11.png', 'sortOrder' => 10],
+        ['id' => 'site_name', 'label' => 'Tên website', 'value' => 'Sổ Đỏ Vạn Phúc', 'sortOrder' => 20],
+        ['id' => 'site_slogan_line_1', 'label' => 'Khẩu hiệu dòng 1', 'value' => 'Hệ điều hành nghề Môi giới', 'sortOrder' => 30],
+        ['id' => 'site_slogan_line_2', 'label' => 'Khẩu hiệu dòng 2', 'value' => 'Thổ cư Việt Nam', 'sortOrder' => 40],
+        ['id' => 'site_footer_text', 'label' => 'Chân trang', 'value' => 'Sổ Đỏ Vạn Phúc - hệ thống quản lý nguồn nhà và khách hàng.', 'sortOrder' => 50],
+    ];
+
+    $stmt = $db->prepare(
+        "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
+         VALUES (:id, 'site_display', :label, :value, :metadata_json, :sort_order, 1)
+         ON DUPLICATE KEY UPDATE
+           sort_order = VALUES(sort_order),
+           metadata_json = CASE
+             WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
+             ELSE metadata_json
+           END"
+    );
+
+    foreach ($defaults as $item) {
+        $stmt->execute([
+            'id' => $item['id'],
+            'label' => $item['label'],
+            'value' => $item['value'],
+            'metadata_json' => svp_json_encode(['inputType' => 'text']),
+            'sort_order' => $item['sortOrder'],
+        ]);
+    }
+}
+
+function svp_ensure_public_page_config(PDO $db): void
+{
+    $db->prepare(
+        "INSERT INTO svp_config_groups (id, name, description, sort_order, is_system)
+         VALUES ('public_pages', 'Trang giới thiệu / tin tức', 'Nội dung công khai dạng đơn giản để hiển thị ở cuối trang đăng nhập.', 8, 1)
+         ON DUPLICATE KEY UPDATE
+           description = VALUES(description),
+           sort_order = VALUES(sort_order),
+           is_system = VALUES(is_system)"
+    )->execute();
+
+    $defaults = [
+        [
+            'id' => 'public_page_about',
+            'label' => 'Giới thiệu',
+            'value' => 'about',
+            'sortOrder' => 10,
+            'metadata' => [
+                'type' => 'about',
+                'subtitle' => 'Hệ thống vận hành nguồn nhà và khách hàng cho đội ngũ Sổ Đỏ Vạn Phúc.',
+                'body' => 'Sổ Đỏ Vạn Phúc tập trung vào thao tác nhanh trên điện thoại, dữ liệu rõ ràng và quy trình làm việc minh bạch cho chủ nhà, khách mua, cộng tác viên, chuyên viên và chuyên gia.',
+                'imageUrl' => '/logo11.png',
+                'videoUrl' => '',
+                'linkUrl' => '',
+            ],
+        ],
+        [
+            'id' => 'public_news_v1',
+            'label' => 'Bản V1 ưu tiên thao tác nhanh',
+            'value' => 'news_v1',
+            'sortOrder' => 110,
+            'metadata' => [
+                'type' => 'news',
+                'body' => 'Các màn đăng nhập, đăng ký, đăng nhà và kho nhà được tinh gọn để người dùng xử lý việc chính với ít lần bấm hơn.',
+                'imageUrl' => '',
+                'videoUrl' => '',
+                'linkUrl' => '',
+            ],
+        ],
+        [
+            'id' => 'public_news_expert',
+            'label' => 'Chuyên gia gửi nguồn nhà chờ duyệt',
+            'value' => 'news_expert',
+            'sortOrder' => 120,
+            'metadata' => [
+                'type' => 'news',
+                'body' => 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà cá nhân, kèm trạng thái để admin xem chi tiết và phê duyệt.',
+                'imageUrl' => '',
+                'videoUrl' => '',
+                'linkUrl' => '',
+            ],
+        ],
+        [
+            'id' => 'public_news_referral',
+            'label' => 'Mã giới thiệu ghi nhận nguồn người dùng',
+            'value' => 'news_referral',
+            'sortOrder' => 130,
+            'metadata' => [
+                'type' => 'news',
+                'body' => 'Mỗi tài khoản có mã/link giới thiệu riêng để theo dõi người giới thiệu khi đăng ký tài khoản mới.',
+                'imageUrl' => '',
+                'videoUrl' => '',
+                'linkUrl' => '',
+            ],
+        ],
+    ];
+
+    $stmt = $db->prepare(
+        "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
+         VALUES (:id, 'public_pages', :label, :value, :metadata_json, :sort_order, 1)
+         ON DUPLICATE KEY UPDATE
+           sort_order = VALUES(sort_order),
+           metadata_json = CASE
+             WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
+             ELSE metadata_json
+           END"
+    );
+
+    foreach ($defaults as $item) {
+        $stmt->execute([
+            'id' => $item['id'],
+            'label' => $item['label'],
+            'value' => $item['value'],
+            'metadata_json' => svp_json_encode($item['metadata']),
+            'sort_order' => $item['sortOrder'],
+        ]);
+    }
 }
 
 function svp_ensure_v1_visibility_labels(PDO $db): void
@@ -304,7 +529,7 @@ function svp_option_to_response(array $row): array
         'groupId'   => (string) $row['group_id'],
         'label'     => (string) $row['label'],
         'value'     => (string) $row['value'],
-        'score'     => $row['score'] === null ? null : (float) $row['score'],
+        'score'     => !isset($row['score']) || $row['score'] === null ? null : (float) $row['score'],
         'metadata'  => svp_json_decode($row['metadata_json'] ?? null, null),
         'sortOrder' => (int) ($row['sort_order'] ?? 0),
         'isActive'  => (bool) ($row['is_active'] ?? 1),
@@ -432,6 +657,8 @@ $router->add('GET', '/api/svp/config', function () {
     $db = Database::getInstance();
     svp_ensure_role_approval_config($db);
     svp_ensure_property_field_label_config($db);
+    svp_ensure_site_display_config($db);
+    svp_ensure_public_page_config($db);
     svp_ensure_v1_visibility_labels($db);
     $groups = $db->query('SELECT * FROM svp_config_groups ORDER BY sort_order ASC, name ASC')->fetchAll(PDO::FETCH_ASSOC);
     $options = $db->query('SELECT * FROM svp_config_options ORDER BY sort_order ASC, label ASC')->fetchAll(PDO::FETCH_ASSOC);
@@ -509,6 +736,18 @@ $router->add('PUT', '/api/svp/config/options/{id}', function ($params) use ($inp
         'is_active' => array_key_exists('isActive', $input) ? (int) (bool) $input['isActive'] : (int) $old['is_active'],
         'id' => $id,
     ];
+
+    if (($old['group_id'] ?? '') === 'property_field_labels'
+        && (int) $next['is_active'] === 0
+        && in_array((string) ($old['value'] ?? ''), svp_property_field_locked_keys(), true)) {
+        Response::error('Trường bắt buộc của form đăng nhà không thể ẩn.', 400);
+    }
+
+    if (($old['group_id'] ?? '') === 'account_role_approval'
+        && (string) ($old['value'] ?? '') === 'admin'
+        && (int) $next['is_active'] === 0) {
+        Response::error('Vai trò quản trị hệ thống không thể ẩn.', 400);
+    }
 
     $update = $db->prepare(
         'UPDATE svp_config_options

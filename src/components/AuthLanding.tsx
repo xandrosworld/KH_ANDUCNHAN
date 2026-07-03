@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { getRoleDashboardPath, PUBLIC_REGISTRATION_ROLES } from '../data/roles';
+import { getRoleDashboardPath, PUBLIC_REGISTRATION_ROLES, ROLE_MAP, type RoleDefinition } from '../data/roles';
 import type { LegalDocumentType } from '../data/legalDocuments';
 import { useAuth } from '../contexts/AuthContext';
 import { svpApi } from '../services/svpApi';
+import type { SvpConfigGroup } from '../types/svp';
 import LegalModal from './LegalModal';
 import {
   SvpAppleIcon,
@@ -36,6 +37,61 @@ type AuthPanel = 'login' | 'register';
 
 interface AuthLandingProps {
   initialPanel?: AuthPanel;
+}
+
+interface RegistrationRole {
+  slug: string;
+  label: string;
+  shortLabel: string;
+  description: string;
+  group: string;
+  requiresApproval: boolean;
+  dashboardPath: string;
+}
+
+interface SiteDisplay {
+  logoUrl: string;
+  siteName: string;
+  sloganLine1: string;
+  sloganLine2: string;
+  footerText: string;
+}
+
+const defaultSiteDisplay: SiteDisplay = {
+  logoUrl: '/logo11.png',
+  siteName: 'Sổ Đỏ Vạn Phúc',
+  sloganLine1: 'Hệ điều hành nghề Môi giới',
+  sloganLine2: 'Thổ cư Việt Nam',
+  footerText: 'Sổ Đỏ Vạn Phúc',
+};
+
+function optionValue(groups: SvpConfigGroup[], groupId: string, value: string, fallback: string) {
+  const option = groups.find((group) => group.id === groupId)?.options.find((item) => item.value === value || item.id === value);
+  return option?.isActive === false ? fallback : String(option?.value || fallback);
+}
+
+function rolesFromConfig(groups: SvpConfigGroup[]): RegistrationRole[] {
+  const roleGroup = groups.find((group) => group.id === 'account_role_approval');
+  if (!roleGroup?.options?.length) return PUBLIC_REGISTRATION_ROLES;
+
+  const mapped = roleGroup.options
+    .filter((option) => option.value !== 'admin' && option.isActive !== false)
+    .sort((first, second) => first.sortOrder - second.sortOrder)
+    .map((option) => {
+      const fallback = ROLE_MAP[option.value] as RoleDefinition | undefined;
+      const metadata = option.metadata || {};
+      return {
+        slug: option.value,
+        label: option.label || fallback?.label || option.value,
+        shortLabel: option.label || fallback?.shortLabel || option.value,
+        description: String(metadata.description || fallback?.description || ''),
+        group: String(metadata.roleGroup || fallback?.group || 'public'),
+        requiresApproval: Boolean(metadata.requiresApproval ?? fallback?.requiresApproval ?? true),
+        dashboardPath: fallback?.dashboardPath || '/profile',
+      };
+    });
+
+  return mapped.length ? mapped : PUBLIC_REGISTRATION_ROLES;
 }
 
 const roleIconMap: Record<string, typeof SvpHouseIcon> = {
@@ -114,6 +170,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const registerRef = useRef<HTMLDivElement>(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [legalModal, setLegalModal] = useState<LegalDocumentType | null>(null);
+  const [registrationRoles, setRegistrationRoles] = useState<RegistrationRole[]>(PUBLIC_REGISTRATION_ROLES);
+  const [siteDisplay, setSiteDisplay] = useState<SiteDisplay>(defaultSiteDisplay);
 
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -142,6 +200,31 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [registerLoading, setRegisterLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    svpApi.getConfig()
+      .then((groups) => {
+        if (cancelled) return;
+        setRegistrationRoles(rolesFromConfig(groups));
+        setSiteDisplay({
+          logoUrl: optionValue(groups, 'site_display', 'site_logo_url', defaultSiteDisplay.logoUrl),
+          siteName: optionValue(groups, 'site_display', 'site_name', defaultSiteDisplay.siteName),
+          sloganLine1: optionValue(groups, 'site_display', 'site_slogan_line_1', defaultSiteDisplay.sloganLine1),
+          sloganLine2: optionValue(groups, 'site_display', 'site_slogan_line_2', defaultSiteDisplay.sloganLine2),
+          footerText: optionValue(groups, 'site_display', 'site_footer_text', defaultSiteDisplay.footerText),
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRegistrationRoles(PUBLIC_REGISTRATION_ROLES);
+        setSiteDisplay(defaultSiteDisplay);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialPanel !== 'register') return;
@@ -356,13 +439,13 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
           </div>
 
           <section className="mx-auto max-w-3xl text-center">
-            <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto h-[74px] w-[74px] rounded-full object-contain drop-shadow-[0_10px_28px_rgba(178,0,18,0.25)] sm:h-[112px] sm:w-[112px]" />
+            <img src={siteDisplay.logoUrl} alt={siteDisplay.siteName} className="mx-auto h-[74px] w-[74px] rounded-full object-contain drop-shadow-[0_10px_28px_rgba(178,0,18,0.25)] sm:h-[112px] sm:w-[112px]" />
             <h1
               data-testid="auth-brand-title"
               style={{ color: '#8f0010', fontFamily: BRAND_TITLE_FONT }}
               className="mt-2 whitespace-nowrap text-[25px] font-black uppercase leading-tight tracking-[0.02em] min-[375px]:text-[27px] min-[410px]:text-[30px] sm:mt-3 sm:text-[48px]"
             >
-              Sổ Đỏ Vạn Phúc
+              {siteDisplay.siteName}
             </h1>
             <p
               data-testid="auth-brand-slogan"
@@ -370,10 +453,10 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
               className="mt-1 text-[11px] font-extrabold uppercase leading-[1.32] tracking-[0.012em] text-[#1f2633] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-xl"
             >
               <span data-testid="auth-brand-slogan-line-1" className="block whitespace-nowrap">
-                Hệ điều hành nghề Môi giới
+                {siteDisplay.sloganLine1}
               </span>
               <span data-testid="auth-brand-slogan-line-2" className="block whitespace-nowrap">
-                Thổ cư Việt Nam
+                {siteDisplay.sloganLine2}
               </span>
             </p>
             <p className="mx-auto mt-2 max-w-xl text-[13px] font-medium leading-5 text-[#555b66] sm:text-base sm:leading-6">
@@ -471,7 +554,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
               <div className="mb-4 text-center sm:mb-5">
                 <h2 className="text-[22px] font-black uppercase leading-tight text-[#c40012] sm:text-2xl">Đăng ký tài khoản</h2>
                 <div className="mx-auto mt-1.5 h-1 w-12 rounded-full bg-[#c40012] sm:mt-2 sm:w-14" />
-                <p className="mt-2 text-[13px] font-semibold leading-5 text-[#5c6470] sm:mt-3 sm:text-sm">Tạo tài khoản để kết nối cùng Sổ Đỏ Vạn Phúc</p>
+                <p className="mt-2 text-[13px] font-semibold leading-5 text-[#5c6470] sm:mt-3 sm:text-sm">Tạo tài khoản để kết nối cùng {siteDisplay.siteName}</p>
               </div>
 
               {registerError && <AlertMessage>{registerError}</AlertMessage>}
@@ -495,7 +578,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                     Chọn một hoặc nhiều nhu cầu / vai trò
                   </p>
                   <div data-testid="auth-role-list" className="grid min-w-0 max-w-full gap-1.5 sm:grid-cols-2 sm:gap-2">
-                    {PUBLIC_REGISTRATION_ROLES.map((role) => {
+                    {registrationRoles.map((role) => {
                       const Icon = roleIconMap[role.slug] || SvpUserIcon;
                       const selected = selectedRoles.includes(role.slug);
                       return (
@@ -628,7 +711,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
           </section>
 
           <footer className="mt-4 border-t border-red-100/70 pt-3 text-center text-[11px] font-medium text-[#7d8390] sm:mt-5 sm:pt-4 sm:text-xs">
-            © 2026 Sổ Đỏ Vạn Phúc.{' '}
+            © 2026 {siteDisplay.footerText}.{' '}
             <button type="button" onClick={() => setLegalModal('terms')} className="font-bold text-[#c40012] hover:underline">
               Điều khoản sử dụng
             </button>{' '}

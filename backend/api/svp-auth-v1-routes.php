@@ -105,6 +105,12 @@ function svp_v1_role_requires_approval(string $roleSlug): bool {
 }
 
 function svp_v1_role_name(string $roleSlug): string {
+    try {
+        return svp_role_display_name_from_config(Database::getInstance(), $roleSlug);
+    } catch (Throwable $e) {
+        error_log('[SVP_V1_ROLE_NAME_CONFIG] ' . $e->getMessage());
+    }
+
     $names = [
         'admin' => 'Quản trị',
         'giam_doc' => 'Giám đốc Khu vực',
@@ -268,6 +274,12 @@ $router->add('POST', '/api/svp/auth/register', function () {
     }
     if (strlen($password) < 6) {
         Response::error('Mật khẩu cần tối thiểu 6 ký tự', 400);
+    }
+
+    foreach ($roleSlugs as $roleSlug) {
+        if (!svp_role_registration_enabled_from_config($db, $roleSlug)) {
+            Response::error('Vai trò "' . svp_role_display_name_from_config($db, $roleSlug) . '" đang tạm ẩn khỏi đăng ký.', 400);
+        }
     }
 
     $stmt = $db->prepare("SELECT id FROM users WHERE email = :email OR phone = :phone LIMIT 1");
@@ -493,6 +505,9 @@ $router->add('POST', '/api/svp/auth/register-role', function () {
 
     if (!$roleSlug) Response::error('Vui lòng chọn vai trò', 400);
     if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
+    if (!svp_role_registration_enabled_from_config($db, $roleSlug)) {
+        Response::error('Vai trò "' . svp_role_display_name_from_config($db, $roleSlug) . '" đang tạm ẩn khỏi đăng ký.', 400);
+    }
 
     $stmt = $db->prepare("SELECT id FROM svp_user_roles WHERE user_id = :uid AND role_slug = :role LIMIT 1");
     $stmt->execute(['uid' => $payload['sub'], 'role' => $roleSlug]);
