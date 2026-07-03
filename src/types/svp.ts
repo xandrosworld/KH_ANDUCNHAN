@@ -53,6 +53,7 @@ export interface SvpProperty {
   visibilityIds: string[];
   tagIds: string[];
   extra?: Record<string, unknown>;
+  enforceDuplicateRule?: boolean;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;

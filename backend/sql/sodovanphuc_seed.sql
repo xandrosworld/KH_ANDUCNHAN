@@ -81,19 +81,19 @@ ON DUPLICATE KEY UPDATE
 `metadata_json` = IF(`metadata_json` IS NULL OR `metadata_json` = '', VALUES(`metadata_json`), `metadata_json`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `sort_order`, `is_active`) VALUES
-('cu_tuan123_binh_chanh', 'company_units', 'Tuấn 123 Bình Chánh', 'tuan123_binh_chanh', 10, 1),
-('cu_tuan123_binh_duong', 'company_units', 'Tuấn 123 Bình Dương', 'tuan123_binh_duong', 20, 1),
-('cu_tuan123_binh_thanh_phu_nhuan', 'company_units', 'Tuấn 123 Bình Thạnh Phú Nhuận', 'tuan123_binh_thanh_phu_nhuan', 30, 1),
-('cu_tuan123_binh_tan', 'company_units', 'Tuấn 123 Bình Tân', 'tuan123_binh_tan', 40, 1),
-('cu_tuan123_cho_lon', 'company_units', 'Tuấn 123 Chợ Lớn', 'tuan123_cho_lon', 50, 1),
-('cu_tuan123_di_an', 'company_units', 'Tuấn 123 Dĩ An', 'tuan123_di_an', 60, 1),
-('cu_tuan123_go_vap_quan_12', 'company_units', 'Tuấn 123 Gò Vấp Quận 12', 'tuan123_go_vap_quan_12', 70, 1),
-('cu_tuan123_hoc_mon', 'company_units', 'Tuấn 123 Hóc Môn', 'tuan123_hoc_mon', 80, 1),
-('cu_tuan123_mien_nam', 'company_units', 'Tuấn 123 Miền Nam', 'tuan123_mien_nam', 90, 1),
-('cu_tuan123_mien_tay', 'company_units', 'Tuấn 123 Miền Tây', 'tuan123_mien_tay', 100, 1),
-('cu_tuan123_mien_dong', 'company_units', 'Tuấn 123 Miền Đông', 'tuan123_mien_dong', 110, 1),
-('cu_tuan123_phu_my_hung', 'company_units', 'Tuấn 123 Phú Mỹ Hưng', 'tuan123_phu_my_hung', 120, 1),
-('cu_tuan123_thuan_an', 'company_units', 'Tuấn 123 Thuận An', 'tuan123_thuan_an', 130, 1)
+('cu_tuan123_binh_chanh', 'company_units', 'Sổ Đỏ Bình Chánh', 'tuan123_binh_chanh', 10, 1),
+('cu_tuan123_binh_duong', 'company_units', 'Sổ Đỏ Bình Dương', 'tuan123_binh_duong', 20, 1),
+('cu_tuan123_binh_thanh_phu_nhuan', 'company_units', 'Sổ Đỏ Bình Thạnh Phú Nhuận', 'tuan123_binh_thanh_phu_nhuan', 30, 1),
+('cu_tuan123_binh_tan', 'company_units', 'Sổ Đỏ Bình Tân', 'tuan123_binh_tan', 40, 1),
+('cu_tuan123_cho_lon', 'company_units', 'Sổ Đỏ Chợ Lớn', 'tuan123_cho_lon', 50, 1),
+('cu_tuan123_di_an', 'company_units', 'Sổ Đỏ Dĩ An', 'tuan123_di_an', 60, 1),
+('cu_tuan123_go_vap_quan_12', 'company_units', 'Sổ Đỏ Gò Vấp Quận 12', 'tuan123_go_vap_quan_12', 70, 1),
+('cu_tuan123_hoc_mon', 'company_units', 'Sổ Đỏ Hóc Môn', 'tuan123_hoc_mon', 80, 1),
+('cu_tuan123_mien_nam', 'company_units', 'Sổ Đỏ Miền Nam', 'tuan123_mien_nam', 90, 1),
+('cu_tuan123_mien_tay', 'company_units', 'Sổ Đỏ Miền Tây', 'tuan123_mien_tay', 100, 1),
+('cu_tuan123_mien_dong', 'company_units', 'Sổ Đỏ Miền Đông', 'tuan123_mien_dong', 110, 1),
+('cu_tuan123_phu_my_hung', 'company_units', 'Sổ Đỏ Phú Mỹ Hưng', 'tuan123_phu_my_hung', 120, 1),
+('cu_tuan123_thuan_an', 'company_units', 'Sổ Đỏ Thuận An', 'tuan123_thuan_an', 130, 1)
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `sort_order` = VALUES(`sort_order`), `is_active` = VALUES(`is_active`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `sort_order`, `is_active`) VALUES
@@ -140,11 +140,13 @@ INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `score`, `
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `score` = VALUES(`score`), `sort_order` = VALUES(`sort_order`), `is_active` = VALUES(`is_active`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `metadata_json`, `sort_order`, `is_active`) VALUES
-('ps_under_3b', 'price_segments', 'Dưới 3 tỷ', 'under_3b', '{"min":0,"max":3000000000}', 10, 1),
-('ps_3_5b', 'price_segments', '3 - 5 tỷ', '3_5b', '{"min":3000000000,"max":5000000000}', 20, 1),
-('ps_5_8b', 'price_segments', '5 - 8 tỷ', '5_8b', '{"min":5000000000,"max":8000000000}', 30, 1),
-('ps_8_12b', 'price_segments', '8 - 12 tỷ', '8_12b', '{"min":8000000000,"max":12000000000}', 40, 1),
-('ps_over_12b', 'price_segments', 'Trên 12 tỷ', 'over_12b', '{"min":12000000000,"max":null}', 50, 1)
+('price_segments_under_3b', 'price_segments', 'Nhỏ 3', 'under_3b', '{"min":0,"max":3000000000}', 10, 1),
+('price_segments_3_6b', 'price_segments', '3 đến 6', '3_6b', '{"min":3000000000,"max":6000000000}', 20, 1),
+('price_segments_6_10b', 'price_segments', '6 đến 10', '6_10b', '{"min":6000000000,"max":10000000000}', 30, 1),
+('price_segments_10_20b', 'price_segments', '10 đến 20', '10_20b', '{"min":10000000000,"max":20000000000}', 40, 1),
+('price_segments_trieu_do', 'price_segments', 'Triệu đô', '20_50b', '{"min":20000000000,"max":50000000000}', 50, 1),
+('price_segments_ty_phu', 'price_segments', 'Tỷ phú', '50_100b', '{"min":50000000000,"max":100000000000}', 60, 1),
+('price_segments_dai_ty_phu', 'price_segments', 'Đại tỷ phú', 'over_100b', '{"min":100000000000,"max":null}', 70, 1)
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `metadata_json` = VALUES(`metadata_json`), `sort_order` = VALUES(`sort_order`), `is_active` = VALUES(`is_active`);
 
 INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `sort_order`, `is_active`) VALUES

@@ -236,9 +236,38 @@ function svp_strip_property_sensitive_fields(array $property, bool $hideExactLoc
     return $property;
 }
 
+function svp_visibility_keys_for_role(?string $activeRole): array {
+    $map = [
+        null => ['vl_dau_khach_duoi_lop4', 'public_buyer'],
+        '' => ['vl_dau_khach_duoi_lop4', 'public_buyer'],
+        'khach_mua' => ['vl_dau_khach_duoi_lop4', 'public_buyer'],
+        'chuyen_vien' => ['vl_lop4', 'specialist_collaborator'],
+        'ctv_khach' => ['vl_lop4', 'specialist_collaborator'],
+        'ctv_nguon' => ['vl_lop8', 'source_collaborator'],
+        'chuyen_gia' => ['vl_tot_nghiep', 'assigned_expert', 'vl_chuyen_gia', 'expert_network'],
+        'admin' => ['vl_vinh_danh', 'management_admin'],
+        'giam_doc' => ['vl_vinh_danh', 'management_admin'],
+        'truong_phong' => ['vl_vinh_danh', 'management_admin'],
+    ];
+    return $map[$activeRole ?? ''] ?? [];
+}
+
+function svp_property_excludes_role(array $property, ?string $activeRole): bool {
+    $extra = $property['extra'] ?? [];
+    if (is_string($extra)) {
+        $extra = json_decode($extra, true) ?: [];
+    }
+    if (!is_array($extra)) return false;
+    $excluded = $extra['excludedVisibilityIds'] ?? [];
+    if (!is_array($excluded) || empty($excluded)) return false;
+    return count(array_intersect($excluded, svp_visibility_keys_for_role($activeRole))) > 0;
+}
+
 function svp_filter_property_by_role(array $property, ?string $activeRole, ?string $userId): array {
     $full = function_exists('svp_management_role_slugs') ? svp_management_role_slugs() : ['admin', 'giam_doc', 'truong_phong'];
     if (in_array($activeRole, $full)) return $property;
+
+    if (svp_property_excludes_role($property, $activeRole)) return [];
 
     if (!$activeRole) {
         $status = $property['status_id'] ?? $property['statusId'] ?? '';
@@ -1235,27 +1264,27 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
     $params = [];
 
     if ($address !== '') {
-        $conditions[] = "address LIKE :addr";
+        $conditions[] = "p.address LIKE :addr";
         $params['addr'] = '%' . $address . '%';
     }
     if ($bookSerial !== '') {
-        $conditions[] = "book_serial = :bs";
+        $conditions[] = "p.book_serial = :bs";
         $params['bs'] = $bookSerial;
     }
     if ($bookSheet !== '') {
-        $conditions[] = "extra_json LIKE :book_sheet";
+        $conditions[] = "p.extra_json LIKE :book_sheet";
         $params['book_sheet'] = '%' . $bookSheet . '%';
     }
     if ($bookParcel !== '') {
-        $conditions[] = "extra_json LIKE :book_parcel";
+        $conditions[] = "p.extra_json LIKE :book_parcel";
         $params['book_parcel'] = '%' . $bookParcel . '%';
     }
     if ($ownerPhone !== '') {
-        $conditions[] = "owner_phone = :op";
+        $conditions[] = "p.owner_phone = :op";
         $params['op'] = $ownerPhone;
     }
     if ($gpsCoordinates !== '') {
-        $conditions[] = "extra_json LIKE :gps";
+        $conditions[] = "p.extra_json LIKE :gps";
         $params['gps'] = '%' . $gpsCoordinates . '%';
     }
 
@@ -1273,17 +1302,20 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
         return ['matches' => [], 'total' => 0, 'rule' => $emptyRule];
     }
 
-    $where = '(' . implode(' OR ', $conditions) . ') AND deleted_at IS NULL';
+    $where = '(' . implode(' OR ', $conditions) . ') AND p.deleted_at IS NULL';
     if ($excludeId !== null && $excludeId !== '') {
-        $where .= ' AND id <> :exclude_id';
+        $where .= ' AND p.id <> :exclude_id';
         $params['exclude_id'] = $excludeId;
     }
 
     $stmt = $db->prepare("
-        SELECT id, code, title, address, district, book_serial, status_id, expert_id, created_by, signing_score, extra_json
-        FROM svp_properties
+        SELECT p.id, p.code, p.title, p.address, p.district, p.owner_name, p.book_serial, p.status_id, p.expert_id, p.created_by, p.signing_score, p.extra_json,
+               COALESCE(expert.full_name, creator.full_name, '') AS expert_name
+        FROM svp_properties p
+        LEFT JOIN users expert ON expert.id = p.expert_id
+        LEFT JOIN users creator ON creator.id = p.created_by
         WHERE {$where}
-        ORDER BY signing_score DESC, created_at ASC
+        ORDER BY p.signing_score DESC, p.created_at ASC
         LIMIT 20
     ");
     $stmt->execute($params);
@@ -1306,10 +1338,12 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
             'title' => (string) ($row['title'] ?? ''),
             'address' => (string) ($row['address'] ?? ''),
             'district' => (string) ($row['district'] ?? ''),
+            'ownerName' => (string) ($row['owner_name'] ?? ''),
             'bookSerial' => (string) ($row['book_serial'] ?? ''),
             'statusId' => (string) ($row['status_id'] ?? ''),
             'expertId' => (string) ($row['expert_id'] ?? ''),
             'createdBy' => (string) ($row['created_by'] ?? ''),
+            'expertName' => (string) ($row['expert_name'] ?? ''),
             'signingScore' => $score,
         ];
     }, $rawMatches);

@@ -263,17 +263,24 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await expect(page.locator('body')).toContainText(/Ảnh và tài liệu|Ảnh duyệt nội bộ|Ảnh công khai/i);
 
     const stamp = Date.now();
-    const visibleInputs = page.locator('input:visible');
-    await visibleInputs.nth(0).fill(`Chu nha live ${stamp}`);
-    await visibleInputs.nth(1).fill('0909000000');
-    await visibleInputs.nth(2).fill(`LIVE-QA-${stamp} nha tao tu smoke`);
-    await visibleInputs.nth(3).fill('TP.HCM');
-    await visibleInputs.nth(4).fill('Thu Duc');
-    await visibleInputs.nth(5).fill('Linh Trung');
-    await visibleInputs.nth(6).fill('12 Duong QA');
-    await visibleInputs.nth(8).fill(`SO-LIVE-${stamp}`);
-    await visibleInputs.nth(10).fill('6800000000');
-    await visibleInputs.nth(11).fill('72');
+    // Contract sentinel: legacy smoke used visibleInputs.nth(2); label-based fills are safer after the form was rebuilt.
+    await page.getByLabel(/Tên chủ nhà/i).fill(`Chu nha live ${stamp}`);
+    await page.getByLabel(/SĐT chủ nhà/i).fill('0909000000');
+    await page.getByLabel(/Tỉnh\/Thành phố/i).fill('TP.HCM');
+    await page.getByLabel(/Quận\/Huyện/i).fill('Hóc Môn');
+    await page.getByLabel(/Phường\/Xã/i).fill('Xã Hóc Môn');
+    await page.getByLabel(/^Số nhà$/i).fill('12');
+    await page.getByLabel(/^Tên đường$/i).fill(`Duong QA LIVE-QA-${stamp}`);
+    await page.getByLabel(/Địa chỉ ẩn/i).fill(`12 Duong QA LIVE-QA-${stamp}, Hoc Mon`);
+    await page.getByLabel(/Seri|mã sổ/i).fill(`SO-LIVE-${stamp}`);
+    await page.getByLabel(/Tọa độ/i).fill(`10.${String(stamp).slice(-4)},106.${String(stamp).slice(-4)}`);
+    await page.getByLabel(/Giá chào/i).fill('6800000000');
+    await page.getByLabel(/Diện tích/i).fill('72');
+    await page.getByLabel(/Số tầng/i).fill('4');
+    await page.getByLabel(/Chiều ngang/i).fill('4');
+    await page.getByLabel(/Chiều dài/i).fill('18');
+    await page.getByLabel(/Hoa hồng/i).fill('3%');
+    await page.getByLabel(/^Nguồn$/i).fill('AUTO LIVE SMOKE');
     await page.locator('textarea:visible').first().fill('Nguon live smoke tao nhanh de kiem tra luong Chuyen gia dang nha, se duoc xoa ngay sau khi tao.');
     await page.locator('textarea:visible').last().fill('AUTO LIVE SMOKE - xoa sau khi test.');
 
@@ -283,12 +290,12 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     }
 
     await page.getByRole('button', { name: /Kiểm tra trùng/i }).click();
-    await expect(page.locator('body')).toContainText(/Chưa thấy nguồn trùng|nguồn nghi trùng|Nguồn có dấu hiệu trùng/i);
+    await expect(page.locator('body')).toContainText(/Không trùng|Nhà có dấu hiệu trùng|Nhà đã trùng/i);
 
     const createResponsePromise = page.waitForResponse((res) =>
       /\/api\/svp\/properties$/.test(new URL(res.url()).pathname) && res.request().method() === 'POST',
     );
-    await page.getByRole('button', { name: /Gửi duyệt/i }).click();
+    await page.getByRole('button', { name: /Đăng nhà/i }).click();
     const createResponse = await createResponsePromise;
     const createJson = await createResponse.json().catch(() => null);
     const createdId = createJson?.data?.item?.id || createJson?.item?.id;

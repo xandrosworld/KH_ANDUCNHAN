@@ -499,6 +499,51 @@ function svp_ensure_v1_visibility_labels(PDO $db): void
     }
 }
 
+function svp_ensure_v1_company_unit_labels(PDO $db): void
+{
+    $stmt = $db->prepare(
+        "UPDATE svp_config_options
+         SET label = REPLACE(label, 'Tuấn 123', 'Sổ Đỏ')
+         WHERE group_id = 'company_units'
+           AND label LIKE 'Tuấn 123%'"
+    );
+    $stmt->execute();
+}
+
+function svp_ensure_v1_price_segments(PDO $db): void
+{
+    $segments = [
+        ['id' => 'price_segments_under_3b', 'label' => 'Nhỏ 3', 'value' => 'under_3b', 'min' => 0, 'max' => 3000000000, 'sortOrder' => 10],
+        ['id' => 'price_segments_3_6b', 'label' => '3 đến 6', 'value' => '3_6b', 'min' => 3000000000, 'max' => 6000000000, 'sortOrder' => 20],
+        ['id' => 'price_segments_6_10b', 'label' => '6 đến 10', 'value' => '6_10b', 'min' => 6000000000, 'max' => 10000000000, 'sortOrder' => 30],
+        ['id' => 'price_segments_10_20b', 'label' => '10 đến 20', 'value' => '10_20b', 'min' => 10000000000, 'max' => 20000000000, 'sortOrder' => 40],
+        ['id' => 'price_segments_trieu_do', 'label' => 'Triệu đô', 'value' => '20_50b', 'min' => 20000000000, 'max' => 50000000000, 'sortOrder' => 50],
+        ['id' => 'price_segments_ty_phu', 'label' => 'Tỷ phú', 'value' => '50_100b', 'min' => 50000000000, 'max' => 100000000000, 'sortOrder' => 60],
+        ['id' => 'price_segments_dai_ty_phu', 'label' => 'Đại tỷ phú', 'value' => 'over_100b', 'min' => 100000000000, 'max' => null, 'sortOrder' => 70],
+    ];
+
+    $stmt = $db->prepare(
+        "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
+         VALUES (:id, 'price_segments', :label, :value, :metadata_json, :sort_order, 1)
+         ON DUPLICATE KEY UPDATE
+           label = VALUES(label),
+           value = VALUES(value),
+           metadata_json = VALUES(metadata_json),
+           sort_order = VALUES(sort_order),
+           is_active = VALUES(is_active)"
+    );
+
+    foreach ($segments as $item) {
+        $stmt->execute([
+            'id' => $item['id'],
+            'label' => $item['label'],
+            'value' => $item['value'],
+            'metadata_json' => svp_json_encode(['min' => $item['min'], 'max' => $item['max']]),
+            'sort_order' => $item['sortOrder'],
+        ]);
+    }
+}
+
 function svp_next_property_code(PDO $db): string
 {
     $count = (int) $db->query('SELECT COUNT(*) FROM svp_properties')->fetchColumn();
@@ -660,6 +705,8 @@ $router->add('GET', '/api/svp/config', function () {
     svp_ensure_site_display_config($db);
     svp_ensure_public_page_config($db);
     svp_ensure_v1_visibility_labels($db);
+    svp_ensure_v1_company_unit_labels($db);
+    svp_ensure_v1_price_segments($db);
     $groups = $db->query('SELECT * FROM svp_config_groups ORDER BY sort_order ASC, name ASC')->fetchAll(PDO::FETCH_ASSOC);
     $options = $db->query('SELECT * FROM svp_config_options ORDER BY sort_order ASC, label ASC')->fetchAll(PDO::FETCH_ASSOC);
 
@@ -859,6 +906,33 @@ $router->add('POST', '/api/svp/properties', function () use ($input) {
     ];
 
     if ($row['title'] === '') Response::error('title is required', 400);
+
+    $extra = is_array($input['extra'] ?? null) ? $input['extra'] : [];
+    $shouldEnforceDuplicateRule = !empty($input['enforceDuplicateRule']) || !empty($extra['enforceDuplicateRule']);
+    if ($shouldEnforceDuplicateRule) {
+        $ruleResult = function_exists('svp_property_duplicate_rule')
+            ? svp_property_duplicate_rule($db, [
+                'address' => $row['address'],
+                'bookSerial' => $row['book_serial'],
+                'ownerPhone' => $row['owner_phone'],
+                'gpsCoordinates' => (string) ($extra['gpsCoordinates'] ?? ''),
+                'signingScore' => $row['signing_score'],
+            ])
+            : ['matches' => [], 'rule' => ['hasDuplicates' => false, 'canSubmit' => true, 'message' => '']];
+        $rule = $ruleResult['rule'] ?? [];
+        if (!empty($rule['hasDuplicates']) && empty($rule['canSubmit'])) {
+            $matches = array_slice($ruleResult['matches'] ?? [], 0, 3);
+            $targets = array_map(function ($item) {
+                return trim(implode(' - ', array_filter([
+                    (string) ($item['code'] ?? $item['id'] ?? ''),
+                    (string) ($item['title'] ?? ''),
+                    isset($item['signingScore']) ? ((string) $item['signingScore'] . ' điểm') : '',
+                ])));
+            }, $matches);
+            $suffix = count($targets) ? ' Trùng với: ' . implode('; ', $targets) . '.' : '';
+            Response::error((string) ($rule['message'] ?? 'Nguồn trùng chưa đủ điều kiện đăng.') . $suffix, 409);
+        }
+    }
 
     $stmt = $db->prepare(
         'INSERT INTO svp_properties
