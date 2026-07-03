@@ -219,6 +219,7 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     test.skip(process.env.SVP_LIVE_WRITE_WORKFLOW !== '1', 'Enable with SVP_LIVE_WRITE_WORKFLOW=1 only after live account and DB cleanup policy are confirmed.');
     const password = process.env.SVP_LIVE_EXPERT_PASSWORD || process.env.SVP_LIVE_ADMIN_PASSWORD;
     test.skip(!password, 'Set SVP_LIVE_EXPERT_PASSWORD or SVP_LIVE_ADMIN_PASSWORD before running live write workflow.');
+    test.setTimeout(90_000);
 
     const username = process.env.SVP_LIVE_EXPERT_USERNAME || process.env.SVP_LIVE_ADMIN_USERNAME || 'admin';
     const failures = watchRuntimeFailures(page);
@@ -272,6 +273,8 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     }
 
     await page.getByRole('button', { name: /Kiểm tra trùng/i }).click();
+    await expect(page.locator('body')).toContainText(/Chưa thấy nguồn trùng|nguồn nghi trùng|Nguồn có dấu hiệu trùng/i);
+
     const createResponsePromise = page.waitForResponse((res) =>
       /\/api\/svp\/properties$/.test(new URL(res.url()).pathname) && res.request().method() === 'POST',
     );
