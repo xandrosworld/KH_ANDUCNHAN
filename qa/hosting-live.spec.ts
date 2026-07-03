@@ -239,6 +239,13 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
       }
     }
 
+    await expect
+      .poll(
+        async () => page.evaluate(() => localStorage.getItem('svp_token') || ''),
+        { timeout: 20_000, message: 'live write workflow should store a SVP token before opening the expert form' },
+      )
+      .toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+
     await page.goto('/chuyen-gia/dang-nha', { waitUntil: 'domcontentloaded' });
     await waitForLiveApp(page);
     // V1 final form smoke markers: Anh va tai lieu, Anh duyet noi bo, Anh cong khai.

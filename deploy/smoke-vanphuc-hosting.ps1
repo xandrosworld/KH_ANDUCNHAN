@@ -802,9 +802,13 @@ function Invoke-WriteWorkflowSmoke {
     $tempSvpPng = $null
     $workflowPassed = $false
     $cleanupFailures = @()
+    $authHeaders = @{}
+    if ($Token) {
+        $authHeaders = @{ Authorization = "Bearer $Token"; Accept = 'application/json' }
+    }
 
     try {
-        $propertyData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/properties' -Body @{
+        $propertyData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/properties' -Headers $authHeaders -Body @{
             title = "$marker - nha test tu dong"
             description = 'Ban ghi tu dong do smoke test tao de xac minh luong dang nha, timeline, version, media va audit.'
             ownerName = 'Smoke Test'
@@ -830,13 +834,13 @@ function Invoke-WriteWorkflowSmoke {
             throw 'Created property did not include an id.'
         }
 
-        $detailData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId"
+        $detailData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId" -Headers $authHeaders
         $detail = Assert-ItemExists $detailData 'item' 'write smoke can read created property detail'
         if ($detail.title -notlike "$marker*") {
             throw 'Created property detail did not preserve marker title.'
         }
 
-        $updatedData = Invoke-CheckedJsonRequest -Method 'PUT' -Path "/api/svp/properties/$propertyId" -Body @{
+        $updatedData = Invoke-CheckedJsonRequest -Method 'PUT' -Path "/api/svp/properties/$propertyId" -Headers $authHeaders -Body @{
             statusId = 'st_active'
             price = 5100000000
             description = 'Smoke test da cap nhat trang thai/gia de kiem version va timeline.'
@@ -846,7 +850,7 @@ function Invoke-WriteWorkflowSmoke {
             throw "Updated property status is '$($updated.statusId)', expected st_active."
         }
 
-        $mediaData = Invoke-CheckedJsonRequest -Method 'POST' -Path "/api/svp/properties/$propertyId/media" -Body @{
+        $mediaData = Invoke-CheckedJsonRequest -Method 'POST' -Path "/api/svp/properties/$propertyId/media" -Headers $authHeaders -Body @{
             propertyId = $propertyId
             mediaType = 'image'
             url = 'https://sodovanphuc.vn/og-image.jpg'
@@ -882,25 +886,25 @@ function Invoke-WriteWorkflowSmoke {
             Write-Host '[SKIP] SVP property media-upload route smoke skipped; set SVP_LIVE_ADMIN_PASSWORD to enable upload cleanup.'
         }
 
-        $timelineData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId/timeline"
+        $timelineData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId/timeline" -Headers $authHeaders
         if (@($timelineData.items).Count -lt 3) {
             throw 'Property timeline has fewer than 3 events after create/update/media.'
         }
         Write-Check 'write smoke verified property timeline events'
 
-        $versionData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId/versions"
+        $versionData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId/versions" -Headers $authHeaders
         if (@($versionData.items).Count -lt 2) {
             throw 'Property versions have fewer than 2 snapshots after create/update.'
         }
         Write-Check 'write smoke verified property versions'
 
-        $mediaListData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId/media"
+        $mediaListData = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/properties/$propertyId/media" -Headers $authHeaders
         Assert-CollectionContainsId $mediaListData $mediaId 'write smoke verified media list'
         if ($uploadedMediaId) {
             Assert-CollectionContainsId $mediaListData $uploadedMediaId 'write smoke verified uploaded SVP property media list'
         }
 
-        $customerData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/customers' -Body @{
+        $customerData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/customers' -Headers $authHeaders -Body @{
             fullName = "$marker khach test"
             phone = '0911111111'
             email = 'smoke-test@sodovanphuc.vn'
@@ -911,7 +915,7 @@ function Invoke-WriteWorkflowSmoke {
         $customer = Assert-ItemExists $customerData 'item' 'write smoke created customer'
         $customerId = [string]$customer.id
 
-        $needData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/customer-needs' -Body @{
+        $needData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/customer-needs' -Headers $authHeaders -Body @{
             customerId = $customerId
             districtIds = @('Thu Duc')
             budgetMin = 4000000000
@@ -925,7 +929,7 @@ function Invoke-WriteWorkflowSmoke {
         $need = Assert-ItemExists $needData 'item' 'write smoke created customer need'
         $needId = [string]$need.id
 
-        $scheduleData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/viewing-schedules' -Body @{
+        $scheduleData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/viewing-schedules' -Headers $authHeaders -Body @{
             customerId = $customerId
             propertyId = $propertyId
             scheduledAt = (Get-Date).AddDays(1).ToString('yyyy-MM-dd HH:mm:ss')
@@ -935,7 +939,7 @@ function Invoke-WriteWorkflowSmoke {
         $schedule = Assert-ItemExists $scheduleData 'item' 'write smoke created viewing schedule'
         $scheduleId = [string]$schedule.id
 
-        $referralData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/referrals' -Body @{
+        $referralData = Invoke-CheckedJsonRequest -Method 'POST' -Path '/api/svp/referrals' -Headers $authHeaders -Body @{
             referrerUserId = 'smoke-test'
             referredUserId = $customerId
             referralCode = $marker
@@ -945,20 +949,20 @@ function Invoke-WriteWorkflowSmoke {
         $referral = Assert-ItemExists $referralData 'item' 'write smoke created referral'
         $referralId = [string]$referral.id
 
-        $needsByCustomer = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/customer-needs?customerId=$customerId"
+        $needsByCustomer = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/customer-needs?customerId=$customerId" -Headers $authHeaders
         Assert-CollectionContainsId $needsByCustomer $needId 'write smoke verified customer need query'
 
-        $schedules = Invoke-CheckedJsonRequest -Method 'GET' -Path '/api/svp/viewing-schedules'
+        $schedules = Invoke-CheckedJsonRequest -Method 'GET' -Path '/api/svp/viewing-schedules' -Headers $authHeaders
         Assert-CollectionContainsId $schedules $scheduleId 'write smoke verified viewing schedule list'
 
-        $referrals = Invoke-CheckedJsonRequest -Method 'GET' -Path '/api/svp/referrals'
+        $referrals = Invoke-CheckedJsonRequest -Method 'GET' -Path '/api/svp/referrals' -Headers $authHeaders
         Assert-CollectionContainsId $referrals $referralId 'write smoke verified referral list'
 
         foreach ($entityId in @($propertyId, $mediaId, $uploadedMediaId, $customerId, $needId, $scheduleId, $referralId)) {
             if (-not $entityId) {
                 continue
             }
-            $audit = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/audit-logs?entityId=$([uri]::EscapeDataString($entityId))&limit=20"
+            $audit = Invoke-CheckedJsonRequest -Method 'GET' -Path "/api/svp/audit-logs?entityId=$([uri]::EscapeDataString($entityId))&limit=20" -Headers $authHeaders
             $auditItems = @($audit.items)
             if (-not ($auditItems | Where-Object { $_.entityId -eq $entityId })) {
                 throw "Audit log does not contain entity id $entityId from write smoke."
@@ -966,7 +970,7 @@ function Invoke-WriteWorkflowSmoke {
         }
         Write-Check 'write smoke verified filtered audit log for created entities'
 
-        $deleteData = Invoke-CheckedJsonRequest -Method 'DELETE' -Path "/api/svp/properties/$propertyId"
+        $deleteData = Invoke-CheckedJsonRequest -Method 'DELETE' -Path "/api/svp/properties/$propertyId" -Headers $authHeaders
         if (-not $deleteData.deleted) {
             throw 'Property delete did not return deleted=true.'
         }
@@ -1001,27 +1005,27 @@ function Invoke-WriteWorkflowSmoke {
         }
 
         if ($referralId) {
-            if (-not (Invoke-CleanupDelete -Path "/api/svp/referrals/$([uri]::EscapeDataString($referralId))" -Message 'write smoke cleaned referral')) {
+            if (-not (Invoke-CleanupDelete -Path "/api/svp/referrals/$([uri]::EscapeDataString($referralId))" -Message 'write smoke cleaned referral' -Headers $authHeaders)) {
                 $cleanupFailures += 'referral'
             }
         }
         if ($scheduleId) {
-            if (-not (Invoke-CleanupDelete -Path "/api/svp/viewing-schedules/$([uri]::EscapeDataString($scheduleId))" -Message 'write smoke cleaned viewing schedule')) {
+            if (-not (Invoke-CleanupDelete -Path "/api/svp/viewing-schedules/$([uri]::EscapeDataString($scheduleId))" -Message 'write smoke cleaned viewing schedule' -Headers $authHeaders)) {
                 $cleanupFailures += 'viewing schedule'
             }
         }
         if ($needId) {
-            if (-not (Invoke-CleanupDelete -Path "/api/svp/customer-needs/$([uri]::EscapeDataString($needId))" -Message 'write smoke cleaned customer need')) {
+            if (-not (Invoke-CleanupDelete -Path "/api/svp/customer-needs/$([uri]::EscapeDataString($needId))" -Message 'write smoke cleaned customer need' -Headers $authHeaders)) {
                 $cleanupFailures += 'customer need'
             }
         }
         if ($customerId) {
-            if (-not (Invoke-CleanupDelete -Path "/api/svp/customers/$([uri]::EscapeDataString($customerId))" -Message 'write smoke cleaned customer')) {
+            if (-not (Invoke-CleanupDelete -Path "/api/svp/customers/$([uri]::EscapeDataString($customerId))" -Message 'write smoke cleaned customer' -Headers $authHeaders)) {
                 $cleanupFailures += 'customer'
             }
         }
         if ($propertyId) {
-            if (-not (Invoke-CleanupDelete -Path "/api/svp/properties/$([uri]::EscapeDataString($propertyId))" -Message 'write smoke cleaned property')) {
+            if (-not (Invoke-CleanupDelete -Path "/api/svp/properties/$([uri]::EscapeDataString($propertyId))" -Message 'write smoke cleaned property' -Headers $authHeaders)) {
                 $cleanupFailures += 'property'
             }
         }
