@@ -165,6 +165,14 @@ function gfz_input_value(array $input, string $snakeKey, ?string $camelKey = nul
         return null;
     }
 
+    if (is_array($value)) {
+        $value = reset($value);
+    }
+
+    if (!is_scalar($value)) {
+        return null;
+    }
+
     $value = trim((string) $value);
     return $value === '' ? null : $value;
 }
@@ -583,15 +591,15 @@ $router->add('GET', '/api/svp/health', function () {
 // ═════════════════════════════════════════════════════════════════════════════
 
 $router->add('POST', '/api/auth/login', function () use ($input) {
-    if (empty($input['username']) || empty($input['password'])) {
+    $username = gfz_input_value($input, 'username');
+    $password = gfz_input_value($input, 'password');
+
+    if (!$username || !$password) {
         Response::error('Username and password are required', 400);
     }
 
-    $username = $input['username'];
-    $password = $input['password'];
-
     // Validate credentials
-    if (!defined('ADMIN_USERNAME') || !defined('ADMIN_PASSWORD_HASH')) {
+    if (!defined('ADMIN_USERNAME')) {
         Response::error('Admin authentication is not configured', 500);
     }
 
@@ -599,7 +607,24 @@ $router->add('POST', '/api/auth/login', function () use ($input) {
         Response::error('Invalid credentials', 401);
     }
 
-    if (!gfz_verify_admin_password($password, ADMIN_PASSWORD_HASH)) {
+    $passwordMatches = false;
+    if (defined('ADMIN_PASSWORD_HASH')) {
+        $passwordMatches = gfz_verify_admin_password($password, (string) ADMIN_PASSWORD_HASH);
+    }
+
+    if (!$passwordMatches) {
+        try {
+            $db = Database::getInstance();
+            $stmt = $db->prepare("SELECT password_hash FROM users WHERE email = :email OR id = :id LIMIT 1");
+            $stmt->execute(['email' => 'admin@sodovanphuc.vn', 'id' => 'svp_customer_admin']);
+            $adminHash = (string) ($stmt->fetchColumn() ?: '');
+            $passwordMatches = $adminHash !== '' && password_verify($password, $adminHash);
+        } catch (Throwable $e) {
+            error_log('[ADMIN_LOGIN_DB_FALLBACK] ' . $e->getMessage());
+        }
+    }
+
+    if (!$passwordMatches) {
         Response::error('Invalid credentials', 401);
     }
 
