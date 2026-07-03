@@ -78,6 +78,20 @@ function svp_v1_user_is_locked(array $user): bool {
     return strtolower((string) ($user['account_status'] ?? 'active')) === 'locked';
 }
 
+function svp_v1_input_string(array $input, string ...$keys): string {
+    foreach ($keys as $key) {
+        if (!array_key_exists($key, $input)) continue;
+        $value = $input[$key];
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+        if (is_scalar($value)) {
+            return trim((string) $value);
+        }
+    }
+    return '';
+}
+
 function svp_v1_password_matches(string $password, string $storedHash): bool {
     if ($storedHash === '') {
         return false;
@@ -356,16 +370,34 @@ $router->add('POST', '/api/svp/auth/login', function () {
     svp_v1_ensure_account_status_column($db);
     svp_v1_ensure_profile_columns($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
-    $identifier = trim($input['email'] ?? $input['identifier'] ?? '');
-    $password = trim($input['password'] ?? '');
+    $identifier = svp_v1_input_string($input, 'email', 'identifier');
+    $password = svp_v1_input_string($input, 'password');
 
     if (!$identifier || !$password) Response::error('Vui lòng nhập email/số điện thoại và mật khẩu', 400);
 
     $stmt = $db->prepare("SELECT * FROM users WHERE email = :email OR phone = :phone LIMIT 1");
     $stmt->execute(['email' => $identifier, 'phone' => $identifier]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $isAdminAlias = defined('ADMIN_USERNAME') && hash_equals((string) ADMIN_USERNAME, $identifier);
+    if (!$user && $isAdminAlias) {
+        $stmt = $db->query(
+            "SELECT u.*
+             FROM users u
+             LEFT JOIN svp_user_roles r ON r.user_id = u.id AND r.role_slug = 'admin'
+             WHERE u.email = 'admin@sodovanphuc.vn' OR r.role_slug = 'admin'
+             ORDER BY CASE WHEN u.email = 'admin@sodovanphuc.vn' THEN 0 ELSE 1 END, u.created_at ASC
+             LIMIT 1"
+        );
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     $storedHash = is_array($user) ? (string)($user['password_hash'] ?? '') : '';
-    if (!$user || !svp_v1_password_matches($password, $storedHash)) {
+    $passwordMatches = is_array($user) && svp_v1_password_matches($password, $storedHash);
+    if (!$passwordMatches && $isAdminAlias && defined('ADMIN_PASSWORD_HASH') && function_exists('gfz_verify_admin_password')) {
+        $passwordMatches = gfz_verify_admin_password($password, (string) ADMIN_PASSWORD_HASH);
+    }
+
+    if (!$user || !$passwordMatches) {
         Response::error('Email, số điện thoại hoặc mật khẩu không đúng', 401);
     }
     if (svp_v1_user_is_locked($user)) {
