@@ -913,9 +913,14 @@ $router->add('POST', '/api/svp/properties', function () use ($input) {
         $ruleResult = function_exists('svp_property_duplicate_rule')
             ? svp_property_duplicate_rule($db, [
                 'address' => $row['address'],
+                'hiddenAddress' => $row['hidden_address'],
+                'street' => (string) ($extra['street'] ?? ''),
+                'ward' => $row['ward'],
+                'district' => $row['district'],
+                'province' => (string) ($extra['province'] ?? ''),
                 'bookSerial' => $row['book_serial'],
-                'ownerPhone' => $row['owner_phone'],
-                'gpsCoordinates' => (string) ($extra['gpsCoordinates'] ?? ''),
+                'bookSheet' => (string) ($extra['bookSheet'] ?? ''),
+                'bookParcel' => (string) ($extra['bookParcel'] ?? ''),
                 'signingScore' => $row['signing_score'],
             ])
             : ['matches' => [], 'rule' => ['hasDuplicates' => false, 'canSubmit' => true, 'message' => '']];
@@ -924,8 +929,10 @@ $router->add('POST', '/api/svp/properties', function () use ($input) {
             $matches = array_slice($ruleResult['matches'] ?? [], 0, 3);
             $targets = array_map(function ($item) {
                 return trim(implode(' - ', array_filter([
+                    !empty($item['matchTypes']) ? ('Trùng ' . implode(', ', $item['matchTypes'])) : '',
                     (string) ($item['code'] ?? $item['id'] ?? ''),
                     (string) ($item['title'] ?? ''),
+                    (string) ($item['expertName'] ?? ''),
                     isset($item['signingScore']) ? ((string) $item['signingScore'] . ' điểm') : '',
                 ])));
             }, $matches);

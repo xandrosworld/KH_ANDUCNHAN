@@ -273,6 +273,8 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await page.getByLabel(/^Tên đường$/i).fill(`Duong QA LIVE-QA-${stamp}`);
     await page.getByLabel(/Địa chỉ ẩn/i).fill(`12 Duong QA LIVE-QA-${stamp}, Hoc Mon`);
     await page.getByLabel(/Seri|mã sổ/i).fill(`SO-LIVE-${stamp}`);
+    await page.getByLabel(/Số tờ/i).fill(`TO-${String(stamp).slice(-4)}`);
+    await page.getByLabel(/Thửa đất/i).fill(`THUA-${String(stamp).slice(-4)}`);
     await page.getByLabel(/Tọa độ/i).fill(`10.${String(stamp).slice(-4)},106.${String(stamp).slice(-4)}`);
     await page.getByRole('textbox', { name: /Giá chào/i }).fill('6800000000');
     await page.getByLabel(/Diện tích/i).fill('72');

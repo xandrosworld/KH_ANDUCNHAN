@@ -52,6 +52,7 @@ type DuplicateMatch = {
   address?: string;
   district?: string;
   bookSerial?: string;
+  matchTypes?: string[];
   ownerName?: string;
   expertName?: string;
   signingScore?: number;
@@ -72,6 +73,8 @@ const initialForm = {
   hiddenAddress: '',
   gpsCoordinates: '',
   bookSerial: '',
+  bookSheet: '',
+  bookParcel: '',
   price: '',
   area: '',
   floors: '',
@@ -128,6 +131,11 @@ function priceSegmentLabel(price: string, options: SvpConfigOption[]) {
 }
 
 function buildAutoTitle(form: typeof initialForm, priceSegments: SvpConfigOption[], memberName: string) {
+  const bookInfo = [
+    form.bookParcel ? `Thửa ${form.bookParcel}` : '',
+    form.bookSheet ? `Tờ ${form.bookSheet}` : '',
+    form.bookSerial ? `Sổ ${form.bookSerial}` : '',
+  ].filter(Boolean).join(' ');
   const specs = [
     form.area ? `${form.area}m2` : '',
     form.floors ? `${form.floors}T` : '',
@@ -136,7 +144,7 @@ function buildAutoTitle(form: typeof initialForm, priceSegments: SvpConfigOption
   ].filter(Boolean).join(' ');
 
   return [
-    [form.houseNumber, form.bookSerial ? `(${form.bookSerial})` : '', form.streetName].filter(Boolean).join(' '),
+    [form.houseNumber, bookInfo ? `(${bookInfo})` : '', form.streetName].filter(Boolean).join(' '),
     specs,
     priceSegmentLabel(form.price, priceSegments),
     memberName ? `HĐ ${memberName}` : '',
@@ -149,9 +157,9 @@ function buildDuplicateMessage(rule: DuplicateRule | null, matches: DuplicateMat
   if (!matches.length) return 'Không trùng. Hệ thống ghi nhận và cho hiển thị ngay.';
   const targets = matches.slice(0, 3).map((item) => {
     const parts = [
+      item.matchTypes?.length ? `Trùng ${item.matchTypes.join(', ')}` : 'Trùng dữ liệu nguồn',
       item.code || item.id,
       item.title,
-      item.ownerName ? `chủ ${item.ownerName}` : '',
       item.expertName ? `ký bởi ${item.expertName}` : '',
       item.signingScore !== undefined ? `${item.signingScore} điểm` : '',
     ].filter(Boolean);
@@ -223,7 +231,7 @@ export default function ExpertAddPropertyPage() {
       }
       return next;
     });
-    if (['ownerPhone', 'houseNumber', 'streetName', 'street', 'ward', 'district', 'province', 'gpsCoordinates', 'bookSerial'].includes(key)) {
+    if (['houseNumber', 'streetName', 'street', 'ward', 'district', 'province', 'hiddenAddress', 'bookSerial', 'bookSheet', 'bookParcel'].includes(key)) {
       setDuplicateChecked(false);
       setDuplicateRule(null);
       setDuplicates([]);
@@ -246,9 +254,14 @@ export default function ExpertAddPropertyPage() {
     const address = [form.street, form.ward, form.district, form.province].filter(Boolean).join(', ');
     const response = await api.post('/properties/check-duplicate', {
       address,
+      street: form.street,
+      ward: form.ward,
+      district: form.district,
+      province: form.province,
+      hiddenAddress: form.hiddenAddress,
       bookSerial: form.bookSerial,
-      ownerPhone: form.ownerPhone,
-      gpsCoordinates: form.gpsCoordinates,
+      bookSheet: form.bookSheet,
+      bookParcel: form.bookParcel,
       signingScore,
     });
     const matches = response.data?.matches || [];
@@ -367,6 +380,8 @@ export default function ExpertAddPropertyPage() {
           houseNumber: form.houseNumber,
           streetName: form.streetName,
           street: form.street,
+          bookSheet: form.bookSheet,
+          bookParcel: form.bookParcel,
           gpsCoordinates: form.gpsCoordinates,
           legalStatus: form.legalStatus,
           commission: form.commission,
@@ -452,6 +467,8 @@ export default function ExpertAddPropertyPage() {
             {showField('street') ? <Field label="Tên đường" value={form.streetName} onChange={(value) => update('streetName', value)} /> : null}
             {showField('hiddenAddress') ? <Field label={fieldLabel('hiddenAddress', 'Địa chỉ ẩn nội bộ')} value={form.hiddenAddress} onChange={(value) => update('hiddenAddress', value)} /> : null}
             {showField('bookSerial') ? <Field label={fieldLabel('bookSerial', 'Seri / mã sổ')} value={form.bookSerial} onChange={(value) => update('bookSerial', value)} /> : null}
+            {showField('bookSheet') ? <Field label={fieldLabel('bookSheet', 'Số tờ')} value={form.bookSheet} onChange={(value) => update('bookSheet', value)} /> : null}
+            {showField('bookParcel') ? <Field label={fieldLabel('bookParcel', 'Thửa đất')} value={form.bookParcel} onChange={(value) => update('bookParcel', value)} /> : null}
             {showField('gpsCoordinates') ? <Field label={fieldLabel('gpsCoordinates', 'Tọa độ GPS')} value={form.gpsCoordinates} onChange={(value) => update('gpsCoordinates', value)} /> : null}
             <Field label={fieldLabel('price', 'Giá chào')} value={form.price} onChange={(value) => update('price', value)} inputMode="numeric" />
             <ReadonlyField label="Phân khúc" value={priceSegmentLabel(form.price, priceSegments) || 'Tự tính theo giá chào'} />

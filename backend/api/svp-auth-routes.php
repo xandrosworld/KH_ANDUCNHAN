@@ -1253,19 +1253,32 @@ $router->add('GET', '/api/svp/notifications', function () {
 function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId = null): array
 {
     $address = trim((string) ($input['address'] ?? ''));
+    $street = trim((string) ($input['street'] ?? ''));
+    $ward = trim((string) ($input['ward'] ?? ''));
+    $district = trim((string) ($input['district'] ?? ''));
+    $province = trim((string) ($input['province'] ?? ''));
+    $hiddenAddress = trim((string) ($input['hiddenAddress'] ?? $input['hidden_address'] ?? ''));
     $bookSerial = trim((string) ($input['bookSerial'] ?? $input['book_serial'] ?? ''));
     $bookSheet = trim((string) ($input['bookSheet'] ?? ''));
     $bookParcel = trim((string) ($input['bookParcel'] ?? ''));
-    $ownerPhone = trim((string) ($input['ownerPhone'] ?? $input['owner_phone'] ?? ''));
-    $gpsCoordinates = trim((string) ($input['gpsCoordinates'] ?? ''));
     $submittedSigningScore = (float) ($input['signingScore'] ?? $input['signing_score'] ?? 0);
 
     $conditions = [];
     $params = [];
+    $addressFields = array_values(array_filter([$address, $hiddenAddress], fn($value) => trim((string) $value) !== ''));
 
     if ($address !== '') {
         $conditions[] = "p.address LIKE :addr";
         $params['addr'] = '%' . $address . '%';
+    }
+    if ($hiddenAddress !== '') {
+        $conditions[] = "p.hidden_address LIKE :hidden_addr";
+        $params['hidden_addr'] = '%' . $hiddenAddress . '%';
+    }
+    if ($street !== '' && $district !== '') {
+        $conditions[] = "(p.address LIKE :street_addr AND p.district = :district_addr)";
+        $params['street_addr'] = '%' . $street . '%';
+        $params['district_addr'] = $district;
     }
     if ($bookSerial !== '') {
         $conditions[] = "p.book_serial = :bs";
@@ -1278,14 +1291,6 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
     if ($bookParcel !== '') {
         $conditions[] = "p.extra_json LIKE :book_parcel";
         $params['book_parcel'] = '%' . $bookParcel . '%';
-    }
-    if ($ownerPhone !== '') {
-        $conditions[] = "p.owner_phone = :op";
-        $params['op'] = $ownerPhone;
-    }
-    if ($gpsCoordinates !== '') {
-        $conditions[] = "p.extra_json LIKE :gps";
-        $params['gps'] = '%' . $gpsCoordinates . '%';
     }
 
     $emptyRule = [
@@ -1309,7 +1314,7 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
     }
 
     $stmt = $db->prepare("
-        SELECT p.id, p.code, p.title, p.address, p.district, p.owner_name, p.book_serial, p.status_id, p.expert_id, p.created_by, p.signing_score, p.extra_json,
+        SELECT p.id, p.code, p.title, p.address, p.hidden_address, p.district, p.ward, p.owner_name, p.book_serial, p.status_id, p.expert_id, p.created_by, p.signing_score, p.extra_json,
                COALESCE(expert.full_name, creator.full_name, '') AS expert_name
         FROM svp_properties p
         LEFT JOIN users expert ON expert.id = p.expert_id
@@ -1321,17 +1326,39 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
     $stmt->execute($params);
     $rawMatches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $expertKeys = [];
-    $highestSigningScore = null;
-    $matches = array_map(function ($row) use (&$expertKeys, &$highestSigningScore) {
+    $matches = array_map(function ($row) use ($addressFields, $street, $district, $bookSerial, $bookSheet, $bookParcel) {
         $score = (float) ($row['signing_score'] ?? 0);
-        if ($highestSigningScore === null || $score > $highestSigningScore) {
-            $highestSigningScore = $score;
+        $rowExtra = svp_json_decode($row['extra_json'] ?? null, []);
+        $rowAddress = trim((string) ($row['address'] ?? ''));
+        $rowHiddenAddress = trim((string) ($row['hidden_address'] ?? ''));
+        $rowBookSerial = trim((string) ($row['book_serial'] ?? ''));
+        $rowBookSheet = trim((string) ($rowExtra['bookSheet'] ?? ''));
+        $rowBookParcel = trim((string) ($rowExtra['bookParcel'] ?? ''));
+        $matchTypes = [];
+        foreach ($addressFields as $fieldValue) {
+            $needle = mb_strtolower(trim((string) $fieldValue), 'UTF-8');
+            $haystack = mb_strtolower($rowAddress . ' ' . $rowHiddenAddress, 'UTF-8');
+            if ($needle !== '' && (str_contains($haystack, $needle) || str_contains($needle, mb_strtolower($rowAddress, 'UTF-8')))) {
+                $matchTypes[] = 'Địa chỉ';
+                break;
+            }
         }
-        $expertKey = (string) ($row['expert_id'] ?: $row['created_by'] ?: $row['id']);
-        if ($expertKey !== '') {
-            $expertKeys[$expertKey] = true;
+        if (!in_array('Địa chỉ', $matchTypes, true) && $street !== '' && $district !== '') {
+            $haystack = mb_strtolower($rowAddress . ' ' . $rowHiddenAddress, 'UTF-8');
+            if (str_contains($haystack, mb_strtolower($street, 'UTF-8')) && (string) ($row['district'] ?? '') === $district) {
+                $matchTypes[] = 'Địa chỉ';
+            }
         }
+        if ($bookSerial !== '' && mb_strtolower($rowBookSerial, 'UTF-8') === mb_strtolower($bookSerial, 'UTF-8')) {
+            $matchTypes[] = 'Số seri sổ';
+        }
+        if ($bookSheet !== '' && $rowBookSheet !== '' && mb_strtolower($rowBookSheet, 'UTF-8') === mb_strtolower($bookSheet, 'UTF-8')) {
+            $matchTypes[] = 'Số tờ';
+        }
+        if ($bookParcel !== '' && $rowBookParcel !== '' && mb_strtolower($rowBookParcel, 'UTF-8') === mb_strtolower($bookParcel, 'UTF-8')) {
+            $matchTypes[] = 'Thửa đất';
+        }
+
         return [
             'id' => (string) $row['id'],
             'code' => (string) ($row['code'] ?? ''),
@@ -1340,6 +1367,9 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
             'district' => (string) ($row['district'] ?? ''),
             'ownerName' => (string) ($row['owner_name'] ?? ''),
             'bookSerial' => (string) ($row['book_serial'] ?? ''),
+            'bookSheet' => $rowBookSheet,
+            'bookParcel' => $rowBookParcel,
+            'matchTypes' => array_values(array_unique($matchTypes)),
             'statusId' => (string) ($row['status_id'] ?? ''),
             'expertId' => (string) ($row['expert_id'] ?? ''),
             'createdBy' => (string) ($row['created_by'] ?? ''),
@@ -1347,7 +1377,20 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
             'signingScore' => $score,
         ];
     }, $rawMatches);
+    $matches = array_values(array_filter($matches, fn($item) => !empty($item['matchTypes'])));
 
+    $expertKeys = [];
+    $highestSigningScore = null;
+    foreach ($matches as $match) {
+        $score = (float) ($match['signingScore'] ?? 0);
+        if ($highestSigningScore === null || $score > $highestSigningScore) {
+            $highestSigningScore = $score;
+        }
+        $expertKey = (string) (($match['expertId'] ?? '') ?: ($match['createdBy'] ?? '') ?: ($match['id'] ?? ''));
+        if ($expertKey !== '') {
+            $expertKeys[$expertKey] = true;
+        }
+    }
     $expertCount = count($expertKeys);
     $hasDuplicates = count($matches) > 0;
     $maxExpertsAllowed = 3;
@@ -1398,7 +1441,7 @@ $router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
     if (!$id || !$statusId) Response::error('Thong tin khong hop le', 400);
 
     $stmt = $db->prepare("
-        SELECT id, status_id, address, book_serial, owner_phone, signing_score, extra_json
+        SELECT id, status_id, address, hidden_address, district, ward, book_serial, owner_phone, signing_score, extra_json
         FROM svp_properties
         WHERE id = :id AND deleted_at IS NULL
     ");
@@ -1410,9 +1453,14 @@ $router->add('PATCH', '/api/svp/properties/{id}/status', function ($params) {
         $extra = svp_json_decode($old['extra_json'] ?? null, []);
         $ruleResult = svp_property_duplicate_rule($db, [
             'address' => (string) ($old['address'] ?? ''),
+            'hiddenAddress' => (string) ($old['hidden_address'] ?? ''),
+            'street' => (string) ($extra['street'] ?? ''),
+            'ward' => (string) ($old['ward'] ?? ''),
+            'district' => (string) ($old['district'] ?? ''),
+            'province' => (string) ($extra['province'] ?? ''),
             'bookSerial' => (string) ($old['book_serial'] ?? ''),
-            'ownerPhone' => (string) ($old['owner_phone'] ?? ''),
-            'gpsCoordinates' => (string) ($extra['gpsCoordinates'] ?? ''),
+            'bookSheet' => (string) ($extra['bookSheet'] ?? ''),
+            'bookParcel' => (string) ($extra['bookParcel'] ?? ''),
             'signingScore' => (float) ($old['signing_score'] ?? 0),
         ], $id);
         if (!($ruleResult['rule']['canSubmit'] ?? true)) {
