@@ -9,27 +9,49 @@ import type { SvpConfigGroup, SvpConfigOption } from '../../types/svp';
 import { propertyFieldLabel, propertyFieldVisible } from '../../utils/fieldLabels';
 
 const PROVINCES = ['TP.HCM', 'Hà Nội', 'Đà Nẵng', 'Thủ Đức', 'Bình Dương', 'Đồng Nai', 'Long An', 'Bà Rịa - Vũng Tàu', 'Cần Thơ', 'Hải Phòng', 'Khánh Hòa', 'Thanh Hóa'];
-const DISTRICTS = ['Quận 1', 'Quận 3', 'Quận 5', 'Quận 7', 'Quận 10', 'Quận 12', 'Bình Thạnh', 'Gò Vấp', 'Tân Bình', 'Tân Phú', 'Thủ Đức', 'Bình Tân', 'Nhà Bè', 'Hóc Môn'];
+const DISTRICTS = [
+  'Hóc Môn',
+  'Bình Chánh',
+  'Gò Vấp',
+  'Quận 12',
+  'Bình Tân',
+  'Tân Phú',
+  'Tân Bình',
+  'Bình Thạnh',
+  'Phú Nhuận',
+  'Thủ Đức',
+  'Nhà Bè',
+  'Củ Chi',
+  'Quận 1',
+  'Quận 3',
+  'Quận 5',
+  'Quận 7',
+  'Quận 10',
+  'Dĩ An',
+  'Thuận An',
+  'Biên Hòa',
+  'Long Thành',
+  'Nhơn Trạch',
+];
 const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường 5', 'Phường 7', 'Phường 10', 'Phường 12', 'Phường 15', 'Phường 17', 'Hiệp Bình Chánh', 'Linh Đông', 'Tân Sơn Nhì'];
 const WARDS_BY_DISTRICT: Record<string, string[]> = {
   'Hóc Môn': [
-    'Xã Hóc Môn',
-    'Xã Bà Điểm',
-    'Xã Xuân Thới Sơn',
-    'Xã Đông Thạnh',
-    'Thị trấn Hóc Môn',
+    'Hóc Môn',
     'Bà Điểm',
-    'Đông Thạnh',
-    'Nhị Bình',
     'Tân Hiệp',
+    'Nhị Bình',
+    'Đông Thạnh',
     'Tân Thới Nhì',
-    'Tân Xuân',
     'Thới Tam Thôn',
+    'Xuân Thới Sơn',
+    'Tân Xuân',
     'Trung Chánh',
     'Xuân Thới Đông',
-    'Xuân Thới Sơn',
     'Xuân Thới Thượng',
+    'Thị trấn Hóc Môn',
   ],
+  'Bình Chánh': ['Bình Chánh', 'An Phú Tây', 'Bình Hưng', 'Bình Lợi', 'Đa Phước', 'Hưng Long', 'Lê Minh Xuân', 'Phạm Văn Hai', 'Phong Phú', 'Quy Đức', 'Tân Kiên', 'Tân Nhựt', 'Tân Quý Tây', 'Vĩnh Lộc A', 'Vĩnh Lộc B'],
+  'Quận 12': ['An Phú Đông', 'Đông Hưng Thuận', 'Hiệp Thành', 'Tân Chánh Hiệp', 'Tân Hưng Thuận', 'Tân Thới Hiệp', 'Tân Thới Nhất', 'Thạnh Lộc', 'Thạnh Xuân', 'Thới An', 'Trung Mỹ Tây'],
   'Thủ Đức': ['Hiệp Bình Chánh', 'Linh Đông', 'Linh Trung', 'Linh Tây', 'Tam Bình', 'Tam Phú', 'Trường Thọ', 'Bình Thọ'],
   'Gò Vấp': ['Phường 1', 'Phường 3', 'Phường 4', 'Phường 5', 'Phường 6', 'Phường 7', 'Phường 8', 'Phường 10', 'Phường 11', 'Phường 12', 'Phường 13', 'Phường 14', 'Phường 15', 'Phường 16', 'Phường 17'],
   'Tân Phú': ['Tân Sơn Nhì', 'Tây Thạnh', 'Sơn Kỳ', 'Tân Quý', 'Tân Thành', 'Phú Thọ Hòa', 'Phú Thạnh', 'Phú Trung', 'Hòa Thạnh', 'Hiệp Tân', 'Tân Thới Hòa'],
@@ -142,25 +164,31 @@ function buildAutoTitle(form: typeof initialForm, priceSegments: SvpConfigOption
     form.width || form.length ? `${form.width || '?'}x${form.length || '?'}` : '',
     formatPriceShort(form.price),
   ].filter(Boolean).join(' ');
+  const address = [form.houseNumber, form.streetName].filter(Boolean).join(' ');
+  const segment = priceSegmentLabel(form.price, priceSegments);
 
   return [
-    [form.houseNumber, bookInfo ? `(${bookInfo})` : '', form.streetName].filter(Boolean).join(' '),
+    address,
+    bookInfo ? `(${bookInfo})` : '',
     specs,
-    priceSegmentLabel(form.price, priceSegments),
+    segment,
     memberName ? `HĐ ${memberName}` : '',
     form.commission ? `HH ${form.commission}` : '',
     form.source ? `Nguồn ${form.source}` : '',
-  ].filter(Boolean).join(' | ').replace(/\s+/g, ' ').trim();
+  ].filter(Boolean).join(' - ').replace(/\s+/g, ' ').trim();
 }
 
 function buildDuplicateMessage(rule: DuplicateRule | null, matches: DuplicateMatch[]) {
-  if (!matches.length) return 'Không trùng. Hệ thống ghi nhận và cho hiển thị ngay.';
+  if (!matches.length) {
+    return 'Không trùng địa chỉ, seri sổ, số tờ/thửa. Hệ thống ghi nhận và cho hiển thị ngay.';
+  }
   const targets = matches.slice(0, 3).map((item) => {
     const parts = [
       item.matchTypes?.length ? `Trùng ${item.matchTypes.join(', ')}` : 'Trùng dữ liệu nguồn',
       item.code || item.id,
       item.title,
       item.expertName ? `ký bởi ${item.expertName}` : '',
+      item.ownerName ? `chủ ${item.ownerName}` : '',
       item.signingScore !== undefined ? `${item.signingScore} điểm` : '',
     ].filter(Boolean);
     return parts.join(' - ');
@@ -281,7 +309,7 @@ export default function ExpertAddPropertyPage() {
     } catch {
       setDuplicateChecked(false);
       setDuplicateRule(null);
-      setMessage('Chưa kiểm tra trùng được. Vui lòng thử lại.');
+      setMessage('Chưa kiểm tra trùng được. Hệ thống chỉ kiểm trùng địa chỉ, seri sổ, số tờ và số thửa; vui lòng thử lại sau vài giây.');
     }
   };
 
@@ -335,8 +363,16 @@ export default function ExpertAddPropertyPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.ownerName || !form.ownerPhone || !autoTitle || !form.province || !form.district || !form.price) {
-      setMessage('Vui lòng nhập tên chủ, SĐT chủ, tỉnh/thành, quận/huyện, số nhà/tên đường hoặc thông tin đủ để tạo tiêu đề, và giá chào.');
+    if (!form.ownerName || !form.ownerPhone || !autoTitle || !form.province || !form.district || !form.ward || !form.price) {
+      setMessage('Vui lòng nhập tên chủ, SĐT chủ, tỉnh/thành, quận/huyện, phường/xã, thông tin đủ để tạo tiêu đề và giá chào.');
+      return;
+    }
+    if (!form.street && !form.hiddenAddress && !form.bookSerial && !form.bookSheet && !form.bookParcel) {
+      setMessage('Vui lòng nhập số nhà/tên đường hoặc thông tin sổ như seri, số tờ, số thửa để hệ thống kiểm trùng chính xác.');
+      return;
+    }
+    if (signingCriteria.length > 0 && signingCriteriaIds.length === 0) {
+      setMessage('Vui lòng chọn ít nhất một tiêu chí điểm ký nhà. Điểm ký dùng để xử lý trường hợp nguồn trùng.');
       return;
     }
 
@@ -415,22 +451,23 @@ export default function ExpertAddPropertyPage() {
           createdPropertyId: property.id,
           createdPropertyCode: property.code,
           createdPropertyTitle: property.title,
+          createdProperty: property,
         },
       });
-    } catch {
-      setMessage('Chưa gửi duyệt được nguồn nhà. Vui lòng kiểm tra lại dữ liệu.');
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa đăng được nguồn nhà. Vui lòng kiểm tra lại dữ liệu.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-3 pb-24 pt-3 sm:px-4">
-      <section className="mb-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+    <div className="mx-auto max-w-5xl px-2 pb-24 pt-2 sm:px-4">
+      <section className="mb-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-[#c40012]">Chuyên gia đăng nhà</p>
-        <h1 className="mt-1 text-xl font-black leading-tight text-[#25202a]">Tạo nguồn nhà chờ duyệt</h1>
-        <p className="mt-1 text-sm font-semibold leading-5 text-[#747b88]">
-          Nhập một lần, lưu được thông tin chủ, nhà, ảnh nội bộ, ảnh công khai và điểm ký.
+        <h1 className="mt-1 text-lg font-black leading-tight text-[#25202a] sm:text-xl">Đăng nguồn nhà</h1>
+        <p className="mt-1 text-xs font-semibold leading-5 text-[#747b88] sm:text-sm">
+          Nhập gọn một lần: chủ nhà, địa chỉ, sổ, ảnh, điểm ký. Không trùng thì lên bài ngay.
         </p>
       </section>
 
@@ -440,14 +477,14 @@ export default function ExpertAddPropertyPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
-        <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-          <h2 className="mb-3 font-black text-[#25202a]">Thông tin chủ</h2>
+      <div className="grid gap-2 lg:grid-cols-[0.9fr_1.1fr]">
+        <section className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
+          <h2 className="mb-2 font-black text-[#25202a]">Thông tin chủ</h2>
           <div className="grid gap-3">
             <Field label={fieldLabel('ownerName', 'Tên chủ nhà')} value={form.ownerName} onChange={(value) => update('ownerName', value)} />
             <Field label={fieldLabel('ownerPhone', 'SĐT chủ nhà')} value={form.ownerPhone} onChange={(value) => update('ownerPhone', value)} inputMode="tel" />
           </div>
-          <details className="mt-3 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2">
+          <details className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
             <summary className="cursor-pointer text-xs font-black text-[#5f6672]">Thông tin phụ của chủ nhà</summary>
             <div className="mt-3 grid gap-3">
               {showField('ownerEmail') ? <Field label={fieldLabel('ownerEmail', 'Email chủ nhà (không bắt buộc)')} value={form.ownerEmail} onChange={(value) => update('ownerEmail', value)} type="email" /> : null}
@@ -456,8 +493,8 @@ export default function ExpertAddPropertyPage() {
           </details>
         </section>
 
-        <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-          <h2 className="mb-3 font-black text-[#25202a]">Thông tin nhà</h2>
+        <section className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
+          <h2 className="mb-2 font-black text-[#25202a]">Thông tin nhà</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <ReadonlyField className="sm:col-span-2" label={fieldLabel('title', 'Tiêu đề tự động')} value={autoTitle || 'Hệ thống sẽ tự ghép từ số nhà, đường, thông số, phân khúc, HĐ, hoa hồng và nguồn.'} />
             <InputWithList label={fieldLabel('province', 'Tỉnh/Thành phố')} value={form.province} onChange={(value) => update('province', value)} listId="expert-provinces" options={PROVINCES} />
@@ -486,7 +523,7 @@ export default function ExpertAddPropertyPage() {
         </section>
       </div>
 
-      <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <section className="mt-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h2 className="font-black text-[#25202a]">{fieldLabel('description', 'Mô tả chi tiết')}</h2>
@@ -505,7 +542,7 @@ export default function ExpertAddPropertyPage() {
         <Textarea label="" value={form.description} onChange={(value) => update('description', value)} rows={7} placeholder="Nhập mô tả nhà, điểm mạnh, pháp lý, hiện trạng, lý do bán, lưu ý khi dẫn khách..." />
       </section>
 
-      <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <section className="mt-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h2 className="font-black text-[#25202a]">Điểm ký nhà</h2>
@@ -529,7 +566,7 @@ export default function ExpertAddPropertyPage() {
       </section>
 
       {showField('houseImages') || showField('bookImages') || showField('contractImages') || showField('ownerSelfie') ? (
-      <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <section className="mt-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
         <h2 className="mb-3 font-black text-[#25202a]">Ảnh và tài liệu</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <FileBox
@@ -548,7 +585,7 @@ export default function ExpertAddPropertyPage() {
       </section>
       ) : null}
 
-      <section className="mt-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+      <section className="mt-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-100 sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
@@ -565,9 +602,12 @@ export default function ExpertAddPropertyPage() {
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white disabled:opacity-60"
           >
             <CheckCircle2 className="h-5 w-5" />
-            {submitting ? 'Đang đăng...' : 'Đăng nhà'}
+            {submitting ? 'Đang đăng...' : 'Đăng nhà / lên bài'}
           </button>
         </div>
+        <p className="mt-2 text-xs font-semibold leading-5 text-[#747b88]">
+          Kiểm tra trùng chỉ dựa vào địa chỉ, seri sổ, số tờ và số thửa. Trùng chủ nhà không tính là trùng vì một chủ có thể bán nhiều nhà.
+        </p>
         {duplicateChecked ? (
           <div className={`mt-3 rounded-2xl px-3 py-2 text-sm font-bold ${
             duplicates.length
@@ -578,7 +618,7 @@ export default function ExpertAddPropertyPage() {
           }`}>
             {duplicates.length
               ? buildDuplicateMessage(duplicateRule, duplicates)
-              : 'Không trùng. Khi bấm Đăng nhà, hệ thống ghi nhận và cho hiển thị ngay.'}
+              : 'Không trùng địa chỉ, seri sổ, số tờ/thửa. Khi bấm Đăng nhà, hệ thống ghi nhận và cho hiển thị ngay.'}
           </div>
         ) : null}
         {showField('internalNote') ? <Textarea className="mt-3" label={fieldLabel('internalNote', 'Ghi chú nội bộ')} value={form.internalNote} onChange={(value) => update('internalNote', value)} rows={3} placeholder="Cách xử lý trùng, lưu ý chủ nhà, điều kiện dẫn khách..." /> : null}
@@ -597,7 +637,7 @@ function Field({ label, value, onChange, type = 'text', inputMode, className = '
         inputMode={inputMode}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+        className="min-h-10 w-full rounded-xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
       />
     </label>
   );
@@ -607,7 +647,7 @@ function ReadonlyField({ label, value, className = '' }: { label: string; value:
   return (
     <label className={`block ${className}`}>
       <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
-      <div className="flex min-h-11 w-full items-center rounded-2xl border border-red-100 bg-[#fff8f2] px-3 text-sm font-black leading-5 text-[#25202a]">
+      <div className="flex min-h-10 w-full items-center rounded-xl border border-red-100 bg-[#fff8f2] px-3 text-sm font-black leading-5 text-[#25202a]">
         {value}
       </div>
     </label>
@@ -623,7 +663,7 @@ function Textarea({ label, value, onChange, rows, placeholder = '', className = 
         rows={rows}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-gray-200 px-3 py-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold outline-none focus:border-[#c40012]"
       />
     </label>
   );
@@ -637,7 +677,7 @@ function InputWithList({ label, value, onChange, options, listId }: { label: str
         value={value}
         onChange={(event) => onChange(event.target.value)}
         list={listId}
-        className="min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+        className="min-h-10 w-full rounded-xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
       />
       <datalist id={listId}>
         {options.map((item) => <option key={item} value={item} />)}
@@ -650,7 +690,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-2xl border border-gray-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#c40012]">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#c40012]">
         <option value="">Chọn</option>
         {options.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
@@ -662,7 +702,7 @@ function SelectFromOptions({ label, value, onChange, options }: { label: string;
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-2xl border border-gray-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#c40012]">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#c40012]">
         <option value="">Chọn</option>
         {options.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
       </select>
@@ -674,7 +714,7 @@ function MultiOptionPicker({ label, selectedIds, options, onToggle, emptyHint }:
   return (
     <div className="block sm:col-span-2">
       <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-gray-200 bg-white p-2">
+      <div className="flex flex-wrap gap-1.5 rounded-xl border border-gray-200 bg-white p-2">
         {options.length ? options.map((item) => {
           const selected = selectedIds.includes(item.id);
           return (
@@ -682,7 +722,7 @@ function MultiOptionPicker({ label, selectedIds, options, onToggle, emptyHint }:
               key={item.id}
               type="button"
               onClick={() => onToggle(item.id)}
-              className={`min-h-9 rounded-xl px-3 text-xs font-black transition ${
+              className={`min-h-8 rounded-lg px-2.5 text-xs font-black transition ${
                 selected
                   ? 'bg-[#c40012] text-white shadow-sm'
                   : 'bg-[#fff8f2] text-[#6b4f52] ring-1 ring-red-100'
@@ -702,7 +742,7 @@ function MultiOptionPicker({ label, selectedIds, options, onToggle, emptyHint }:
 
 function FileBox({ title, desc, files, onChange }: { title: string; desc: string; files: File[]; onChange: (files: File[]) => void }) {
   return (
-    <label className="block cursor-pointer rounded-3xl border-2 border-dashed border-gray-200 p-4 transition hover:border-[#c40012]">
+    <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-gray-200 p-3 transition hover:border-[#c40012]">
       <UploadCloud className="mb-2 h-7 w-7 text-[#c40012]" />
       <p className="font-black text-[#25202a]">{title}</p>
       <p className="mt-1 text-xs font-semibold leading-5 text-[#7b8190]">{desc}</p>

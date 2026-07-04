@@ -959,7 +959,7 @@ $router->add('POST', '/api/svp/properties', function () use ($input) {
     $response = svp_property_to_response($created);
 
     svp_insert_property_version($db, $id, $response, $actorId, 'created');
-    svp_insert_property_timeline($db, $id, 'created', 'Tao nha', null, $actorId, $response);
+    svp_insert_property_timeline($db, $id, 'created', 'Tạo nhà', null, $actorId, $response);
     svp_insert_audit($db, $actorId, 'create', 'property', $id, null, $response);
 
     Response::json(['item' => $response], 201);

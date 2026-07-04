@@ -1300,7 +1300,7 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
         'maxExpertsAllowed' => 3,
         'highestSigningScore' => null,
         'submittedSigningScore' => $submittedSigningScore,
-        'message' => 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.',
+        'message' => 'Chưa thấy nguồn trùng theo địa chỉ, seri sổ, số tờ hoặc số thửa. Có thể lên bài ngay.',
     ];
 
     if (empty($conditions)) {
@@ -1395,7 +1395,7 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
     $hasDuplicates = count($matches) > 0;
     $maxExpertsAllowed = 3;
     $canSubmit = true;
-    $message = 'Chưa thấy nguồn trùng theo dữ liệu đã nhập.';
+    $message = 'Chưa thấy nguồn trùng theo địa chỉ, seri sổ, số tờ hoặc số thửa. Có thể lên bài ngay.';
 
     if ($hasDuplicates) {
         if ($expertCount >= $maxExpertsAllowed) {
@@ -1403,9 +1403,9 @@ function svp_property_duplicate_rule(PDO $db, array $input, ?string $excludeId =
             $message = 'Nguồn trùng đã đủ tối đa 3 Chuyên gia quản lý. Vui lòng báo admin xử lý.';
         } elseif ($highestSigningScore !== null && $submittedSigningScore <= $highestSigningScore) {
             $canSubmit = false;
-            $message = 'Nguồn trùng đang có điểm ký cao nhất ' . $highestSigningScore . '. Điểm hiện tại ' . $submittedSigningScore . ' phải cao hơn mới được gửi duyệt.';
+            $message = 'Nguồn trùng đang có điểm ký cao nhất ' . $highestSigningScore . '. Điểm hiện tại ' . $submittedSigningScore . ' phải cao hơn mới được lên bài.';
         } else {
-            $message = 'Nguồn trùng nhưng điểm ký hiện tại cao hơn nguồn cũ. Có thể gửi duyệt, admin vẫn cần kiểm tra trước khi hiển thị.';
+            $message = 'Nguồn trùng nhưng điểm ký hiện tại cao hơn nguồn cũ. Có thể lên bài, hệ thống vẫn lưu cảnh báo để admin rà soát.';
         }
     }
 

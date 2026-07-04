@@ -17,7 +17,9 @@ export default function ExpertPropertyDetailPage() {
 
   if (!prop) return <div className="p-4"><p className="text-[#757575]">Đang tải...</p></div>;
 
+  const isAdmin = user?.roles?.some((role) => role.slug === 'admin' && role.status === 'approved');
   const isOwn = prop.createdBy === user?.id || prop.expertId === user?.id;
+  const canSeeInternal = Boolean(isOwn || isAdmin);
   const extra = prop.extra || {};
   const legalLine = [
     extra.legalStatus,
@@ -52,7 +54,7 @@ export default function ExpertPropertyDetailPage() {
           ))}
         </div>
 
-        {isOwn && (
+        {canSeeInternal && (
           <Info title="Chủ nhà" lines={[
             `${prop.ownerName || 'Chưa nhập'} - ${prop.ownerPhone || 'Chưa nhập SĐT'}`,
             extra.ownerEmail ? `Email: ${extra.ownerEmail}` : '',
@@ -67,15 +69,25 @@ export default function ExpertPropertyDetailPage() {
           extra.gpsCoordinates ? `GPS: ${extra.gpsCoordinates}` : '',
         ]} />
 
-        {isOwn && extra.commission && (
+        {canSeeInternal && (
+          <Info title="Dữ liệu xử lý" lines={[
+            `Trạng thái: ${prop.statusLabel || prop.statusId || prop.status || 'Đang cập nhật'}`,
+            `Điểm ký: ${prop.signingScore !== undefined ? `${Number(prop.signingScore) > 0 ? '+' : ''}${prop.signingScore}` : '0'}`,
+            `Nguồn: ${extra.source || 'Chưa ghi'}`,
+            `Phân khúc: ${extra.priceSegment || 'Tự tính theo giá'}`,
+            extra.duplicateRule?.hasDuplicates || extra.duplicateMatches?.length ? `Cảnh báo trùng: ${duplicateLine(extra)}` : 'Kiểm trùng: chưa có cảnh báo trùng',
+          ]} />
+        )}
+
+        {canSeeInternal && extra.commission && (
           <Info title="Hoa hồng" lines={[`${extra.commission}${String(extra.commission).includes('%') ? '' : '%'}`, extra.commissionNote || '', extra.contractStatus ? `Hợp đồng: ${extra.contractStatus}` : '']} />
         )}
 
         {prop.description && <Info title="Mô tả" lines={[prop.description]} muted />}
         {extra.videoUrl && <Info title="Video" lines={[extra.videoUrl]} muted />}
-        {isOwn && prop.hiddenAddress && <Info title="Địa chỉ bảo mật" lines={[prop.hiddenAddress]} muted />}
-        {isOwn && extra.internalNote && <Info title="Ghi chú nội bộ" lines={[extra.internalNote]} muted />}
-        {isOwn && extra.verificationChecklist && (
+        {canSeeInternal && prop.hiddenAddress && <Info title="Địa chỉ bảo mật" lines={[prop.hiddenAddress]} muted />}
+        {canSeeInternal && extra.internalNote && <Info title="Ghi chú nội bộ" lines={[extra.internalNote]} muted />}
+        {canSeeInternal && extra.verificationChecklist && (
           <Info title="Checklist xác minh" lines={verificationLines(extra.verificationChecklist)} muted />
         )}
       </div>
@@ -93,6 +105,17 @@ function verificationLines(checklist: Record<string, boolean>) {
     readyToDistribute: 'Đủ điều kiện gửi duyệt/phân phối bán',
   };
   return Object.entries(labels).map(([key, label]) => `${checklist[key] ? '✓' : '•'} ${label}`);
+}
+
+function duplicateLine(extra: any) {
+  const first = extra?.duplicateMatches?.[0];
+  if (!first) return extra?.duplicateRule?.message || 'Cần rà soát trước khi xử lý.';
+  return [
+    first.matchTypes?.length ? first.matchTypes.join(', ') : 'Dữ liệu nguồn',
+    first.code || first.id,
+    first.expertName ? `ký bởi ${first.expertName}` : '',
+    first.signingScore !== undefined ? `${first.signingScore} điểm` : '',
+  ].filter(Boolean).join(' - ');
 }
 
 function Info({ title, lines, icon, muted = false }: { title: string; lines: string[]; icon?: ReactNode; muted?: boolean }) {

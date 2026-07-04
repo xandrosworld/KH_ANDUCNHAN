@@ -19,7 +19,8 @@ export default function ExpertMyPropertiesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const createdState = location.state as { createdPropertyId?: string; createdPropertyCode?: string; createdPropertyTitle?: string } | null;
+  const createdState = location.state as { createdPropertyId?: string; createdPropertyCode?: string; createdPropertyTitle?: string; createdProperty?: any } | null;
+  const createdProperty = createdState?.createdProperty;
   const [tab, setTab] = useState('Tất cả');
   const [items, setItems] = useState<any[]>([]);
   const [query, setQuery] = useState('');
@@ -27,16 +28,30 @@ export default function ExpertMyPropertiesPage() {
 
   useEffect(() => {
     api.get('/properties', { params: { createdBy: user?.id } })
-      .then((response) => setItems(response.data?.items || []))
-      .catch(() => setItems([]))
+      .then((response) => setItems(mergeCreatedProperty(response.data?.items || [], createdProperty)))
+      .catch(() => setItems(createdProperty ? [createdProperty] : []))
       .finally(() => setLoading(false));
-  }, [user?.id]);
+  }, [user?.id, createdProperty]);
 
   const filtered = useMemo(() => {
     const tabbed = tab === 'Tất cả' ? items : items.filter((item) => STATUS_MAP[tab]?.includes(item.statusId || item.status));
     const keyword = query.trim().toLowerCase();
     if (!keyword) return tabbed;
-    return tabbed.filter((item) => [item.title, item.code, item.ownerName, item.ownerPhone, item.extra?.province, item.district, item.ward, item.price].some((value) => String(value || '').toLowerCase().includes(keyword)));
+    return tabbed.filter((item) => [
+      item.title,
+      item.code,
+      item.ownerName,
+      item.ownerPhone,
+      item.bookSerial,
+      item.extra?.bookSheet,
+      item.extra?.bookParcel,
+      item.extra?.source,
+      item.extra?.province,
+      item.district,
+      item.ward,
+      item.price,
+      ...(item.tagIds || []),
+    ].some((value) => String(value || '').toLowerCase().includes(keyword)));
   }, [items, query, tab]);
 
   return (
@@ -67,7 +82,7 @@ export default function ExpertMyPropertiesPage() {
 
       {createdState?.createdPropertyId ? (
         <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold leading-6 text-emerald-700">
-          Đã gửi duyệt nguồn {createdState.createdPropertyCode || createdState.createdPropertyTitle || 'vừa đăng'}. Nguồn đã nằm trong kho nhà cá nhân để tiếp tục theo dõi.
+          Đã đăng nguồn {createdState.createdPropertyCode || createdState.createdPropertyTitle || 'vừa đăng'}. Nguồn đã nằm trong kho nhà cá nhân và admin/kho tổng có thể xem để xử lý.
         </div>
       ) : null}
 
@@ -119,6 +134,13 @@ function ExpertPropertyCard({ item, onClick, highlight = false }: { item: any; o
         <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{formatVndShort(item.price)}</span>
         <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{[item.extra?.province, item.district || item.ward].filter(Boolean).join(' - ') || 'Chưa rõ khu vực'}</span>
         <span className="rounded-full bg-[#faf7f5] px-2.5 py-1">{areaText(item)}</span>
+        {item.signingScore !== undefined ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">{Number(item.signingScore) > 0 ? '+' : ''}{item.signingScore} điểm ký</span> : null}
+      </div>
+      <div className="mt-3 grid gap-1 text-xs font-semibold leading-5 text-[#606875] sm:grid-cols-2">
+        <p><span className="font-black text-[#25202a]">Chủ:</span> {item.ownerName || 'Chưa nhập'}{item.ownerPhone ? ` - ${item.ownerPhone}` : ''}</p>
+        <p><span className="font-black text-[#25202a]">Sổ:</span> {bookLine(item)}</p>
+        <p><span className="font-black text-[#25202a]">Nguồn:</span> {item.extra?.source || 'Chưa ghi'}</p>
+        <p><span className="font-black text-[#25202a]">HH:</span> {item.extra?.commission || 'Chưa ghi'}</p>
       </div>
     </button>
   );
@@ -136,4 +158,18 @@ function PropertySkeleton() {
 
 function shortId(id?: string) {
   return id ? id.slice(0, 8).toUpperCase() : 'SVP';
+}
+
+function mergeCreatedProperty(items: any[], createdProperty?: any) {
+  if (!createdProperty?.id) return items;
+  if (items.some((item) => item.id === createdProperty.id)) return items;
+  return [createdProperty, ...items];
+}
+
+function bookLine(item: any) {
+  return [
+    item.bookSerial ? `Seri ${item.bookSerial}` : '',
+    item.extra?.bookSheet ? `Tờ ${item.extra.bookSheet}` : '',
+    item.extra?.bookParcel ? `Thửa ${item.extra.bookParcel}` : '',
+  ].filter(Boolean).join(' / ') || 'Chưa nhập';
 }

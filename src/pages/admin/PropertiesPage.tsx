@@ -42,7 +42,22 @@ export default function AdminPropertiesPage() {
     const keyword = query.trim().toLowerCase();
     return items.filter((item) => {
       const status = item.statusId || item.status || '';
-      const matchesKeyword = !keyword || [item.title, item.code, item.ownerName, item.ownerPhone, item.extra?.province, item.district, item.ward, item.price, ...(item.tagIds || [])]
+      const matchesKeyword = !keyword || [
+        item.title,
+        item.code,
+        item.ownerName,
+        item.ownerPhone,
+        item.bookSerial,
+        item.extra?.bookSheet,
+        item.extra?.bookParcel,
+        item.extra?.source,
+        item.extra?.commission,
+        item.extra?.province,
+        item.district,
+        item.ward,
+        item.price,
+        ...(item.tagIds || []),
+      ]
         .some((value) => String(value || '').toLowerCase().includes(keyword));
       const matchesFilter =
         filter === 'all' ||
@@ -97,7 +112,7 @@ export default function AdminPropertiesPage() {
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9aa1ad]" />
           <input
             className="min-h-12 w-full rounded-2xl border border-gray-200 bg-white pl-10 pr-3 text-sm font-semibold text-[#25202a] outline-none focus:border-[#c40012]"
-            placeholder="Tìm theo mã nguồn, tiêu đề, chủ nhà, khu vực..."
+            placeholder="Tìm mã nguồn, chủ/SĐT, địa chỉ, seri sổ, tờ/thửa, tag..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -173,10 +188,21 @@ function PropertyCard({ item, busyId, onStatus }: { item: any; busyId: string; o
             <span className="truncate">{[item.extra?.province, item.district || item.ward].filter(Boolean).join(' - ') || 'Khu vực đang cập nhật'}</span>
           </p>
           <p className="mt-1 text-xs font-semibold text-[#747b88]">{areaText(item)} · {formatDate(item.createdAt || item.created_at)}</p>
+          <div className="mt-3 grid gap-1 text-xs font-semibold leading-5 text-[#606875] sm:grid-cols-2">
+            <p><span className="font-black text-[#25202a]">Chủ:</span> {item.ownerName || 'Chưa nhập'}{item.ownerPhone ? ` - ${item.ownerPhone}` : ''}</p>
+            <p><span className="font-black text-[#25202a]">Sổ:</span> {bookLine(item)}</p>
+            <p><span className="font-black text-[#25202a]">Điểm ký:</span> {item.signingScore !== undefined ? `${Number(item.signingScore) > 0 ? '+' : ''}${item.signingScore}` : '0'}</p>
+            <p><span className="font-black text-[#25202a]">HH/Nguồn:</span> {[item.extra?.commission, item.extra?.source].filter(Boolean).join(' - ') || 'Chưa ghi'}</p>
+          </div>
+          {item.extra?.duplicateRule?.hasDuplicates || item.extra?.duplicateMatches?.length ? (
+            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-700">
+              Có cảnh báo trùng: {duplicateLine(item)}
+            </p>
+          ) : null}
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <Link to={`/nha/${encodeURIComponent(item.id)}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a]">
+            <Link to={`/chuyen-gia/nha/${encodeURIComponent(item.id)}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a]">
               <Eye className="h-4 w-4" />
-              Xem
+              Chi tiết
             </Link>
             {STATUS_ACTIONS.filter((action) => action.statusId !== status).map((action) => (
               <button
@@ -221,4 +247,22 @@ function formatDate(value?: string) {
   const date = new Date(value.replace(' ', 'T'));
   if (Number.isNaN(date.getTime())) return value.slice(0, 10);
   return date.toLocaleDateString('vi-VN');
+}
+
+function bookLine(item: any) {
+  return [
+    item.bookSerial ? `Seri ${item.bookSerial}` : '',
+    item.extra?.bookSheet ? `Tờ ${item.extra.bookSheet}` : '',
+    item.extra?.bookParcel ? `Thửa ${item.extra.bookParcel}` : '',
+  ].filter(Boolean).join(' / ') || 'Chưa nhập';
+}
+
+function duplicateLine(item: any) {
+  const first = item.extra?.duplicateMatches?.[0];
+  if (!first) return item.extra?.duplicateRule?.message || 'Cần rà soát trước khi xử lý.';
+  return [
+    first.matchTypes?.length ? first.matchTypes.join(', ') : 'Dữ liệu nguồn',
+    first.code || first.id,
+    first.expertName ? `ký bởi ${first.expertName}` : '',
+  ].filter(Boolean).join(' - ');
 }
