@@ -749,17 +749,24 @@ test.describe('V1 core workflows', () => {
     await page.goto('/chuyen-gia/dang-nha', { waitUntil: 'networkidle' });
     await expect(page.locator('form, body')).toContainText(/Chuyên gia đăng nhà|Tạo nguồn nhà|Thông tin chủ/i);
 
-    const visibleInputs = page.locator('input:visible');
-    await visibleInputs.nth(0).fill('Chu nha QA');
-    await visibleInputs.nth(1).fill('0909000000');
-    await visibleInputs.nth(2).fill('Nha QA dang bang Playwright');
-    await visibleInputs.nth(3).fill('TP.HCM');
-    await visibleInputs.nth(4).fill('Ha Dong');
-    await visibleInputs.nth(5).fill('Van Phuc');
-    await visibleInputs.nth(6).fill('12 Van Phuc');
-    await visibleInputs.nth(8).fill('SO-QA-001');
-    await visibleInputs.nth(10).fill('6800000000');
-    await visibleInputs.nth(11).fill('72');
+    await page.getByLabel(/Tên chủ nhà/i).fill('Chu nha QA');
+    await page.getByLabel(/SĐT chủ nhà/i).fill('0909000000');
+    await page.getByLabel(/Tỉnh\/Thành phố/i).fill('TP.HCM');
+    await page.getByLabel(/Quận\/Huyện/i).fill('Hóc Môn');
+    await page.getByLabel(/Phường\/Xã/i).fill('Tân Hiệp');
+    await page.getByLabel(/^Số nhà$/i).fill('157');
+    await page.getByLabel(/Tên đường/i).fill('Huỳnh Thị Mài');
+    await page.getByLabel(/Seri|mã sổ/i).fill('SO-QA-001');
+    await page.getByLabel(/Số tờ/i).fill('15');
+    await page.getByLabel(/Thửa đất/i).fill('795');
+    await page.getByRole('textbox', { name: /^Giá chào/i }).fill('6800000000');
+    await page.getByLabel(/Diện tích/i).fill('72');
+    await page.getByLabel(/Số tầng/i).fill('4');
+    await page.getByLabel(/Chiều ngang/i).fill('4');
+    await page.getByLabel(/Chiều dài/i).fill('18');
+    await page.getByRole('textbox', { name: /^Hoa hồng/i }).fill('2%');
+    await page.getByLabel(/^Nguồn$/i).fill('Chủ gửi');
+    await page.getByLabel(/Công ty thành viên/i).selectOption({ index: 1 });
     await page.locator('textarea:visible').last().fill('Da ra trung, nguon QA co ghi chu xu ly ro rang.');
 
     await page.getByRole('button', { name: 'Quản lý/Admin' }).click();
@@ -774,7 +781,7 @@ test.describe('V1 core workflows', () => {
     await page.getByRole('button', { name: /Kiểm tra trùng/i }).click();
     await page.getByRole('button', { name: /^AI viết$/ }).click();
     await expect(page.locator('textarea:visible').first()).toHaveValue(/Mo ta AI/);
-    await page.getByRole('button', { name: /Gửi duyệt/i }).click();
+    await page.getByRole('button', { name: /Đăng nhà|lên bài|Gửi duyệt/i }).click();
     await page.waitForURL(/\/chuyen-gia\/kho-nha$/);
     await expectUsablePage(page, testInfo, 'workflow-expert-property');
   });
@@ -842,8 +849,8 @@ test.describe('V1 core workflows', () => {
     await expect(page.locator('body')).toContainText(/Đã cập nhật trạng thái|Da cap nhat trang thai/i);
     await page.getByTestId('admin-property-status-st_active').first().click();
     await expect(page.locator('body')).toContainText(/Đã cập nhật trạng thái|Da cap nhat trang thai/i);
-    await page.getByRole('link', { name: /^Xem$/ }).first().click();
-    await page.waitForURL(/\/nha\/prop_1$/);
+    await page.getByRole('link', { name: /^(Xem|Chi tiết)$/ }).first().click();
+    await page.waitForURL(/\/(nha|chuyen-gia\/nha)\/prop_1$/);
     await expectUsablePage(page, testInfo, 'workflow-admin-property-detail');
     await page.goto('/quan-tri/nha', { waitUntil: 'networkidle' });
     await expectUsablePage(page, testInfo, 'workflow-admin-property-utilities');

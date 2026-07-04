@@ -6,6 +6,21 @@ import { Bath, BedDouble, Compass, FileText, Home, MapPin, Ruler } from 'lucide-
 import { svpAxios as api } from '../../services/svpAxios';
 import { areaText, formatVndShort } from '../../utils/svpFormat';
 
+const STATUS_LABELS: Record<string, string> = {
+  st_pending: 'Chờ xử lý',
+  st_active: 'Đang hiển thị',
+  st_hidden: 'Đang ẩn',
+  st_stopped: 'Dừng bán',
+  st_deposited: 'Đã cọc',
+  st_sold: 'Đã bán',
+  pending: 'Chờ xử lý',
+  active: 'Đang hiển thị',
+  hidden: 'Đang ẩn',
+  stopped: 'Dừng bán',
+  deposited: 'Đã cọc',
+  sold: 'Đã bán',
+};
+
 export default function ExpertPropertyDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -27,6 +42,8 @@ export default function ExpertPropertyDetailPage() {
     extra.bookParcel ? `Số thửa: ${extra.bookParcel}` : '',
     prop.bookSerial ? `Sổ: ${prop.bookSerial}` : '',
   ].filter(Boolean).join(' · ');
+  const statusKey = String(prop.statusLabel || prop.statusId || prop.status || '').trim();
+  const statusText = STATUS_LABELS[statusKey] || statusKey || 'Đang cập nhật';
 
   return (
     <div className="pb-20">
@@ -71,7 +88,7 @@ export default function ExpertPropertyDetailPage() {
 
         {canSeeInternal && (
           <Info title="Dữ liệu xử lý" lines={[
-            `Trạng thái: ${prop.statusLabel || prop.statusId || prop.status || 'Đang cập nhật'}`,
+            `Trạng thái: ${statusText}`,
             `Điểm ký: ${prop.signingScore !== undefined ? `${Number(prop.signingScore) > 0 ? '+' : ''}${prop.signingScore}` : '0'}`,
             `Nguồn: ${extra.source || 'Chưa ghi'}`,
             `Phân khúc: ${extra.priceSegment || 'Tự tính theo giá'}`,
