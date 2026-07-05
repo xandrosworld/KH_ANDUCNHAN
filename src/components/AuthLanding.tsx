@@ -776,7 +776,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
               Chính sách bảo mật
             </button>{' '}
             •{' '}
-            <button type="button" onClick={() => navigate('/gioi-thieu-cong-ty')} className="font-bold text-[#c40012] hover:underline">
+            <button type="button" onClick={() => navigate('/gioi-thieu')} className="font-bold text-[#c40012] hover:underline">
               Giới thiệu
             </button>{' '}
             •{' '}

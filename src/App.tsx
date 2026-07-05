@@ -80,6 +80,7 @@ export default function App() {
             <Route path="/terms" element={<LegalPage type="terms" />} />
             <Route path="/chinh-sach-bao-mat" element={<LegalPage type="privacy" />} />
             <Route path="/privacy" element={<LegalPage type="privacy" />} />
+            <Route path="/gioi-thieu" element={<PublicAboutPage />} />
             <Route path="/gioi-thieu-cong-ty" element={<PublicAboutPage />} />
             <Route path="/tin-tuc" element={<PublicNewsPage />} />
             <Route path="/nha/:id" element={<PropertyDetailPage />} />
@@ -113,8 +114,9 @@ export default function App() {
                 <Route path="/ctv" element={<CollabDashboard />} />
                 <Route path="/ctv/cong-viec" element={<CollabWork />} />
 
-                <Route path="/gioi-thieu" element={<ReferrerDashboard />} />
-                <Route path="/gioi-thieu/ma-gioi-thieu" element={<ReferrerCode />} />
+                <Route path="/nguoi-gioi-thieu" element={<ReferrerDashboard />} />
+                <Route path="/nguoi-gioi-thieu/ma-gioi-thieu" element={<ReferrerCode />} />
+                <Route path="/ma-gioi-thieu" element={<ReferrerCode />} />
 
                 <Route path="/quan-tri" element={<AdminDashboard />} />
                 <Route path="/quan-tri/nguoi-dung" element={<AdminUsers />} />

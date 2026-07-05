@@ -94,8 +94,8 @@ function getMenuForRole(role: string): MenuItem[] {
     case 'nguoi_gioi_thieu':
     case 'doi_tac':
       return [
-        { path: '/gioi-thieu', label: 'Trang chủ', icon: Home },
-        { path: '/gioi-thieu/ma-gioi-thieu', label: 'Giới thiệu', icon: Share2 },
+        { path: '/nguoi-gioi-thieu', label: 'Trang chủ', icon: Home },
+        { path: '/nguoi-gioi-thieu/ma-gioi-thieu', label: 'Mã giới thiệu', icon: Share2 },
         { path: '/notifications', label: 'Thông báo', icon: Bell },
       ];
     default:

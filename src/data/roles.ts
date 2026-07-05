@@ -38,7 +38,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
     description: 'Giới thiệu nhân sự, chủ nhà hoặc khách mua',
     group: 'public',
     requiresApproval: false,
-    dashboardPath: '/gioi-thieu',
+    dashboardPath: '/nguoi-gioi-thieu',
   },
   {
     slug: 'ctv_khach',
@@ -182,7 +182,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
     description: 'Kết nối dịch vụ hỗ trợ giao dịch',
     group: 'partner',
     requiresApproval: false,
-    dashboardPath: '/gioi-thieu',
+    dashboardPath: '/nguoi-gioi-thieu',
   },
 ];
 

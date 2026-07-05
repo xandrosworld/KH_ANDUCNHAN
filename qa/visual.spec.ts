@@ -209,6 +209,7 @@ const roleApprovalSettings = [
 const publicRoutes = [
   '/',
   '/register',
+  '/gioi-thieu',
   '/gioi-thieu-cong-ty',
   '/tin-tuc',
   '/forgot-password',
@@ -223,7 +224,7 @@ const roleRoutes = [
   { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/profile', '/notifications'] },
   { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/xay-dung-he-thong', '/profile', '/notifications'] },
   { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'nguoi_gioi_thieu', paths: ['/gioi-thieu', '/gioi-thieu/ma-gioi-thieu', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'nguoi_gioi_thieu', paths: ['/nguoi-gioi-thieu', '/nguoi-gioi-thieu/ma-gioi-thieu', '/xay-dung-he-thong', '/profile', '/notifications'] },
 ];
 
 function userFor(role: string) {
