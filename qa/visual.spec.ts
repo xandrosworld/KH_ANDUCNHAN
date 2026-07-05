@@ -217,13 +217,13 @@ const publicRoutes = [
 ];
 
 const roleRoutes = [
-  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/profile', '/notifications'] },
-  { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/profile', '/notifications'] },
-  { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/profile', '/notifications'] },
-  { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/profile', '/notifications'] },
-  { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/profile', '/notifications'] },
-  { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/profile', '/notifications'] },
-  { role: 'nguoi_gioi_thieu', paths: ['/gioi-thieu', '/gioi-thieu/ma-gioi-thieu', '/profile', '/notifications'] },
+  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'nguoi_gioi_thieu', paths: ['/gioi-thieu', '/gioi-thieu/ma-gioi-thieu', '/xay-dung-he-thong', '/profile', '/notifications'] },
 ];
 
 function userFor(role: string) {
@@ -291,6 +291,23 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
     if ((path === '/auth/avatar' || path === '/auth/upload-avatar') && method === 'POST') return ok(route, { avatar: '/logo11.png' });
     if (path === '/auth/change-password' && method === 'POST') return ok(route, { message: 'Da doi mat khau' });
     if (path === '/auth/register-role' && method === 'POST') return ok(route, { message: 'Da gui yeu cau vai tro' });
+    if (path === '/auth/referrer-lookup' && method === 'GET') return ok(route, { item: { id: 'user_admin', fullName: 'Nguoi gioi thieu QA', svpId: 'SVP000001', phone: '0909***999', referralCode: 'SVP-2026-0001' } });
+    if (path === '/my-system') return ok(route, {
+      user: {
+        id: `user_${role}`,
+        fullName: 'Tai khoan kiem thu',
+        phone: '0909000999',
+        email: `${role}@sodovanphuc.vn`,
+        svpId: 'SVP000999',
+        referralCode: 'SVP-2026-0001',
+        referralLink: 'https://sodovanphuc.vn/register?ref=SVP-2026-0001',
+      },
+      directReferrals: [
+        { id: 'f1_1', fullName: 'F1 kiem thu', phone: '0909000111', email: 'f1@sodovanphuc.vn', svpId: 'SVP000111', referralCode: 'SVP-2026-F101', accountStatus: 'active', createdAt: '2026-07-05 09:00:00' },
+      ],
+      directReferralCount: 1,
+      indirectReferralCount: 0,
+    });
 
     if (path === '/admin/dashboard') {
       return ok(route, {
@@ -329,6 +346,9 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
     if (/^\/admin\/users\/[^/]+\/reset-password$/.test(path) && method === 'POST') {
       const id = decodeURIComponent(path.split('/')[3] || '');
       return ok(route, { tempPassword: 'SVP@TEMP123', user: { id, fullName: 'Tai khoan kiem thu' } });
+    }
+    if (/^\/admin\/users\/[^/]+$/.test(path) && method === 'PATCH') {
+      return ok(route, { message: 'Da cap nhat tai khoan' });
     }
     if (path === '/admin/export' && method === 'GET') {
       return route.fulfill({
@@ -413,6 +433,8 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
         },
       });
     }
+    if (path === '/config/options/reorder' && method === 'POST') return ok(route, { items: [], total: 0 });
+    if (/^\/config\/options\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true });
     if (path === '/audit-logs') {
       return ok(route, {
         items: [
@@ -441,7 +463,7 @@ async function expectUsablePage(page: Page, testInfo: TestInfo, routeLabel: stri
     const overflow = document.documentElement.scrollWidth > width + 2;
     return {
       textLength: text.trim().length,
-      badEncoding: /(\u00c3.|\u00c4.|\u00c2[\u00a0\u00b7]|\u00e2[\u20ac\u201c\u201d\u2013\u2014]|\u00e1\u00ba|\u00e1\u00bb)/.exec(text)?.[0] || '',
+      badEncoding: /(\u00c3[\u00a0-\u00bf]|\u00c4[\u0080-\u00bf]|\u00c2[\u00a0\u00b7]|\u00e2[\u20ac\u201c\u201d\u2013\u2014]|\u00e1\u00ba|\u00e1\u00bb)/.exec(text)?.[0] || '',
       hasForbidden: /(GlobalForum|Global Forum|Roadmap|Audit log|Create Account|Sign In|AUTO-SMOKE|localStorage|database\/skeleton|KHU VUC NOI BO|st_[a-z_]+)/.exec(text)?.[0] || '',
       overflow,
       title: document.title,

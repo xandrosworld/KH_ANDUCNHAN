@@ -896,6 +896,27 @@ $router->add('GET', '/api/svp/admin/users', function () {
         $rStmt->execute(['uid' => $u['id']]);
         $roles = array_map(fn($r) => ['slug' => $r['role_slug'], 'status' => $r['status']], $rStmt->fetchAll(PDO::FETCH_ASSOC));
 
+        $f1Stmt = $db->prepare("
+            SELECT id, full_name, phone, email, svp_id, referral_code, account_status, created_at
+            FROM users
+            WHERE referred_by = :uid
+            ORDER BY created_at DESC
+            LIMIT 100
+        ");
+        $f1Stmt->execute(['uid' => $u['id']]);
+        $directReferrals = array_map(function ($row) {
+            return [
+                'id' => $row['id'],
+                'fullName' => $row['full_name'],
+                'phone' => $row['phone'] ?? '',
+                'email' => $row['email'] ?? '',
+                'svpId' => $row['svp_id'] ?? '',
+                'referralCode' => $row['referral_code'] ?? '',
+                'accountStatus' => $row['account_status'] ?? 'active',
+                'createdAt' => $row['created_at'] ?? '',
+            ];
+        }, $f1Stmt->fetchAll(PDO::FETCH_ASSOC));
+
         $result[] = [
             'id' => $u['id'],
             'fullName' => $u['full_name'],
@@ -915,6 +936,8 @@ $router->add('GET', '/api/svp/admin/users', function () {
                 'email' => $u['referrer_email'] ?? '',
                 'referralCode' => $u['referrer_referral_code'] ?? '',
             ] : null,
+            'directReferrals' => $directReferrals,
+            'directReferralCount' => count($directReferrals),
             'accountStatus' => $u['account_status'] ?? 'active',
             'roles' => $roles,
             'createdAt' => $u['created_at'],
@@ -1006,10 +1029,34 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
         ]);
     }
 
-    // Manage roles if provided
     if (isset($input['addRole'])) {
-        $db->prepare("INSERT IGNORE INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at) VALUES (:uid, :role, 'approved', NOW(), :by, NOW())")
-           ->execute(['uid' => $id, 'role' => $input['addRole'], 'by' => $payload['sub']]);
+        $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) $input['addRole'])));
+        if ($roleSlug === '') Response::error('Vai tro khong hop le', 400);
+        if (function_exists('svp_ensure_role_approval_config')) {
+            svp_ensure_role_approval_config($db);
+        }
+        $roleStmt = $db->prepare("SELECT label FROM svp_config_options WHERE group_id = 'account_role_approval' AND value = :role LIMIT 1");
+        $roleStmt->execute(['role' => $roleSlug]);
+        $roleConfig = $roleStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$roleConfig) Response::error('Vai tro khong ton tai trong cau hinh', 404);
+
+        $beforeRolesStmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid ORDER BY id ASC");
+        $beforeRolesStmt->execute(['uid' => $id]);
+        $beforeRoles = $beforeRolesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $db->prepare("
+            INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
+            VALUES (:uid, :role, 'approved', NOW(), :by, NOW())
+            ON DUPLICATE KEY UPDATE status = 'approved', approved_by = VALUES(approved_by), approved_at = NOW()
+        ")->execute(['uid' => $id, 'role' => $roleSlug, 'by' => $payload['sub']]);
+
+        $afterRolesStmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid ORDER BY id ASC");
+        $afterRolesStmt->execute(['uid' => $id]);
+        svp_insert_audit($db, $payload['sub'], 'assign_role', 'user', $id, ['roles' => $beforeRoles], [
+            'roles' => $afterRolesStmt->fetchAll(PDO::FETCH_ASSOC),
+            'assignedRole' => $roleSlug,
+            'assignedRoleLabel' => $roleConfig['label'] ?? $roleSlug,
+        ]);
     }
 
     if (!empty($fields)) {

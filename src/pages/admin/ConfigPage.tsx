@@ -411,6 +411,61 @@ export default function AdminConfigPage() {
     }
   };
 
+  const reorderGroupOption = async (group: ConfigGroup, option: ConfigOption, direction: -1 | 1) => {
+    if (savingOptionId) return;
+    const sortedOptions = [...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder);
+    const fromIndex = sortedOptions.findIndex((item) => item.id === option.id);
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= sortedOptions.length) return;
+
+    const nextOptions = [...sortedOptions];
+    [nextOptions[fromIndex], nextOptions[toIndex]] = [nextOptions[toIndex], nextOptions[fromIndex]];
+    const payload = nextOptions.map((item, index) => ({ id: item.id, sortOrder: (index + 1) * 10 }));
+    const previousGroups = groups;
+    setSavingOptionId(option.id);
+    setMessage('');
+    setGroups((current) => current.map((item) => item.id === group.id
+      ? { ...item, options: nextOptions.map((child, index) => ({ ...child, sortOrder: (index + 1) * 10 })) }
+      : item,
+    ));
+    try {
+      await api.post('/config/options/reorder', { items: payload });
+      setMessage('Đã cập nhật thứ tự hiển thị.');
+    } catch {
+      setGroups(previousGroups);
+      setMessage('Chưa cập nhật được thứ tự. Vui lòng thử lại.');
+    } finally {
+      setSavingOptionId('');
+    }
+  };
+
+  const deleteConfigOption = async (group: ConfigGroup, option: ConfigOption) => {
+    if (savingOptionId) return;
+    if (isLockedOption(group.id, option)) {
+      setMessage('Mục bắt buộc của hệ thống không thể xóa.');
+      return;
+    }
+    const confirmed = window.confirm(`Xóa lựa chọn "${option.label}" khỏi danh mục ${group.name}?`);
+    if (!confirmed) return;
+
+    const previousGroups = groups;
+    setSavingOptionId(option.id);
+    setMessage('');
+    setGroups((current) => current.map((item) => item.id === group.id
+      ? { ...item, options: (item.options || []).filter((child) => child.id !== option.id) }
+      : item,
+    ));
+    try {
+      await api.delete(`/config/options/${encodeURIComponent(option.id)}`);
+      setMessage('Đã xóa lựa chọn khỏi danh mục.');
+    } catch (error: any) {
+      setGroups(previousGroups);
+      setMessage(error?.response?.data?.message || 'Chưa xóa được lựa chọn. Vui lòng thử lại.');
+    } finally {
+      setSavingOptionId('');
+    }
+  };
+
   const publishNotice = async () => {
     const title = noticeTitle.trim();
     const body = noticeBody.trim();
@@ -988,7 +1043,7 @@ export default function AdminConfigPage() {
                       V1 cho phép sửa tên và ẩn/hiện các trường không bắt buộc. Tạo field hoàn toàn mới được tách sang phase cấu hình nâng cao để tránh phá form nghiệp vụ.
                     </div>
                   ) : null}
-                  {(group.options || []).map((option) => {
+                  {[...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder).map((option, optionIndex, sortedOptions) => {
                     const locked = isLockedOption(group.id, option);
                     return (
                     <div key={option.id} className="flex items-center justify-between gap-3 border-b border-gray-50 py-3 last:border-0">
@@ -1050,7 +1105,25 @@ export default function AdminConfigPage() {
                         )}
                       </div>
                       {editingOptionId !== option.id && (
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            title="Đưa lên"
+                            onClick={() => reorderGroupOption(group, option, -1)}
+                            disabled={savingOptionId === option.id || optionIndex === 0}
+                            className="grid h-9 w-9 place-items-center rounded-xl border border-gray-100 bg-white text-[#667085] disabled:opacity-35"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Đưa xuống"
+                            onClick={() => reorderGroupOption(group, option, 1)}
+                            disabled={savingOptionId === option.id || optionIndex === sortedOptions.length - 1}
+                            className="grid h-9 w-9 place-items-center rounded-xl border border-gray-100 bg-white text-[#667085] disabled:opacity-35"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => startEditOption(option)}
@@ -1066,6 +1139,15 @@ export default function AdminConfigPage() {
                             className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black disabled:opacity-60 ${option.isActive === false ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'}`}
                           >
                             {locked ? 'Bắt buộc' : savingOptionId === option.id ? 'Đang lưu...' : option.isActive === false ? 'Tạm ẩn' : 'Đang dùng'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteConfigOption(group, option)}
+                            disabled={savingOptionId === option.id || locked}
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-[#c40012] disabled:opacity-35"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Xóa
                           </button>
                         </div>
                       )}

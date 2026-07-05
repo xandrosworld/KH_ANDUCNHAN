@@ -23,6 +23,7 @@ const PublicNewsPage = lazy(() => import('./pages/PublicNewsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const SystemBuilderPage = lazy(() => import('./pages/SystemBuilderPage'));
 
 const OwnerDashboard = lazy(() => import('./pages/owner/DashboardPage'));
 const OwnerSubmitProperty = lazy(() => import('./pages/owner/SubmitPropertyPage'));
@@ -87,6 +88,8 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/xay-dung-he-thong" element={<SystemBuilderPage />} />
+                <Route path="/he-thong" element={<SystemBuilderPage />} />
 
                 <Route path="/chu-nha" element={<OwnerDashboard />} />
                 <Route path="/chu-nha/gui-ban" element={<OwnerSubmitProperty />} />

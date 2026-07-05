@@ -185,6 +185,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const [email, setEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [referrerPreview, setReferrerPreview] = useState<{ fullName: string; svpId: string; phone: string; referralCode: string } | null>(null);
+  const [referrerLookupState, setReferrerLookupState] = useState<'idle' | 'checking' | 'found' | 'missing'>('idle');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [buyerNeed, setBuyerNeed] = useState({
     city: '',
@@ -240,6 +242,35 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
       setReferralCode(ref);
     }
   }, [location.search, referralCode]);
+
+  useEffect(() => {
+    const lookup = referralCode.trim();
+    setReferrerPreview(null);
+    if (!lookup || lookup.length < 3) {
+      setReferrerLookupState('idle');
+      return;
+    }
+
+    let cancelled = false;
+    setReferrerLookupState('checking');
+    const timer = window.setTimeout(() => {
+      svpApi.lookupReferrer(lookup)
+        .then((item) => {
+          if (cancelled) return;
+          setReferrerPreview(item);
+          setReferrerLookupState(item ? 'found' : 'missing');
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setReferrerLookupState('missing');
+        });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [referralCode]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -571,7 +602,32 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   setShow={setShowRegisterPassword}
                   autoComplete="new-password"
                 />
-                <InputWithIcon value={referralCode} onChange={setReferralCode} placeholder="Mã người giới thiệu (nếu có)" icon={SvpGiftIcon} />
+                <div>
+                  <InputWithIcon
+                    value={referralCode}
+                    onChange={setReferralCode}
+                    placeholder="Mã / SĐT / Email người giới thiệu (nếu có)"
+                    icon={SvpGiftIcon}
+                  />
+                  {referrerLookupState === 'checking' ? (
+                    <p className="mt-1.5 flex items-center gap-1.5 px-1 text-[12px] font-semibold text-[#747b88]">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Đang kiểm tra người giới thiệu...
+                    </p>
+                  ) : null}
+                  {referrerLookupState === 'found' && referrerPreview ? (
+                    <div className="mt-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-bold leading-5 text-emerald-800">
+                      Người giới thiệu: {referrerPreview.fullName}
+                      {referrerPreview.svpId ? ` · ${referrerPreview.svpId}` : ''}
+                      {referrerPreview.phone ? ` · ${referrerPreview.phone}` : ''}
+                    </div>
+                  ) : null}
+                  {referrerLookupState === 'missing' ? (
+                    <p className="mt-1.5 px-1 text-[12px] font-semibold text-amber-700">
+                      Chưa tìm thấy người giới thiệu. Bạn có thể kiểm tra lại hoặc bỏ trống.
+                    </p>
+                  ) : null}
+                </div>
 
                 <div className="pt-1">
                   <p className="mb-2 text-sm font-bold text-[#3d424c]">

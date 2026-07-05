@@ -808,6 +808,56 @@ $router->add('PUT', '/api/svp/config/options/{id}', function ($params) use ($inp
     Response::json(['item' => svp_option_to_response($stmt->fetch(PDO::FETCH_ASSOC))]);
 });
 
+$router->add('POST', '/api/svp/config/options/reorder', function () use ($input) {
+    Auth::requireAdmin();
+    $db = Database::getInstance();
+    $items = $input['items'] ?? $input['order'] ?? [];
+    if (!is_array($items) || empty($items)) {
+        Response::error('items is required', 400);
+    }
+
+    $oldStmt = $db->query('SELECT id, sort_order FROM svp_config_options');
+    $old = $oldStmt->fetchAll(PDO::FETCH_ASSOC);
+    $update = $db->prepare('UPDATE svp_config_options SET sort_order = :sort_order WHERE id = :id');
+    $updated = [];
+    foreach ($items as $index => $item) {
+        $id = is_array($item) ? (string) ($item['id'] ?? '') : (string) $item;
+        if ($id === '') continue;
+        $sortOrder = is_array($item) && isset($item['sortOrder'])
+            ? (int) $item['sortOrder']
+            : (($index + 1) * 10);
+        $update->execute(['id' => $id, 'sort_order' => $sortOrder]);
+        $updated[] = ['id' => $id, 'sortOrder' => $sortOrder];
+    }
+
+    svp_insert_audit($db, svp_actor_id(), 'reorder', 'config_option', 'bulk', $old, $updated);
+    Response::json(['items' => $updated, 'total' => count($updated)]);
+});
+
+$router->add('DELETE', '/api/svp/config/options/{id}', function ($params) {
+    Auth::requireAdmin();
+    $db = Database::getInstance();
+    $id = (string) ($params['id'] ?? '');
+    if ($id === '') Response::error('Config option id is required', 400);
+
+    $stmt = $db->prepare('SELECT * FROM svp_config_options WHERE id = :id LIMIT 1');
+    $stmt->execute(['id' => $id]);
+    $old = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$old) Response::notFound('Config option not found');
+
+    $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
+    $isLocked = !empty($metadata['locked'])
+        || (($old['group_id'] ?? '') === 'property_field_labels' && in_array((string) ($old['value'] ?? ''), svp_property_field_locked_keys(), true))
+        || (($old['group_id'] ?? '') === 'account_role_approval' && (string) ($old['value'] ?? '') === 'admin');
+    if ($isLocked) {
+        Response::error('Mục hệ thống không thể xóa, chỉ có thể sửa hoặc ẩn khi được phép.', 400);
+    }
+
+    $db->prepare('DELETE FROM svp_config_options WHERE id = :id')->execute(['id' => $id]);
+    svp_insert_audit($db, svp_actor_id(), 'delete', 'config_option', $id, $old, ['deleted' => true]);
+    Response::json(['deleted' => true]);
+});
+
 $router->add('GET', '/api/svp/properties', function () {
     $db = Database::getInstance();
     $where = ['deleted_at IS NULL'];
@@ -1558,14 +1608,86 @@ $router->add('DELETE', '/api/svp/viewing-schedules/{id}', function ($params) {
     Response::json(['deleted' => $deleted]);
 });
 
+$router->add('GET', '/api/svp/my-system', function () {
+    $payload = function_exists('svp_auth_require') ? svp_auth_require() : (Auth::getPayload() ?: null);
+    if (!$payload) Response::error('Phiên đăng nhập hết hạn', 401);
+    $db = Database::getInstance();
+    $userId = (string) ($payload['sub'] ?? '');
+
+    $userStmt = $db->prepare('SELECT id, full_name, phone, email, svp_id, referral_code, referred_by, created_at FROM users WHERE id = :id LIMIT 1');
+    $userStmt->execute(['id' => $userId]);
+    $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) Response::notFound('Không tìm thấy tài khoản');
+
+    $directStmt = $db->prepare('
+        SELECT id, full_name, phone, email, svp_id, referral_code, account_status, created_at
+        FROM users
+        WHERE referred_by = :uid
+        ORDER BY created_at DESC
+        LIMIT 200
+    ');
+    $directStmt->execute(['uid' => $userId]);
+    $directReferrals = array_map(function ($row) {
+        return [
+            'id' => (string) $row['id'],
+            'fullName' => (string) ($row['full_name'] ?? ''),
+            'phone' => (string) ($row['phone'] ?? ''),
+            'email' => (string) ($row['email'] ?? ''),
+            'svpId' => (string) ($row['svp_id'] ?? ''),
+            'referralCode' => (string) ($row['referral_code'] ?? ''),
+            'accountStatus' => (string) ($row['account_status'] ?? 'active'),
+            'createdAt' => (string) ($row['created_at'] ?? ''),
+        ];
+    }, $directStmt->fetchAll(PDO::FETCH_ASSOC));
+
+    $code = (string) ($user['referral_code'] ?? '');
+    Response::json([
+        'user' => [
+            'id' => (string) $user['id'],
+            'fullName' => (string) ($user['full_name'] ?? ''),
+            'phone' => (string) ($user['phone'] ?? ''),
+            'email' => (string) ($user['email'] ?? ''),
+            'svpId' => (string) ($user['svp_id'] ?? ''),
+            'referralCode' => $code,
+            'referralLink' => 'https://sodovanphuc.vn/register?ref=' . rawurlencode($code),
+        ],
+        'directReferrals' => $directReferrals,
+        'directReferralCount' => count($directReferrals),
+        'indirectReferralCount' => 0,
+    ]);
+});
+
 $router->add('GET', '/api/svp/referrals', function () {
     $db = Database::getInstance();
-    $stmt = $db->query('SELECT * FROM svp_referrals ORDER BY created_at DESC LIMIT 200');
+    $where = [];
+    $params = [];
+    if (!empty($_GET['referralCode'])) {
+        $where[] = 'r.referral_code = :referral_code';
+        $params['referral_code'] = (string) $_GET['referralCode'];
+    }
+    if (!empty($_GET['referrerUserId'])) {
+        $where[] = 'r.referrer_user_id = :referrer_user_id';
+        $params['referrer_user_id'] = (string) $_GET['referrerUserId'];
+    }
+    $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+    $stmt = $db->prepare("
+        SELECT r.*, u.full_name AS referred_name, u.phone AS referred_phone, u.email AS referred_email, u.svp_id AS referred_svp_id
+        FROM svp_referrals r
+        LEFT JOIN users u ON u.id = r.referred_user_id
+        {$whereSql}
+        ORDER BY r.created_at DESC
+        LIMIT 200
+    ");
+    $stmt->execute($params);
     $items = array_map(function ($row) {
         return [
             'id' => (string) $row['id'],
             'referrerUserId' => $row['referrer_user_id'],
             'referredUserId' => $row['referred_user_id'],
+            'referredName' => (string) ($row['referred_name'] ?? ''),
+            'referredPhone' => (string) ($row['referred_phone'] ?? ''),
+            'referredEmail' => (string) ($row['referred_email'] ?? ''),
+            'referredSvpId' => (string) ($row['referred_svp_id'] ?? ''),
             'referralCode' => (string) $row['referral_code'],
             'referralType' => (string) ($row['referral_type'] ?? 'other'),
             'status' => (string) ($row['status'] ?? 'new'),

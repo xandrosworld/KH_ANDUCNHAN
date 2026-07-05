@@ -181,6 +181,57 @@ function svp_v1_generate_referral_code(string $svpId): string {
     return 'SVP' . str_pad(substr($digits, -6), 6, '0', STR_PAD_LEFT) . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 }
 
+function svp_v1_lookup_referrer(PDO $db, string $lookup, string $excludeUserId = ''): ?array {
+    $lookup = trim($lookup);
+    if ($lookup === '') return null;
+
+    $whereExclude = $excludeUserId !== '' ? 'AND id <> :exclude_id' : '';
+    $stmt = $db->prepare("
+        SELECT id, full_name, phone, email, svp_id, referral_code
+        FROM users
+        WHERE 1 = 1
+          {$whereExclude}
+          AND (
+            referral_code = :exact
+            OR svp_id = :exact
+            OR phone = :exact
+            OR email = :exact
+          )
+        ORDER BY
+          CASE
+            WHEN referral_code = :exact THEN 1
+            WHEN svp_id = :exact THEN 2
+            WHEN phone = :exact THEN 3
+            WHEN email = :exact THEN 4
+            ELSE 5
+          END,
+          created_at DESC
+        LIMIT 1
+    ");
+    $params = ['exact' => $lookup];
+    if ($excludeUserId !== '') {
+        $params['exclude_id'] = $excludeUserId;
+    }
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function svp_v1_public_referrer_payload(array $row): array {
+    $phone = (string) ($row['phone'] ?? '');
+    $maskedPhone = $phone !== '' && strlen($phone) >= 7
+        ? substr($phone, 0, 4) . '***' . substr($phone, -3)
+        : $phone;
+
+    return [
+        'id' => (string) ($row['id'] ?? ''),
+        'fullName' => (string) ($row['full_name'] ?? ''),
+        'svpId' => (string) ($row['svp_id'] ?? ''),
+        'phone' => $maskedPhone,
+        'referralCode' => (string) ($row['referral_code'] ?? ''),
+    ];
+}
+
 function svp_v1_get_user_roles(PDO $db, string $userId): array {
     $stmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid ORDER BY id ASC");
     $stmt->execute(['uid' => $userId]);
@@ -333,13 +384,11 @@ $router->add('POST', '/api/svp/auth/register', function () {
     }
 
     if ($referralCode) {
-        $stmt = $db->prepare("SELECT id FROM users WHERE referral_code = :code LIMIT 1");
-        $stmt->execute(['code' => $referralCode]);
-        $referrer = $stmt->fetch(PDO::FETCH_ASSOC);
+        $referrer = svp_v1_lookup_referrer($db, $referralCode, $userId);
         if ($referrer) {
             $refId = bin2hex(random_bytes(16));
             $db->prepare("INSERT INTO svp_referrals (id, referrer_user_id, referred_user_id, referral_code, referral_type, status) VALUES (:id, :ruid, :uid, :code, 'other', 'new')")
-               ->execute(['id' => $refId, 'ruid' => $referrer['id'], 'uid' => $userId, 'code' => $referralCode]);
+               ->execute(['id' => $refId, 'ruid' => $referrer['id'], 'uid' => $userId, 'code' => $referrer['referral_code'] ?: $referralCode]);
             $db->prepare("UPDATE users SET referred_by = :ref WHERE id = :id")->execute(['ref' => $referrer['id'], 'id' => $userId]);
         }
     }
@@ -363,6 +412,19 @@ $router->add('POST', '/api/svp/auth/register', function () {
         : 'Đăng ký thành công, tài khoản đang chờ phê duyệt';
 
     Response::json($data, 201);
+});
+
+$router->add('GET', '/api/svp/auth/referrer-lookup', function () {
+    $db = Database::getInstance();
+    $lookup = trim((string) ($_GET['lookup'] ?? $_GET['q'] ?? ''));
+    if ($lookup === '' || mb_strlen($lookup, 'UTF-8') < 3) {
+        Response::error('Nhập mã, số điện thoại hoặc email người giới thiệu', 400);
+    }
+
+    $referrer = svp_v1_lookup_referrer($db, $lookup);
+    if (!$referrer) Response::notFound('Không tìm thấy người giới thiệu phù hợp');
+
+    Response::json(['item' => svp_v1_public_referrer_payload($referrer)]);
 });
 
 $router->add('POST', '/api/svp/auth/login', function () {

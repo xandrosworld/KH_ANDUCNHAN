@@ -8,6 +8,7 @@ import {
   Heart,
   Home,
   LogOut,
+  Network,
   PlusCircle,
   Search,
   Send,
@@ -107,6 +108,7 @@ const Sidebar = () => {
   const { user, logout } = useAuth();
   const activeRole = user?.activeRole || '';
   const menuItems = getMenuForRole(activeRole);
+  const systemItem: MenuItem = { path: '/xay-dung-he-thong', label: 'Xây dựng hệ thống', icon: Network };
   const activeRoleName = ROLE_NAMES[activeRole] || activeRole;
 
   const initials = user?.fullName
@@ -142,6 +144,18 @@ const Sidebar = () => {
             </Link>
           );
         })}
+
+        <Link
+          to={systemItem.path}
+          className={`mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
+            location.pathname === systemItem.path || location.pathname.startsWith(systemItem.path + '/')
+              ? 'bg-red-50 text-[#c40012]'
+              : 'text-[#667085] hover:bg-gray-50 hover:text-[#25202a]'
+          }`}
+        >
+          <Network className="h-5 w-5 shrink-0" />
+          {systemItem.label}
+        </Link>
 
         <Link
           to="/profile"

@@ -136,6 +136,71 @@ export const svpApi = {
     return updatedItem;
   },
 
+  async deleteConfigOption(id: string): Promise<void> {
+    if (isApiConfigured()) {
+      const result = await apiDelete(`/api/svp/config/options/${encodeURIComponent(id)}`, true);
+      if (!result.ok) throw new Error(result.error || 'Failed to delete config option');
+      return;
+    }
+
+    const groups = readJson(STORAGE_KEYS.config, svpDefaultConfigGroups).map((group) => ({
+      ...group,
+      options: group.options.filter((option) => option.id !== id),
+    }));
+    writeJson(STORAGE_KEYS.config, groups);
+  },
+
+  async reorderConfigOptions(items: Array<{ id: string; sortOrder: number }>): Promise<void> {
+    if (isApiConfigured()) {
+      const result = await apiPost('/api/svp/config/options/reorder', { items }, true);
+      if (!result.ok) throw new Error(result.error || 'Failed to reorder config options');
+      return;
+    }
+
+    const orderMap = new Map(items.map((item) => [item.id, item.sortOrder]));
+    const groups = readJson(STORAGE_KEYS.config, svpDefaultConfigGroups).map((group) => ({
+      ...group,
+      options: group.options
+        .map((option) => orderMap.has(option.id) ? { ...option, sortOrder: orderMap.get(option.id) || option.sortOrder } : option)
+        .sort((first, second) => first.sortOrder - second.sortOrder),
+    }));
+    writeJson(STORAGE_KEYS.config, groups);
+  },
+
+  async lookupReferrer(lookup: string): Promise<{ id: string; fullName: string; svpId: string; phone: string; referralCode: string } | null> {
+    const normalized = lookup.trim();
+    if (!normalized || normalized.length < 3) return null;
+    if (isApiConfigured()) {
+      const result = await apiGet<{ item: { id: string; fullName: string; svpId: string; phone: string; referralCode: string } }>(
+        `/api/svp/auth/referrer-lookup?lookup=${encodeURIComponent(normalized)}`,
+        false,
+      );
+      if (result.ok && result.data?.item) return result.data.item;
+      return null;
+    }
+
+    return null;
+  },
+
+  async getMySystem(): Promise<{
+    user: { id: string; fullName: string; phone: string; email: string; svpId: string; referralCode: string; referralLink: string };
+    directReferrals: Array<{ id: string; fullName: string; phone: string; email: string; svpId: string; referralCode: string; accountStatus: string; createdAt: string }>;
+    directReferralCount: number;
+    indirectReferralCount: number;
+  }> {
+    if (isApiConfigured()) {
+      const result = await apiGet<any>('/api/svp/my-system', false);
+      if (result.ok && result.data) return result.data;
+    }
+
+    return {
+      user: { id: '', fullName: '', phone: '', email: '', svpId: '', referralCode: '', referralLink: '' },
+      directReferrals: [],
+      directReferralCount: 0,
+      indirectReferralCount: 0,
+    };
+  },
+
   async listProperties(filters?: Record<string, string | number | boolean | undefined>): Promise<SvpListResult<SvpProperty>> {
     if (isApiConfigured()) {
       const params = new URLSearchParams();

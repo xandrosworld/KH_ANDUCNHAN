@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Download, KeyRound, Lock, Search, Unlock, UserRoundCheck, Users, X } from 'lucide-react';
+import { Download, KeyRound, Lock, PlusCircle, Search, ShieldCheck, Unlock, UserRoundCheck, Users, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { getRoleDisplayName } from '../../data/roles';
 import { downloadAdminExport } from '../../utils/adminExport';
@@ -27,12 +27,23 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [referrerLookup, setReferrerLookup] = useState('');
+  const [selectedRoleSlug, setSelectedRoleSlug] = useState('');
+  const [roleSettings, setRoleSettings] = useState<any[]>([]);
 
   const load = () => {
     setLoading(true);
-    api.get('/admin/users')
-      .then((response) => setItems(response.data?.items || []))
-      .catch(() => setItems([]))
+    Promise.all([
+      api.get('/admin/users'),
+      api.get('/admin/role-approval-settings'),
+    ])
+      .then(([usersResponse, rolesResponse]) => {
+        setItems(usersResponse.data?.items || []);
+        setRoleSettings(rolesResponse.data?.items || []);
+      })
+      .catch(() => {
+        setItems([]);
+        setRoleSettings([]);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -118,6 +129,26 @@ export default function AdminUsersPage() {
     }
   };
 
+  const assignRole = async () => {
+    if (!selectedUser || !selectedRoleSlug) {
+      setMessage('Chọn vai trò cần cấp thêm cho tài khoản.');
+      return;
+    }
+    setBusyId(`${selectedUser.id}-role`);
+    setMessage('');
+    try {
+      await api.patch(`/admin/users/${encodeURIComponent(selectedUser.id)}`, { addRole: selectedRoleSlug });
+      const roleName = roleSettings.find((role) => role.slug === selectedRoleSlug)?.label || getRoleDisplayName(selectedRoleSlug);
+      setMessage(`Đã cấp vai trò ${roleName} cho ${selectedUser.fullName || selectedUser.email}.`);
+      setSelectedRoleSlug('');
+      load();
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa cấp được vai trò cho tài khoản.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
       <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
@@ -185,6 +216,7 @@ export default function AdminUsersPage() {
               onOpen={() => {
                 setSelectedUser(user);
                 setReferrerLookup('');
+                setSelectedRoleSlug('');
               }}
             />
           ))}
@@ -195,8 +227,13 @@ export default function AdminUsersPage() {
           user={selectedUser}
           referrerLookup={referrerLookup}
           setReferrerLookup={setReferrerLookup}
+          selectedRoleSlug={selectedRoleSlug}
+          setSelectedRoleSlug={setSelectedRoleSlug}
+          roleSettings={roleSettings}
           busy={busyId === `${selectedUser.id}-referrer`}
+          roleBusy={busyId === `${selectedUser.id}-role`}
           onSaveReferrer={updateReferrer}
+          onAssignRole={assignRole}
           onClose={() => setSelectedUser(null)}
         />
       ) : null}
@@ -266,15 +303,25 @@ function UserDetailPanel({
   user,
   referrerLookup,
   setReferrerLookup,
+  selectedRoleSlug,
+  setSelectedRoleSlug,
+  roleSettings,
   busy,
+  roleBusy,
   onSaveReferrer,
+  onAssignRole,
   onClose,
 }: {
   user: any;
   referrerLookup: string;
   setReferrerLookup: (value: string) => void;
+  selectedRoleSlug: string;
+  setSelectedRoleSlug: (value: string) => void;
+  roleSettings: any[];
   busy: boolean;
+  roleBusy: boolean;
   onSaveReferrer: () => void;
+  onAssignRole: () => void;
   onClose: () => void;
 }) {
   const profile = user.profile || {};
@@ -282,6 +329,9 @@ function UserDetailPanel({
   const bank = profile.bankInfo || {};
   const referrer = user.referrer;
   const certificateUrl = profile.certificateUrl || '';
+  const directReferrals = Array.isArray(user.directReferrals) ? user.directReferrals : [];
+  const existingRoles = new Set((user.roles || []).map((role: any) => role.slug));
+  const assignableRoles = roleSettings.filter((role) => role.slug && !existingRoles.has(role.slug));
 
   return (
     <div className="fixed inset-0 z-[90] bg-black/35">
@@ -348,6 +398,65 @@ function UserDetailPanel({
                 <UserRoundCheck className="h-4 w-4" />
                 Lưu
               </button>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="Tuyến F1 đã giới thiệu">
+            <div className="rounded-2xl bg-[#fff8f2] p-3">
+              <p className="text-sm font-black text-[#25202a]">{user.directReferralCount || directReferrals.length || 0} tài khoản trực tiếp</p>
+              <p className="mt-1 text-xs font-semibold text-[#7b8190]">Danh sách người đăng ký trực tiếp qua mã/link của tài khoản này.</p>
+            </div>
+            {directReferrals.length ? (
+              <div className="space-y-2">
+                {directReferrals.map((item: any) => (
+                  <div key={item.id} className="rounded-2xl border border-gray-100 bg-white p-3">
+                    <p className="truncate text-sm font-black text-[#25202a]">{item.fullName || 'Chưa có tên'}</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-[#7b8190]">
+                      {[item.svpId, item.phone, item.email, item.referralCode].filter(Boolean).join(' · ') || '-'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-semibold text-[#7b8190]">Chưa ghi nhận F1 trực tiếp.</p>
+            )}
+          </DetailSection>
+
+          <DetailSection title="Cấp thêm vai trò">
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {(user.roles || []).length ? (user.roles || []).map((role: any) => (
+                  <span key={role.slug} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">
+                    {getRoleDisplayName(role.slug)} · {ROLE_STATUS[role.status] || role.status}
+                  </span>
+                )) : (
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-black text-gray-500">Chưa có vai trò</span>
+                )}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <select
+                  value={selectedRoleSlug}
+                  onChange={(event) => setSelectedRoleSlug(event.target.value)}
+                  className="min-h-11 rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+                >
+                  <option value="">Chọn vai trò cần cấp</option>
+                  {assignableRoles.map((role) => (
+                    <option key={role.slug} value={role.slug}>
+                      {role.label || getRoleDisplayName(role.slug)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={onAssignRole}
+                  disabled={roleBusy || !selectedRoleSlug}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#25202a] px-4 text-sm font-black text-white disabled:opacity-60"
+                >
+                  {roleBusy ? <ShieldCheck className="h-4 w-4 animate-pulse" /> : <PlusCircle className="h-4 w-4" />}
+                  Cấp vai trò
+                </button>
+              </div>
+              <p className="text-xs font-semibold leading-5 text-[#7b8190]">Vai trò được Admin cấp sẽ ở trạng thái đã duyệt để tài khoản dùng ngay.</p>
             </div>
           </DetailSection>
         </div>

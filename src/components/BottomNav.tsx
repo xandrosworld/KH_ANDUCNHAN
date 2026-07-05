@@ -7,6 +7,7 @@ import {
   CheckSquare,
   Heart,
   Home,
+  Network,
   PlusCircle,
   Search,
   Send,
@@ -112,7 +113,23 @@ const BottomNav = () => {
   const location = useLocation();
   const { user } = useAuth();
   const activeRole = user?.activeRole || '';
-  const tabs = getTabsForRole(activeRole);
+  const baseTabs = getTabsForRole(activeRole);
+  const systemTab: NavTab = { path: '/xay-dung-he-thong', label: 'Hệ thống', icon: Network };
+  const hasSystem = baseTabs.some((tab) => tab.path === systemTab.path);
+  const withSystem = hasSystem ? baseTabs : [
+    ...baseTabs.filter((tab) => tab.path !== '/profile'),
+    systemTab,
+    ...baseTabs.filter((tab) => tab.path === '/profile'),
+  ];
+  const profileTab = withSystem.find((tab) => tab.path === '/profile');
+  const compactTabs = withSystem.length > 6
+    ? [
+        ...withSystem.filter((tab) => tab.path !== '/profile' && tab.path !== systemTab.path && tab.path !== '/notifications').slice(0, 4),
+        systemTab,
+        ...(profileTab ? [profileTab] : []),
+      ]
+    : withSystem;
+  const tabs = compactTabs;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)] lg:hidden">
