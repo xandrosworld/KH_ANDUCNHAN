@@ -783,10 +783,14 @@ test.describe('V1 core workflows', () => {
     await page.getByLabel(/Tên chủ nhà/i).fill('Chu nha QA');
     await page.getByLabel(/SĐT chủ nhà/i).fill('0909000000');
     await page.getByLabel(/Tỉnh\/Thành phố/i).fill('TP.HCM');
-    await page.getByLabel(/Quận\/Huyện/i).fill('Hóc Môn');
-    await page.getByLabel(/Phường\/Xã/i).fill('Tân Hiệp');
-    await page.getByLabel(/^Số nhà$/i).fill('157');
-    await page.getByLabel(/Tên đường/i).fill('Huỳnh Thị Mài');
+    await page.getByLabel(/Quận\/Huyện/i).fill('Bình Tân');
+    await page.getByLabel(/Phường\/Xã/i).click();
+    await expect(page.getByRole('button', { name: 'Bình Hưng Hòa A' })).toBeVisible();
+    await page.getByRole('button', { name: 'Bình Hưng Hòa A' }).click();
+    await page.getByLabel(/^Số nhà$/i).fill('135.48.20');
+    await page.getByLabel(/Tên đường/i).click();
+    await expect(page.getByRole('button', { name: 'Gò Xoài' })).toBeVisible();
+    await page.getByRole('button', { name: 'Gò Xoài' }).click();
     await page.getByLabel(/Seri|mã sổ/i).fill('SO-QA-001');
     await page.getByLabel(/Số tờ/i).fill('15');
     await page.getByLabel(/Thửa đất/i).fill('795');

@@ -1,61 +1,14 @@
-import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from 'react';
+import { useEffect, useId, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Sparkles, UploadCloud } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiPost } from '../../services/apiClient';
 import { svpAxios as api } from '../../services/svpAxios';
 import { svpApi } from '../../services/svpApi';
+import { getDistrictSuggestions, getProvinceSuggestions, getStreetSuggestions, getWardSuggestions, normalizeLocationText } from '../../data/vietnamLocations';
 import type { SvpConfigGroup, SvpConfigOption } from '../../types/svp';
 import { propertyFieldLabel, propertyFieldVisible } from '../../utils/fieldLabels';
 
-const PROVINCES = ['TP.HCM', 'Hà Nội', 'Đà Nẵng', 'Thủ Đức', 'Bình Dương', 'Đồng Nai', 'Long An', 'Bà Rịa - Vũng Tàu', 'Cần Thơ', 'Hải Phòng', 'Khánh Hòa', 'Thanh Hóa'];
-const DISTRICTS = [
-  'Hóc Môn',
-  'Bình Chánh',
-  'Gò Vấp',
-  'Quận 12',
-  'Bình Tân',
-  'Tân Phú',
-  'Tân Bình',
-  'Bình Thạnh',
-  'Phú Nhuận',
-  'Thủ Đức',
-  'Nhà Bè',
-  'Củ Chi',
-  'Quận 1',
-  'Quận 3',
-  'Quận 5',
-  'Quận 7',
-  'Quận 10',
-  'Dĩ An',
-  'Thuận An',
-  'Biên Hòa',
-  'Long Thành',
-  'Nhơn Trạch',
-];
-const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường 5', 'Phường 7', 'Phường 10', 'Phường 12', 'Phường 15', 'Phường 17', 'Hiệp Bình Chánh', 'Linh Đông', 'Tân Sơn Nhì'];
-const WARDS_BY_DISTRICT: Record<string, string[]> = {
-  'Hóc Môn': [
-    'Hóc Môn',
-    'Bà Điểm',
-    'Tân Hiệp',
-    'Nhị Bình',
-    'Đông Thạnh',
-    'Tân Thới Nhì',
-    'Thới Tam Thôn',
-    'Xuân Thới Sơn',
-    'Tân Xuân',
-    'Trung Chánh',
-    'Xuân Thới Đông',
-    'Xuân Thới Thượng',
-    'Thị trấn Hóc Môn',
-  ],
-  'Bình Chánh': ['Bình Chánh', 'An Phú Tây', 'Bình Hưng', 'Bình Lợi', 'Đa Phước', 'Hưng Long', 'Lê Minh Xuân', 'Phạm Văn Hai', 'Phong Phú', 'Quy Đức', 'Tân Kiên', 'Tân Nhựt', 'Tân Quý Tây', 'Vĩnh Lộc A', 'Vĩnh Lộc B'],
-  'Quận 12': ['An Phú Đông', 'Đông Hưng Thuận', 'Hiệp Thành', 'Tân Chánh Hiệp', 'Tân Hưng Thuận', 'Tân Thới Hiệp', 'Tân Thới Nhất', 'Thạnh Lộc', 'Thạnh Xuân', 'Thới An', 'Trung Mỹ Tây'],
-  'Thủ Đức': ['Hiệp Bình Chánh', 'Linh Đông', 'Linh Trung', 'Linh Tây', 'Tam Bình', 'Tam Phú', 'Trường Thọ', 'Bình Thọ'],
-  'Gò Vấp': ['Phường 1', 'Phường 3', 'Phường 4', 'Phường 5', 'Phường 6', 'Phường 7', 'Phường 8', 'Phường 10', 'Phường 11', 'Phường 12', 'Phường 13', 'Phường 14', 'Phường 15', 'Phường 16', 'Phường 17'],
-  'Tân Phú': ['Tân Sơn Nhì', 'Tây Thạnh', 'Sơn Kỳ', 'Tân Quý', 'Tân Thành', 'Phú Thọ Hòa', 'Phú Thạnh', 'Phú Trung', 'Hòa Thạnh', 'Hiệp Tân', 'Tân Thới Hòa'],
-};
 const LEGAL_STATUS = ['Sổ đỏ / sổ hồng', 'Hợp đồng mua bán', 'Giấy tay', 'Đang hoàn thiện', 'Cần kiểm tra thêm'];
 type DuplicateRule = {
   hasDuplicates: boolean;
@@ -230,7 +183,10 @@ export default function ExpertAddPropertyPage() {
   const priceSegments = optionsOf('price_segments');
   const fieldLabel = (key: string, fallback: string) => propertyFieldLabel(groups, key, fallback);
   const showField = (key: string) => propertyFieldVisible(groups, key);
-  const wardOptions = WARDS_BY_DISTRICT[form.district] || WARDS;
+  const provinceOptions = useMemo(() => getProvinceSuggestions(), []);
+  const districtOptions = useMemo(() => getDistrictSuggestions(form.province), [form.province]);
+  const wardOptions = useMemo(() => getWardSuggestions(form.province, form.district), [form.province, form.district]);
+  const streetOptions = useMemo(() => getStreetSuggestions(form.province, form.district), [form.province, form.district]);
 
   const signingScore = useMemo(() => {
     return signingCriteria
@@ -253,6 +209,10 @@ export default function ExpertAddPropertyPage() {
       const next = { ...current, [key]: value };
       if (key === 'houseNumber' || key === 'streetName') {
         next.street = [key === 'houseNumber' ? value : current.houseNumber, key === 'streetName' ? value : current.streetName].filter(Boolean).join(' ').trim();
+      }
+      if (key === 'province' && value !== current.province) {
+        next.district = '';
+        next.ward = '';
       }
       if (key === 'district' && value !== current.district) {
         next.ward = '';
@@ -497,11 +457,11 @@ export default function ExpertAddPropertyPage() {
           <h2 className="mb-2 font-black text-[#25202a]">Thông tin nhà</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <ReadonlyField className="sm:col-span-2" label={fieldLabel('title', 'Tiêu đề tự động')} value={autoTitle || 'Hệ thống sẽ tự ghép từ số nhà, đường, thông số, phân khúc, HĐ, hoa hồng và nguồn.'} />
-            <InputWithList label={fieldLabel('province', 'Tỉnh/Thành phố')} value={form.province} onChange={(value) => update('province', value)} listId="expert-provinces" options={PROVINCES} />
-            <InputWithList label={fieldLabel('district', 'Quận/Huyện')} value={form.district} onChange={(value) => update('district', value)} listId="expert-districts" options={DISTRICTS} />
-            <InputWithList label={fieldLabel('ward', 'Phường/Xã')} value={form.ward} onChange={(value) => update('ward', value)} listId="expert-wards" options={wardOptions} />
+            <InputWithList label={fieldLabel('province', 'Tỉnh/Thành phố')} value={form.province} onChange={(value) => update('province', value)} listId="expert-provinces" options={provinceOptions} />
+            <InputWithList label={fieldLabel('district', 'Quận/Huyện')} value={form.district} onChange={(value) => update('district', value)} listId="expert-districts" options={districtOptions} />
+            <InputWithList label={fieldLabel('ward', 'Phường/Xã')} value={form.ward} onChange={(value) => update('ward', value)} listId="expert-wards" options={wardOptions} fallbackText="Chưa có gợi ý phường/xã phù hợp, anh/chị cứ nhập tay." />
             {showField('street') ? <Field label="Số nhà" value={form.houseNumber} onChange={(value) => update('houseNumber', value)} /> : null}
-            {showField('street') ? <Field label="Tên đường" value={form.streetName} onChange={(value) => update('streetName', value)} /> : null}
+            {showField('street') ? <InputWithList label="Tên đường" value={form.streetName} onChange={(value) => update('streetName', value)} listId="expert-streets" options={streetOptions} fallbackText="Chưa có gợi ý đường phù hợp, anh/chị cứ nhập tay." /> : null}
             {showField('hiddenAddress') ? <Field label={fieldLabel('hiddenAddress', 'Địa chỉ ẩn nội bộ')} value={form.hiddenAddress} onChange={(value) => update('hiddenAddress', value)} /> : null}
             {showField('bookSerial') ? <Field label={fieldLabel('bookSerial', 'Seri / mã sổ')} value={form.bookSerial} onChange={(value) => update('bookSerial', value)} /> : null}
             {showField('bookSheet') ? <Field label={fieldLabel('bookSheet', 'Số tờ')} value={form.bookSheet} onChange={(value) => update('bookSheet', value)} /> : null}
@@ -669,20 +629,68 @@ function Textarea({ label, value, onChange, rows, placeholder = '', className = 
   );
 }
 
-function InputWithList({ label, value, onChange, options, listId }: { label: string; value: string; onChange: (value: string) => void; options: string[]; listId: string }) {
+function InputWithList({
+  label,
+  value,
+  onChange,
+  options,
+  listId,
+  fallbackText = 'Chưa có gợi ý phù hợp, anh/chị cứ nhập tay.',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  listId: string;
+  fallbackText?: string;
+}) {
+  const inputId = useId();
+  const [open, setOpen] = useState(false);
+  const normalizedValue = normalizeLocationText(value);
+  const filteredOptions = useMemo(() => {
+    const uniqueOptions = Array.from(new Set(options.filter(Boolean)));
+    const matched = normalizedValue
+      ? uniqueOptions.filter((item) => normalizeLocationText(item).includes(normalizedValue))
+      : uniqueOptions;
+    return matched.slice(0, 14);
+  }, [normalizedValue, options]);
+
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-black text-[#5f6672]">{label}</span>
+    <div className="relative block">
+      <label htmlFor={`${listId}-${inputId}`} className="mb-1 block text-xs font-black text-[#5f6672]">{label}</label>
       <input
+        id={`${listId}-${inputId}`}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        list={listId}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        autoComplete="off"
+        placeholder="Chọn nhanh hoặc nhập tay"
         className="min-h-10 w-full rounded-xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
       />
-      <datalist id={listId}>
-        {options.map((item) => <option key={item} value={item} />)}
-      </datalist>
-    </label>
+      {open ? (
+        <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-auto rounded-xl border border-red-100 bg-white p-1 shadow-xl">
+          {filteredOptions.length ? filteredOptions.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                onChange(item);
+                setOpen(false);
+              }}
+              className="block min-h-9 w-full rounded-lg px-3 text-left text-sm font-bold text-[#25202a] hover:bg-red-50"
+            >
+              {item}
+            </button>
+          )) : (
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-700">
+              {fallbackText}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

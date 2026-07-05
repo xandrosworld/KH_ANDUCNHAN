@@ -270,11 +270,11 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await page.getByLabel(/Tên chủ nhà/i).fill(`Chu nha live ${stamp}`);
     await page.getByLabel(/SĐT chủ nhà/i).fill('0909000000');
     await page.getByLabel(/Tỉnh\/Thành phố/i).fill('TP.HCM');
-    await page.getByLabel(/Quận\/Huyện/i).fill('Hóc Môn');
-    await page.getByLabel(/Phường\/Xã/i).fill('Xã Hóc Môn');
-    await page.getByLabel(/^Số nhà$/i).fill('12');
-    await page.getByLabel(/^Tên đường$/i).fill(`Duong QA LIVE-QA-${stamp}`);
-    await page.getByLabel(/Địa chỉ ẩn/i).fill(`12 Duong QA LIVE-QA-${stamp}, Hoc Mon`);
+    await page.getByLabel(/Quận\/Huyện/i).fill('Bình Tân');
+    await page.getByLabel(/Phường\/Xã/i).fill('Bình Hưng Hòa A');
+    await page.getByLabel(/^Số nhà$/i).fill('135.48.20');
+    await page.getByLabel(/^Tên đường$/i).fill(`Gò Xoài LIVE-QA-${stamp}`);
+    await page.getByLabel(/Địa chỉ ẩn/i).fill(`135.48.20 Gò Xoài LIVE-QA-${stamp}, Bình Tân`);
     await page.getByLabel(/Seri|mã sổ/i).fill(`SO-LIVE-${stamp}`);
     await page.getByLabel(/Số tờ/i).fill(`TO-${String(stamp).slice(-4)}`);
     await page.getByLabel(/Thửa đất/i).fill(`THUA-${String(stamp).slice(-4)}`);
