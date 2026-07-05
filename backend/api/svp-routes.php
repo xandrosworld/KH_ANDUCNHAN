@@ -1619,15 +1619,7 @@ $router->add('GET', '/api/svp/my-system', function () {
     $user = $userStmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) Response::notFound('Không tìm thấy tài khoản');
 
-    $directStmt = $db->prepare('
-        SELECT id, full_name, phone, email, svp_id, referral_code, account_status, created_at
-        FROM users
-        WHERE referred_by = :uid
-        ORDER BY created_at DESC
-        LIMIT 200
-    ');
-    $directStmt->execute(['uid' => $userId]);
-    $directReferrals = array_map(function ($row) {
+    $formatReferralUser = function (array $row, int $level = 1): array {
         return [
             'id' => (string) $row['id'],
             'fullName' => (string) ($row['full_name'] ?? ''),
@@ -1635,10 +1627,77 @@ $router->add('GET', '/api/svp/my-system', function () {
             'email' => (string) ($row['email'] ?? ''),
             'svpId' => (string) ($row['svp_id'] ?? ''),
             'referralCode' => (string) ($row['referral_code'] ?? ''),
+            'referredBy' => (string) ($row['referred_by'] ?? ''),
             'accountStatus' => (string) ($row['account_status'] ?? 'active'),
             'createdAt' => (string) ($row['created_at'] ?? ''),
+            'level' => $level,
+            'children' => [],
         ];
-    }, $directStmt->fetchAll(PDO::FETCH_ASSOC));
+    };
+
+    $directReferrals = [];
+    $indirectReferrals = [];
+    $childrenByParent = [];
+    $visited = [$userId => true];
+    $parentIds = [$userId];
+    $level = 1;
+    $totalLoaded = 0;
+
+    while (!empty($parentIds) && $level <= 5 && $totalLoaded < 500) {
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($parentIds) as $index => $parentId) {
+            $key = 'p' . $level . '_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $parentId;
+        }
+
+        $sql = '
+            SELECT id, full_name, phone, email, svp_id, referral_code, referred_by, account_status, created_at
+            FROM users
+            WHERE referred_by IN (' . implode(',', $placeholders) . ')
+            ORDER BY created_at DESC
+            LIMIT 500
+        ';
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$rows) {
+            break;
+        }
+
+        $nextParentIds = [];
+        foreach ($rows as $row) {
+            $id = (string) ($row['id'] ?? '');
+            if ($id === '' || isset($visited[$id])) {
+                continue;
+            }
+            $visited[$id] = true;
+            $item = $formatReferralUser($row, $level);
+            $parentId = (string) ($row['referred_by'] ?? '');
+            $childrenByParent[$parentId][] = $item;
+            if ($level === 1) {
+                $directReferrals[] = $item;
+            } else {
+                $indirectReferrals[] = $item;
+            }
+            $nextParentIds[] = $id;
+            $totalLoaded++;
+            if ($totalLoaded >= 500) {
+                break 2;
+            }
+        }
+
+        $parentIds = $nextParentIds;
+        $level++;
+    }
+
+    $buildTree = function (string $parentId) use (&$buildTree, &$childrenByParent): array {
+        return array_map(function (array $item) use (&$buildTree) {
+            $item['children'] = $buildTree($item['id']);
+            return $item;
+        }, $childrenByParent[$parentId] ?? []);
+    };
 
     $code = (string) ($user['referral_code'] ?? '');
     Response::json([
@@ -1653,7 +1712,10 @@ $router->add('GET', '/api/svp/my-system', function () {
         ],
         'directReferrals' => $directReferrals,
         'directReferralCount' => count($directReferrals),
-        'indirectReferralCount' => 0,
+        'indirectReferrals' => $indirectReferrals,
+        'indirectReferralCount' => count($indirectReferrals),
+        'referralTree' => $buildTree($userId),
+        'treeDepthLoaded' => min($level - 1, 5),
     ]);
 });
 

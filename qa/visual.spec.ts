@@ -303,10 +303,18 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
         referralLink: 'https://sodovanphuc.vn/register?ref=SVP-2026-0001',
       },
       directReferrals: [
-        { id: 'f1_1', fullName: 'F1 kiem thu', phone: '0909000111', email: 'f1@sodovanphuc.vn', svpId: 'SVP000111', referralCode: 'SVP-2026-F101', accountStatus: 'active', createdAt: '2026-07-05 09:00:00' },
+        { id: 'f1_1', fullName: 'F1 kiem thu', phone: '0909000111', email: 'f1@sodovanphuc.vn', svpId: 'SVP000111', referralCode: 'SVP-2026-F101', accountStatus: 'active', createdAt: '2026-07-05 09:00:00', level: 1, children: [] },
+      ],
+      indirectReferrals: [
+        { id: 'f2_1', fullName: 'F2 kiem thu', phone: '0909000222', email: 'f2@sodovanphuc.vn', svpId: 'SVP000222', referralCode: 'SVP-2026-F201', accountStatus: 'active', createdAt: '2026-07-05 09:10:00', level: 2, children: [] },
+      ],
+      referralTree: [
+        { id: 'f1_1', fullName: 'F1 kiem thu', phone: '0909000111', email: 'f1@sodovanphuc.vn', svpId: 'SVP000111', referralCode: 'SVP-2026-F101', accountStatus: 'active', createdAt: '2026-07-05 09:00:00', level: 1, children: [
+          { id: 'f2_1', fullName: 'F2 kiem thu', phone: '0909000222', email: 'f2@sodovanphuc.vn', svpId: 'SVP000222', referralCode: 'SVP-2026-F201', accountStatus: 'active', createdAt: '2026-07-05 09:10:00', level: 2, children: [] },
+        ] },
       ],
       directReferralCount: 1,
-      indirectReferralCount: 0,
+      indirectReferralCount: 1,
     });
 
     if (path === '/admin/dashboard') {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCircle2, ChevronDown, ChevronUp, Globe2, Loader2, Pencil, Plus, Save, Send, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, ChevronUp, Globe2, GripVertical, Loader2, Pencil, Plus, Save, Send, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 
 interface ConfigOption {
@@ -100,6 +100,7 @@ export default function AdminConfigPage() {
   const [editingOptionId, setEditingOptionId] = useState('');
   const [editingLabel, setEditingLabel] = useState('');
   const [savingOptionId, setSavingOptionId] = useState('');
+  const [draggingOptionId, setDraggingOptionId] = useState('');
   const [notices, setNotices] = useState<AdminNotice[]>([]);
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeBody, setNoticeBody] = useState('');
@@ -411,18 +412,10 @@ export default function AdminConfigPage() {
     }
   };
 
-  const reorderGroupOption = async (group: ConfigGroup, option: ConfigOption, direction: -1 | 1) => {
-    if (savingOptionId) return;
-    const sortedOptions = [...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder);
-    const fromIndex = sortedOptions.findIndex((item) => item.id === option.id);
-    const toIndex = fromIndex + direction;
-    if (fromIndex < 0 || toIndex < 0 || toIndex >= sortedOptions.length) return;
-
-    const nextOptions = [...sortedOptions];
-    [nextOptions[fromIndex], nextOptions[toIndex]] = [nextOptions[toIndex], nextOptions[fromIndex]];
+  const saveGroupOptionOrder = async (group: ConfigGroup, nextOptions: ConfigOption[], activeOptionId: string) => {
     const payload = nextOptions.map((item, index) => ({ id: item.id, sortOrder: (index + 1) * 10 }));
     const previousGroups = groups;
-    setSavingOptionId(option.id);
+    setSavingOptionId(activeOptionId);
     setMessage('');
     setGroups((current) => current.map((item) => item.id === group.id
       ? { ...item, options: nextOptions.map((child, index) => ({ ...child, sortOrder: (index + 1) * 10 })) }
@@ -436,7 +429,32 @@ export default function AdminConfigPage() {
       setMessage('Chưa cập nhật được thứ tự. Vui lòng thử lại.');
     } finally {
       setSavingOptionId('');
+      setDraggingOptionId('');
     }
+  };
+
+  const reorderGroupOption = async (group: ConfigGroup, option: ConfigOption, direction: -1 | 1) => {
+    if (savingOptionId) return;
+    const sortedOptions = [...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder);
+    const fromIndex = sortedOptions.findIndex((item) => item.id === option.id);
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= sortedOptions.length) return;
+
+    const nextOptions = [...sortedOptions];
+    [nextOptions[fromIndex], nextOptions[toIndex]] = [nextOptions[toIndex], nextOptions[fromIndex]];
+    await saveGroupOptionOrder(group, nextOptions, option.id);
+  };
+
+  const dropGroupOption = async (group: ConfigGroup, targetOption: ConfigOption) => {
+    if (savingOptionId || !draggingOptionId || draggingOptionId === targetOption.id) return;
+    const sortedOptions = [...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder);
+    const fromIndex = sortedOptions.findIndex((item) => item.id === draggingOptionId);
+    const toIndex = sortedOptions.findIndex((item) => item.id === targetOption.id);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+    const nextOptions = [...sortedOptions];
+    const [moved] = nextOptions.splice(fromIndex, 1);
+    nextOptions.splice(toIndex, 0, moved);
+    await saveGroupOptionOrder(group, nextOptions, moved.id);
   };
 
   const deleteConfigOption = async (group: ConfigGroup, option: ConfigOption) => {
@@ -1046,7 +1064,20 @@ export default function AdminConfigPage() {
                   {[...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder).map((option, optionIndex, sortedOptions) => {
                     const locked = isLockedOption(group.id, option);
                     return (
-                    <div key={option.id} className="flex items-center justify-between gap-3 border-b border-gray-50 py-3 last:border-0">
+                    <div
+                      key={option.id}
+                      draggable={editingOptionId !== option.id && !savingOptionId}
+                      onDragStart={() => setDraggingOptionId(option.id)}
+                      onDragOver={(event) => {
+                        if (draggingOptionId && draggingOptionId !== option.id) event.preventDefault();
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        void dropGroupOption(group, option);
+                      }}
+                      onDragEnd={() => setDraggingOptionId('')}
+                      className={`flex items-center justify-between gap-3 border-b border-gray-50 py-3 last:border-0 ${draggingOptionId === option.id ? 'opacity-60' : ''}`}
+                    >
                       <div className="min-w-0 flex-1">
                         {editingOptionId === option.id ? (
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1088,6 +1119,12 @@ export default function AdminConfigPage() {
                         ) : (
                           <>
                             <div className="flex min-w-0 flex-wrap items-center gap-2">
+                              <span
+                                title="Kéo thả để sắp xếp"
+                                className="hidden h-8 w-8 shrink-0 cursor-grab place-items-center rounded-xl border border-gray-100 bg-white text-[#9aa2af] active:cursor-grabbing sm:grid"
+                              >
+                                <GripVertical className="h-4 w-4" />
+                              </span>
                               <p className="min-w-0 truncate text-sm font-bold text-[#25202a]">{option.label}</p>
                               {locked ? (
                                 <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-black text-amber-700">

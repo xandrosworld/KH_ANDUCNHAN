@@ -29,6 +29,19 @@ const STORAGE_KEYS = {
   auditLogs: 'svp_audit_logs',
 };
 
+type SvpSystemReferral = {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  svpId: string;
+  referralCode: string;
+  accountStatus: string;
+  createdAt: string;
+  level?: number;
+  children?: SvpSystemReferral[];
+};
+
 function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -184,7 +197,9 @@ export const svpApi = {
 
   async getMySystem(): Promise<{
     user: { id: string; fullName: string; phone: string; email: string; svpId: string; referralCode: string; referralLink: string };
-    directReferrals: Array<{ id: string; fullName: string; phone: string; email: string; svpId: string; referralCode: string; accountStatus: string; createdAt: string }>;
+    directReferrals: SvpSystemReferral[];
+    indirectReferrals: SvpSystemReferral[];
+    referralTree: SvpSystemReferral[];
     directReferralCount: number;
     indirectReferralCount: number;
   }> {
@@ -196,6 +211,8 @@ export const svpApi = {
     return {
       user: { id: '', fullName: '', phone: '', email: '', svpId: '', referralCode: '', referralLink: '' },
       directReferrals: [],
+      indirectReferrals: [],
+      referralTree: [],
       directReferralCount: 0,
       indirectReferralCount: 0,
     };
