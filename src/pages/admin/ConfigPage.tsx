@@ -656,27 +656,27 @@ export default function AdminConfigPage() {
                 <Plus className="h-4 w-4 text-[#c40012]" />
                 Thêm vai trò đăng ký
               </div>
-              <div className="grid gap-2 md:grid-cols-[1fr_160px_1fr_140px_auto]">
+              <div className="grid min-w-0 gap-2 xl:grid-cols-[minmax(0,1fr)_160px_minmax(0,1fr)_140px_auto]">
                 <input
-                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                  className="min-h-10 min-w-0 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
                   placeholder="Tên vai trò"
                   value={newRole.label}
                   onChange={(event) => setNewRole((current) => ({ ...current, label: event.target.value }))}
                 />
                 <input
-                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                  className="min-h-10 min-w-0 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
                   placeholder="ma_vai_tro"
                   value={newRole.slug}
                   onChange={(event) => setNewRole((current) => ({ ...current, slug: event.target.value }))}
                 />
                 <input
-                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                  className="min-h-10 min-w-0 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
                   placeholder="Ghi chú ngắn dưới vai trò"
                   value={newRole.description}
                   onChange={(event) => setNewRole((current) => ({ ...current, description: event.target.value }))}
                 />
                 <select
-                  className="min-h-10 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                  className="min-h-10 min-w-0 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
                   value={newRole.roleGroup}
                   onChange={(event) => setNewRole((current) => ({ ...current, roleGroup: event.target.value }))}
                 >
