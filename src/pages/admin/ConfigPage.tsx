@@ -826,7 +826,7 @@ export default function AdminConfigPage() {
       </section>
 
       {siteDisplayGroup ? (
-        <section className="mb-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
+        <section className="mb-5 min-w-0 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
           <div className="mb-4 flex items-start gap-3">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-[#c40012]">
               <Globe2 className="h-6 w-6" />
@@ -838,13 +838,13 @@ export default function AdminConfigPage() {
               </p>
             </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid min-w-0 gap-3 md:grid-cols-2">
             {[...(siteDisplayGroup.options || [])].sort((a, b) => a.sortOrder - b.sortOrder).map((option) => (
-              <div key={option.id} className="rounded-2xl border border-red-50 bg-[#fff8f2] p-3">
+              <div key={option.id} className="min-w-0 rounded-2xl border border-red-50 bg-[#fff8f2] p-3">
                 <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#8c6b6b]">{option.label}</label>
-                <div className="flex gap-2">
+                <div className="flex min-w-0 flex-col gap-2 min-[360px]:flex-row">
                   <input
-                    className="min-h-10 min-w-0 flex-1 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
+                    className="min-h-10 w-full min-w-0 flex-1 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
                     value={option.value}
                     onChange={(event) => updateOptionLocal(option.id, { value: event.target.value })}
                   />
@@ -852,7 +852,7 @@ export default function AdminConfigPage() {
                     type="button"
                     onClick={() => saveWholeOption(option)}
                     disabled={savingOptionId === option.id}
-                    className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-[#c40012] px-3 text-xs font-black text-white disabled:opacity-60"
+                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-[#c40012] px-3 text-xs font-black text-white disabled:opacity-60 min-[360px]:shrink-0"
                   >
                     {savingOptionId === option.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Lưu
