@@ -33,18 +33,18 @@ export default function ReferrerCodePage() {
   };
 
   return (
-    <div className="p-4 pb-20 max-w-lg mx-auto">
+    <div className="mx-auto max-w-lg min-w-0 p-4 pb-20">
       <h1 className="text-xl font-bold mb-6">Mã giới thiệu</h1>
 
-      <div className="bg-white rounded-xl shadow-sm p-6 text-center mb-6">
-        <p className="text-4xl font-bold text-[#D32F2F] mb-2">{code}</p>
+      <div className="mb-6 min-w-0 rounded-xl bg-white p-6 text-center shadow-sm">
+        <p className="mb-2 break-all text-4xl font-bold text-[#D32F2F]">{code}</p>
         <p className="text-sm text-[#757575] mb-4 break-all">{link}</p>
-        <div className="flex gap-3 justify-center">
-          <button onClick={copy} className="flex items-center gap-2 bg-[#D32F2F] text-white px-4 py-2 rounded-lg">
+        <div className="flex min-w-0 flex-col gap-3 justify-center min-[360px]:flex-row">
+          <button onClick={copy} className="flex min-w-0 items-center justify-center gap-2 rounded-lg bg-[#D32F2F] px-4 py-2 text-white">
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? 'Đã sao chép' : 'Sao chép'}
           </button>
-          <button onClick={share} className="flex items-center gap-2 border border-[#D32F2F] text-[#D32F2F] px-4 py-2 rounded-lg">
+          <button onClick={share} className="flex min-w-0 items-center justify-center gap-2 rounded-lg border border-[#D32F2F] px-4 py-2 text-[#D32F2F]">
             <Share2 className="w-4 h-4" /> Chia sẻ
           </button>
         </div>
