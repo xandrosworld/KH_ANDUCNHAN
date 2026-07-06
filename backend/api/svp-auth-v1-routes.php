@@ -268,6 +268,8 @@ function svp_v1_lookup_referrer(PDO $db, string $lookup, string $excludeUserId =
     $lookup = trim($lookup);
     if ($lookup === '') return null;
 
+    $lookupLower = strtolower($lookup);
+    $lookupDigits = preg_replace('/\D+/', '', $lookup);
     $whereExclude = $excludeUserId !== '' ? 'AND id <> :exclude_id' : '';
     $stmt = $db->prepare("
         SELECT id, full_name, phone, email, svp_id, referral_code
@@ -275,23 +277,29 @@ function svp_v1_lookup_referrer(PDO $db, string $lookup, string $excludeUserId =
         WHERE 1 = 1
           {$whereExclude}
           AND (
-            referral_code = :exact
-            OR svp_id = :exact
+            LOWER(referral_code) = :exact_lower
+            OR LOWER(svp_id) = :exact_lower
             OR phone = :exact
-            OR email = :exact
+            OR LOWER(email) = :exact_lower
+            OR (:digits != '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', ''), '+', '') = :digits)
           )
         ORDER BY
           CASE
-            WHEN referral_code = :exact THEN 1
-            WHEN svp_id = :exact THEN 2
+            WHEN LOWER(referral_code) = :exact_lower THEN 1
+            WHEN LOWER(svp_id) = :exact_lower THEN 2
             WHEN phone = :exact THEN 3
-            WHEN email = :exact THEN 4
+            WHEN :digits != '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', ''), '+', '') = :digits THEN 4
+            WHEN LOWER(email) = :exact_lower THEN 5
             ELSE 5
           END,
           created_at DESC
         LIMIT 1
     ");
-    $params = ['exact' => $lookup];
+    $params = [
+        'exact' => $lookup,
+        'exact_lower' => $lookupLower,
+        'digits' => $lookupDigits,
+    ];
     if ($excludeUserId !== '') {
         $params['exclude_id'] = $excludeUserId;
     }
@@ -510,7 +518,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
 $router->add('GET', '/api/svp/auth/referrer-lookup', function () {
     $db = Database::getInstance();
     $lookup = trim((string) ($_GET['lookup'] ?? $_GET['q'] ?? ''));
-    if ($lookup === '' || mb_strlen($lookup, 'UTF-8') < 3) {
+    if ($lookup === '' || strlen($lookup) < 3) {
         Response::error('Nhập mã, số điện thoại hoặc email người giới thiệu', 400);
     }
 

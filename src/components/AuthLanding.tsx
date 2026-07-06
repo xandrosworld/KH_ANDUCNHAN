@@ -328,6 +328,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     if (registerLoading) return;
 
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedReferral = referralCode.trim();
     if (!fullName.trim()) return setRegisterError('Vui lòng nhập họ và tên theo CCCD.');
     if (!phone.trim()) return setRegisterError('Vui lòng nhập số điện thoại.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return setRegisterError('Email chưa đúng định dạng.');
@@ -340,6 +341,18 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     }
     if (!acceptedTerms) return setRegisterError('Vui lòng đồng ý với Điều khoản sử dụng và Chính sách bảo mật.');
 
+    if (normalizedReferral && (referrerLookupState !== 'found' || !referrerPreview)) {
+      setReferrerLookupState('checking');
+      const matchedReferrer = await svpApi.lookupReferrer(normalizedReferral);
+      if (!matchedReferrer) {
+        setReferrerPreview(null);
+        setReferrerLookupState('missing');
+        return setRegisterError('Chưa nhận diện được người giới thiệu. Vui lòng kiểm tra lại mã/SĐT/email hoặc bỏ trống nếu không có.');
+      }
+      setReferrerPreview(matchedReferrer);
+      setReferrerLookupState('found');
+    }
+
     setRegisterLoading(true);
     setRegisterError('');
     try {
@@ -349,7 +362,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         email: normalizedEmail,
         password: registerPassword,
         roleSlugs: selectedRoles,
-        referralCode: referralCode.trim() || undefined,
+        referralCode: normalizedReferral || undefined,
       });
 
       if (response.user?.roles?.length) {
@@ -608,6 +621,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                     onChange={setReferralCode}
                     placeholder="Mã / SĐT / Email người giới thiệu (nếu có)"
                     icon={SvpGiftIcon}
+                    name="svp_referrer_lookup"
+                    autoComplete="new-password"
                   />
                   {referrerLookupState === 'checking' ? (
                     <p className="mt-1.5 flex items-center gap-1.5 px-1 text-[12px] font-semibold text-[#747b88]">
@@ -616,10 +631,15 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                     </p>
                   ) : null}
                   {referrerLookupState === 'found' && referrerPreview ? (
-                    <div className="mt-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-bold leading-5 text-emerald-800">
-                      Người giới thiệu: {referrerPreview.fullName}
-                      {referrerPreview.svpId ? ` · ${referrerPreview.svpId}` : ''}
-                      {referrerPreview.phone ? ` · ${referrerPreview.phone}` : ''}
+                    <div className="mt-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] leading-5 text-emerald-900">
+                      <div className="font-extrabold">Đã nhận diện người giới thiệu: {referrerPreview.fullName}</div>
+                      <div className="font-semibold text-emerald-700">
+                        {[
+                          referrerPreview.svpId ? `SVP ID: ${referrerPreview.svpId}` : '',
+                          referrerPreview.phone ? `SĐT: ${referrerPreview.phone}` : '',
+                          referrerPreview.referralCode ? `Mã: ${referrerPreview.referralCode}` : '',
+                        ].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
                   ) : null}
                   {referrerLookupState === 'missing' ? (
@@ -893,6 +913,7 @@ function CompactField({
 
 function InputWithIcon({
   id,
+  name,
   value,
   onChange,
   placeholder,
@@ -902,6 +923,7 @@ function InputWithIcon({
   inputMode,
 }: {
   id?: string;
+  name?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
@@ -915,6 +937,7 @@ function InputWithIcon({
       <Icon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9aa0a8]" />
       <input
         id={id}
+        name={name}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         type={type}
