@@ -2154,59 +2154,10 @@ $router->add('POST', '/api/schedules', function () use ($input) {
         Response::error('Time is required');
     }
 
-    $paypalOrderId = $input['paypal_order_id'] ?? $input['paypalOrderId'] ?? null;
+    // Viewing requests for Sổ Đỏ Vạn Phúc do not collect a USD deposit.
+    // Ignore legacy payment references from the old template schedule flow.
+    $paypalOrderId = null;
     $paymentVerified = false;
-
-    // Verify PayPal order server-side if provided (skip for bank transfers)
-    $isBankTransfer = $paypalOrderId && str_starts_with($paypalOrderId, 'BANK-');
-    if ($isBankTransfer) {
-        $paymentVerified = true; // Bank transfers are verified manually by admin
-    } elseif ($paypalOrderId && defined('PAYPAL_CLIENT_ID') && defined('PAYPAL_SECRET') && PAYPAL_CLIENT_ID && PAYPAL_SECRET) {
-        $paypalBase = defined('PAYPAL_SANDBOX') && PAYPAL_SANDBOX
-            ? 'https://api-m.sandbox.paypal.com'
-            : 'https://api-m.paypal.com';
-
-        // Get access token
-        $tokenCh = curl_init("{$paypalBase}/v1/oauth2/token");
-        curl_setopt_array($tokenCh, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => 'grant_type=client_credentials',
-            CURLOPT_USERPWD => PAYPAL_CLIENT_ID . ':' . PAYPAL_SECRET,
-            CURLOPT_HTTPHEADER => ['Accept: application/json'],
-            CURLOPT_TIMEOUT => 15,
-        ]);
-        $tokenResp = json_decode(curl_exec($tokenCh), true);
-        curl_close($tokenCh);
-
-        if (!empty($tokenResp['access_token'])) {
-            // Get order details
-            $orderCh = curl_init("{$paypalBase}/v2/checkout/orders/{$paypalOrderId}");
-            curl_setopt_array($orderCh, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => [
-                    "Authorization: Bearer {$tokenResp['access_token']}",
-                    'Content-Type: application/json',
-                ],
-                CURLOPT_TIMEOUT => 15,
-            ]);
-            $orderResp = json_decode(curl_exec($orderCh), true);
-            curl_close($orderCh);
-
-            if (!empty($orderResp['status']) && $orderResp['status'] === 'COMPLETED') {
-                // Verify amount is $9.00 USD
-                $amount = $orderResp['purchase_units'][0]['amount']['value'] ?? '0';
-                $currency = $orderResp['purchase_units'][0]['amount']['currency_code'] ?? '';
-                if ((float) $amount >= 9.00 && strtoupper($currency) === 'USD') {
-                    $paymentVerified = true;
-                }
-            }
-        }
-
-        if (!$paymentVerified) {
-            Response::error('PayPal payment verification failed. Please try again or contact support.', 400);
-        }
-    }
 
     $id = 'sch-' . time() . '-' . bin2hex(random_bytes(4));
 
@@ -2264,8 +2215,7 @@ $router->add('POST', '/api/schedules', function () use ($input) {
         $input['phone'] ?? '',
         $input['date'] ?? '',
         $input['time'] ?? '',
-        $ownerEmail,
-        9.00 // deposit amount
+        $ownerEmail
     );
 
     Response::json($schedule, 201);
