@@ -50,6 +50,38 @@ class Mailer
         return 'https://sodovanphuc.vn';
     }
 
+    private static function getLogoPath(): string
+    {
+        $candidates = [
+            __DIR__ . '/../../logo11.png',
+            __DIR__ . '/../../public/logo11.png',
+            dirname(__DIR__, 2) . '/public/logo11.png',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    private static function attachBrandLogo(PHPMailer $mail): string
+    {
+        $logoPath = self::getLogoPath();
+        if ($logoPath) {
+            try {
+                $mail->addEmbeddedImage($logoPath, 'svp-logo', 'logo11.png');
+                return 'cid:svp-logo';
+            } catch (Exception $e) {
+                error_log('Mailer: failed to embed logo: ' . $e->getMessage());
+            }
+        }
+
+        return self::getFrontendUrl() . '/logo11.png';
+    }
+
     /**
      * Get the admin notification email.
      */
@@ -121,7 +153,7 @@ class Mailer
             $mail = self::createMailer();
             $mail->addAddress($to);
             $mail->Subject = $subject;
-            $mail->Body    = self::wrapHtml($subject, $body);
+            $mail->Body    = self::wrapHtml($subject, $body, self::attachBrandLogo($mail));
             $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
 
             $result = $mail->send();
@@ -275,12 +307,11 @@ class Mailer
     /**
      * Wrap body content in a styled HTML email template.
      */
-    private static function wrapHtml(string $subject, string $body): string
+    private static function wrapHtml(string $subject, string $body, string $logoSrc = ''): string
     {
         $safeSubject = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
         $safeAppName = htmlspecialchars(self::getAppName(), ENT_QUOTES, 'UTF-8');
-        $frontendUrl = htmlspecialchars(self::getFrontendUrl(), ENT_QUOTES, 'UTF-8');
-        $logoUrl = $frontendUrl . '/logo11.png';
+        $logoUrl = htmlspecialchars($logoSrc ?: self::getFrontendUrl() . '/logo11.png', ENT_QUOTES, 'UTF-8');
         $year = date('Y');
 
         return "
@@ -291,19 +322,19 @@ class Mailer
             <meta name='viewport' content='width=device-width,initial-scale=1'>
             <title>{$safeSubject}</title>
         </head>
-        <body style='margin:0;padding:0;background:#f7f2ef;font-family:Arial,Helvetica,sans-serif;color:#201c1f'>
+        <body style='margin:0;padding:0;background:#f7f2ef;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#201c1f'>
             <div style='display:none;max-height:0;overflow:hidden;opacity:0;color:transparent'>{$safeSubject}</div>
             <div style='width:100%;background:#f7f2ef;padding:24px 10px'>
                 <div style='max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #eadad6;box-shadow:0 18px 42px rgba(104,0,10,0.10)'>
                     <div style='background:#b90012;padding:22px 24px;text-align:center'>
                         <img src='{$logoUrl}' alt='{$safeAppName}' width='72' height='72' style='display:block;margin:0 auto 12px;border-radius:50%;background:#ffffff;object-fit:contain;border:3px solid rgba(255,255,255,0.75)'>
-                        <div style='font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;letter-spacing:.3px'>{$safeAppName}</div>
-                        <div style='margin-top:6px;font-size:13px;line-height:1.5;color:#ffe5df'>Hệ thống quản lý nguồn nhà và khách hàng</div>
+                        <div style='font-size:22px;line-height:1.25;font-weight:700;color:#ffffff;letter-spacing:0'>{$safeAppName}</div>
+                        <div style='margin-top:6px;font-size:13px;line-height:1.5;color:#ffe5df;font-weight:400'>Hệ thống quản lý nguồn nhà và khách hàng</div>
                     </div>
                     <div style='height:5px;background:linear-gradient(90deg,#8d000d,#d40016,#f0b85a)'></div>
                     <div style='padding:26px 28px 24px'>
-                        <div style='margin:0 0 18px;color:#b90012;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.12em'>Thông báo từ hệ thống</div>
-                        <div style='font-size:15px;line-height:1.7;color:#2b2528'>
+                        <div style='margin:0 0 18px;color:#b90012;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em'>Thông báo hệ thống</div>
+                        <div style='font-size:15px;line-height:1.65;color:#2b2528;font-weight:400'>
                             {$body}
                         </div>
                     </div>
