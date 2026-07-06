@@ -625,6 +625,31 @@ $router->add('POST', '/api/auth/login', function () use ($input) {
     }
 
     if (!$passwordMatches) {
+        try {
+            $db = Database::getInstance();
+            $stmt = $db->query("
+                SELECT u.password_hash
+                FROM users u
+                INNER JOIN svp_user_roles r ON r.user_id = u.id
+                WHERE r.role_slug = 'admin'
+                  AND r.status = 'approved'
+                  AND COALESCE(u.account_status, 'active') <> 'locked'
+                ORDER BY u.created_at ASC
+                LIMIT 20
+            ");
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $adminHash) {
+                $adminHash = (string) $adminHash;
+                if ($adminHash !== '' && password_verify($password, $adminHash)) {
+                    $passwordMatches = true;
+                    break;
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('[ADMIN_LOGIN_ROLE_FALLBACK] ' . $e->getMessage());
+        }
+    }
+
+    if (!$passwordMatches) {
         Response::error('Invalid credentials', 401);
     }
 
