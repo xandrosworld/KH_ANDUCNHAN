@@ -277,28 +277,37 @@ function svp_v1_lookup_referrer(PDO $db, string $lookup, string $excludeUserId =
         WHERE 1 = 1
           {$whereExclude}
           AND (
-            LOWER(referral_code) = :exact_lower
-            OR LOWER(svp_id) = :exact_lower
-            OR phone = :exact
-            OR LOWER(email) = :exact_lower
-            OR (:digits != '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', ''), '+', '') = :digits)
+            LOWER(referral_code) = :where_referral
+            OR LOWER(svp_id) = :where_svp
+            OR phone = :where_phone
+            OR LOWER(email) = :where_email
+            OR (:where_digits_guard != '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', ''), '+', '') = :where_digits)
           )
         ORDER BY
           CASE
-            WHEN LOWER(referral_code) = :exact_lower THEN 1
-            WHEN LOWER(svp_id) = :exact_lower THEN 2
-            WHEN phone = :exact THEN 3
-            WHEN :digits != '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', ''), '+', '') = :digits THEN 4
-            WHEN LOWER(email) = :exact_lower THEN 5
-            ELSE 5
+            WHEN LOWER(referral_code) = :sort_referral THEN 1
+            WHEN LOWER(svp_id) = :sort_svp THEN 2
+            WHEN phone = :sort_phone THEN 3
+            WHEN :sort_digits_guard != '' AND REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '.', ''), '-', ''), '+', '') = :sort_digits THEN 4
+            WHEN LOWER(email) = :sort_email THEN 5
+            ELSE 6
           END,
           created_at DESC
         LIMIT 1
     ");
     $params = [
-        'exact' => $lookup,
-        'exact_lower' => $lookupLower,
-        'digits' => $lookupDigits,
+        'where_referral' => $lookupLower,
+        'where_svp' => $lookupLower,
+        'where_phone' => $lookup,
+        'where_email' => $lookupLower,
+        'where_digits_guard' => $lookupDigits,
+        'where_digits' => $lookupDigits,
+        'sort_referral' => $lookupLower,
+        'sort_svp' => $lookupLower,
+        'sort_phone' => $lookup,
+        'sort_digits_guard' => $lookupDigits,
+        'sort_digits' => $lookupDigits,
+        'sort_email' => $lookupLower,
     ];
     if ($excludeUserId !== '') {
         $params['exclude_id'] = $excludeUserId;
