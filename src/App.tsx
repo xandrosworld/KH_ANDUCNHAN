@@ -24,6 +24,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const SystemBuilderPage = lazy(() => import('./pages/SystemBuilderPage'));
+const AiAssistantPage = lazy(() => import('./pages/AiAssistantPage'));
 
 const OwnerDashboard = lazy(() => import('./pages/owner/DashboardPage'));
 const OwnerSubmitProperty = lazy(() => import('./pages/owner/SubmitPropertyPage'));
@@ -32,6 +33,8 @@ const OwnerMyProperties = lazy(() => import('./pages/owner/MyPropertiesPage'));
 const BuyerDashboard = lazy(() => import('./pages/buyer/DashboardPage'));
 const BuyerSearch = lazy(() => import('./pages/buyer/SearchPage'));
 const BuyerFavorites = lazy(() => import('./pages/buyer/FavoritesPage'));
+
+const StudentDashboard = lazy(() => import('./pages/student/DashboardPage'));
 
 const ExpertDashboard = lazy(() => import('./pages/expert/DashboardPage'));
 const ExpertAddProperty = lazy(() => import('./pages/expert/AddPropertyPage'));
@@ -91,6 +94,8 @@ export default function App() {
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/xay-dung-he-thong" element={<SystemBuilderPage />} />
                 <Route path="/he-thong" element={<SystemBuilderPage />} />
+                <Route path="/ai" element={<AiAssistantPage />} />
+                <Route path="/tro-ly-ai" element={<AiAssistantPage />} />
 
                 <Route path="/chu-nha" element={<OwnerDashboard />} />
                 <Route path="/chu-nha/gui-ban" element={<OwnerSubmitProperty />} />
@@ -99,6 +104,10 @@ export default function App() {
                 <Route path="/khach-mua" element={<BuyerDashboard />} />
                 <Route path="/khach-mua/tim-nha" element={<BuyerSearch />} />
                 <Route path="/khach-mua/yeu-thich" element={<BuyerFavorites />} />
+
+                <Route path="/hoc-vien" element={<StudentDashboard />} />
+                <Route path="/hoc-vien/viec-can-lam" element={<StudentDashboard />} />
+                <Route path="/hoc-vien/dao-tao" element={<StudentDashboard />} />
 
                 <Route path="/chuyen-gia" element={<ExpertDashboard />} />
                 <Route path="/chuyen-gia/dang-nha" element={<ExpertAddProperty />} />

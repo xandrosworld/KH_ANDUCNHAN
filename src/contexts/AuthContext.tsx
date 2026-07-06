@@ -16,6 +16,7 @@ import {
 } from '../services/authApi';
 import {
   getRoleDashboardPath,
+  ROLE_DEFINITIONS,
   ROLE_NAMES,
 } from '../data/roles';
 
@@ -48,6 +49,7 @@ export interface AuthContextType {
 const TOKEN_KEY = 'svp_token';
 const ACTIVE_ROLE_KEY = 'svp_active_role';
 const OLD_TOKEN_KEYS = ['gf_token', 'gf_admin_token'];
+const ADMIN_ROLE_SLUG = 'admin';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -68,8 +70,22 @@ function migrateToken(): string | null {
   return null;
 }
 
-function approvedOf(userData: AuthUser | null): UserRole[] {
+function actualApprovedOf(userData: AuthUser | null): UserRole[] {
   return userData?.roles.filter((role) => role.status === 'approved') ?? [];
+}
+
+function approvedOf(userData: AuthUser | null): UserRole[] {
+  const actualApproved = actualApprovedOf(userData);
+  const canImpersonateRoles = actualApproved.some((role) => role.slug === ADMIN_ROLE_SLUG);
+  if (!canImpersonateRoles) return actualApproved;
+
+  const actualBySlug = new Map(actualApproved.map((role) => [role.slug, role]));
+  return ROLE_DEFINITIONS.map((definition) => {
+    const actualRole = actualBySlug.get(definition.slug);
+    return actualRole
+      ? { ...actualRole, name: actualRole.name || definition.shortLabel }
+      : { slug: definition.slug, name: definition.shortLabel, status: 'approved' };
+  });
 }
 
 function pendingOf(userData: AuthUser | null): UserRole[] {
@@ -184,11 +200,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasRole = useCallback((slug: string): boolean => {
-    return user?.roles.some((role) => role.slug === slug) ?? false;
+    return approvedOf(user).some((role) => role.slug === slug) || (user?.roles.some((role) => role.slug === slug) ?? false);
   }, [user]);
 
   const hasApprovedRole = useCallback((slug: string): boolean => {
-    return user?.roles.some((role) => role.slug === slug && role.status === 'approved') ?? false;
+    return approvedOf(user).some((role) => role.slug === slug);
   }, [user]);
 
   const refreshUser = useCallback(async () => {

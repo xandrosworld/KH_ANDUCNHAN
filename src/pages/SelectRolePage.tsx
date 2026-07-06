@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Building2, Home, Search, Settings, Share2, Shield, Star, UserPlus, Users } from 'lucide-react';
+import { Briefcase, Building2, GraduationCap, Home, Search, Settings, Share2, Shield, Star, UserPlus, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getRoleDashboardPath, getRoleDisplayName, ROLE_MAP } from '../data/roles';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -12,6 +12,7 @@ const ROLE_ICONS: Record<string, any> = {
   pho_phong: Users,
   chuyen_gia: Star,
   chuyen_vien: UserPlus,
+  hoc_vien: GraduationCap,
   ctv_khach: Search,
   ctv_nguon: Search,
   chu_nha: Home,
@@ -23,6 +24,7 @@ const ROLE_ICONS: Record<string, any> = {
 const ROLE_PRIORITY = [
   'chuyen_vien',
   'chuyen_gia',
+  'hoc_vien',
   'giam_doc_dieu_hanh',
   'pho_giam_doc_dieu_hanh',
   'giam_doc',
@@ -81,6 +83,7 @@ export default function SelectRolePage() {
             return (
               <button
                 key={role.slug}
+                data-testid={`select-role-card-${role.slug}`}
                 onClick={() => handleSelect(role.slug)}
                 className="flex items-start gap-4 rounded-2xl border border-red-100 bg-white p-5 text-left shadow-sm transition hover:border-[#c40012] hover:shadow-md"
               >

@@ -214,6 +214,7 @@ function svp_v1_role_name(string $roleSlug): string {
         'truong_phong' => 'Trưởng phòng',
         'chuyen_gia' => 'Chuyên gia',
         'chuyen_vien' => 'Chuyên viên',
+        'hoc_vien' => 'Học viên',
         'ctv_khach' => 'CTV giới thiệu',
         'ctv_nguon' => 'CTV giới thiệu nguồn',
         'chu_nha' => 'Chủ nhà',

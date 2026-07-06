@@ -77,6 +77,15 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
     dashboardPath: '/chuyen-gia',
   },
   {
+    slug: 'hoc_vien',
+    label: 'Học viên',
+    shortLabel: 'Học viên',
+    description: 'Theo dõi việc cần làm và đào tạo nội bộ',
+    group: 'staff',
+    requiresApproval: true,
+    dashboardPath: '/hoc-vien',
+  },
+  {
     slug: 'tro_ly',
     label: 'Trợ lý',
     shortLabel: 'Trợ lý',

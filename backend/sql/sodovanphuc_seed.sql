@@ -28,6 +28,7 @@ INSERT INTO `svp_config_options` (`id`, `group_id`, `label`, `value`, `metadata_
 ('role_approval_doi_tac', 'account_role_approval', 'Đối tác', 'doi_tac', '{"requiresApproval":false,"roleGroup":"Cơ bản"}', 60, 1),
 ('role_approval_chuyen_vien', 'account_role_approval', 'Chuyên viên', 'chuyen_vien', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 110, 1),
 ('role_approval_chuyen_gia', 'account_role_approval', 'Chuyên gia', 'chuyen_gia', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 120, 1),
+('role_approval_hoc_vien', 'account_role_approval', 'Học viên', 'hoc_vien', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 125, 1),
 ('role_approval_tro_ly', 'account_role_approval', 'Trợ lý', 'tro_ly', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 130, 1),
 ('role_approval_thu_ky', 'account_role_approval', 'Thư ký', 'thu_ky', '{"requiresApproval":true,"roleGroup":"Nhân sự"}', 140, 1),
 ('role_approval_truong_phong', 'account_role_approval', 'Trưởng phòng', 'truong_phong', '{"requiresApproval":true,"roleGroup":"Quản lý"}', 210, 1),

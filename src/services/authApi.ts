@@ -44,6 +44,8 @@ export interface AuthUser {
   referralCode: string;
   referredBy?: string;
   accountStatus?: string;
+  createdAt?: string;
+  created_at?: string;
   profile?: UserProfile;
   roles: UserRole[];
   activeRole: string;

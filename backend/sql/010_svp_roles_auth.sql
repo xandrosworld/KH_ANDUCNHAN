@@ -112,7 +112,7 @@ DEALLOCATE PREPARE stmt;
 CREATE TABLE IF NOT EXISTS `svp_user_roles` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `user_id` VARCHAR(64) NOT NULL,
-  `role_slug` VARCHAR(50) NOT NULL COMMENT 'admin, giam_doc, truong_phong, chuyen_gia, chuyen_vien, ctv_khach, ctv_nguon, chu_nha, khach_mua, nguoi_gioi_thieu, doi_tac',
+  `role_slug` VARCHAR(50) NOT NULL COMMENT 'admin, giam_doc, truong_phong, chuyen_gia, chuyen_vien, hoc_vien, ctv_khach, ctv_nguon, chu_nha, khach_mua, nguoi_gioi_thieu, doi_tac',
   `status` ENUM('pending','approved','rejected','disabled') DEFAULT 'pending',
   `applied_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `approved_by` VARCHAR(64) DEFAULT NULL,

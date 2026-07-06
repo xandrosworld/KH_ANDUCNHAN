@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
   Bell,
+  Bot,
   Briefcase,
   Building2,
   Calendar,
   CheckSquare,
+  GraduationCap,
   Heart,
   Home,
   LogOut,
@@ -84,6 +86,14 @@ function getMenuForRole(role: string): MenuItem[] {
         { path: '/chuyen-vien/lich-xem', label: 'Lịch xem', icon: Calendar },
         { path: '/notifications', label: 'Thông báo', icon: Bell },
       ];
+    case 'hoc_vien':
+      return [
+        { path: '/hoc-vien', label: 'Trang chủ', icon: Home },
+        { path: '/hoc-vien/viec-can-lam', label: 'Việc cần làm', icon: CheckSquare },
+        { path: '/hoc-vien/dao-tao', label: 'Đào tạo', icon: GraduationCap },
+        { path: '/ai', label: 'Trợ lý AI', icon: Bot },
+        { path: '/notifications', label: 'Thông báo', icon: Bell },
+      ];
     case 'ctv_khach':
     case 'ctv_nguon':
       return [
@@ -109,6 +119,8 @@ const Sidebar = () => {
   const activeRole = user?.activeRole || '';
   const menuItems = getMenuForRole(activeRole);
   const systemItem: MenuItem = { path: '/xay-dung-he-thong', label: 'Xây dựng hệ thống', icon: Network };
+  const aiItem: MenuItem = { path: '/ai', label: 'Trợ lý AI', icon: Bot };
+  const hasAiItem = menuItems.some((item) => item.path === aiItem.path);
   const activeRoleName = ROLE_NAMES[activeRole] || activeRole;
 
   const initials = user?.fullName
@@ -156,6 +168,20 @@ const Sidebar = () => {
           <Network className="h-5 w-5 shrink-0" />
           {systemItem.label}
         </Link>
+
+        {!hasAiItem ? (
+          <Link
+            to={aiItem.path}
+            className={`mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
+              location.pathname === aiItem.path || location.pathname.startsWith(aiItem.path + '/')
+                ? 'bg-red-50 text-[#c40012]'
+                : 'text-[#667085] hover:bg-gray-50 hover:text-[#25202a]'
+            }`}
+          >
+            <Bot className="h-5 w-5 shrink-0" />
+            {aiItem.label}
+          </Link>
+        ) : null}
 
         <Link
           to="/profile"

@@ -99,6 +99,7 @@ const roleIconMap: Record<string, typeof SvpHouseIcon> = {
   chu_nha: SvpHouseIcon,
   chuyen_vien: SvpPeopleIcon,
   chuyen_gia: SvpExpertIcon,
+  hoc_vien: SvpShieldIcon,
   nguoi_gioi_thieu: SvpPeopleIcon,
   ctv_khach: SvpHandshakeIcon,
   ctv_nguon: SvpHouseIcon,
@@ -120,6 +121,7 @@ const roleColorMap: Record<string, string> = {
   chu_nha: 'from-orange-500 to-red-500',
   chuyen_vien: 'from-sky-500 to-blue-600',
   chuyen_gia: 'from-violet-500 to-purple-600',
+  hoc_vien: 'from-amber-500 to-yellow-600',
   nguoi_gioi_thieu: 'from-pink-500 to-rose-500',
   ctv_khach: 'from-lime-500 to-green-600',
   ctv_nguon: 'from-emerald-500 to-teal-600',
@@ -313,7 +315,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     setLoginLoading(false);
 
     if (result.success && result.user) {
-      routeAfterAuth(result.user.roles);
+      routeAfterAuth(result.approvedRoles || result.user.roles);
       return;
     }
     if (result.error === 'pending') {
@@ -369,7 +371,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         if (selectedRoles.includes('khach_mua')) {
           await saveBuyerNeedAfterRegister(response.user.id);
         }
-        routeAfterAuth(response.user.roles);
+        routeAfterAuth(response.approvedRoles || response.user.roles);
         return;
       }
 

@@ -71,6 +71,7 @@ function svp_role_approval_definitions(): array
         ['slug' => 'doi_tac', 'label' => 'Đối tác', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 60],
         ['slug' => 'chuyen_vien', 'label' => 'Chuyên viên', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 110],
         ['slug' => 'chuyen_gia', 'label' => 'Chuyên gia', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 120],
+        ['slug' => 'hoc_vien', 'label' => 'Học viên', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 125],
         ['slug' => 'tro_ly', 'label' => 'Trợ lý', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 130],
         ['slug' => 'thu_ky', 'label' => 'Thư ký', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 140],
         ['slug' => 'truong_phong', 'label' => 'Trưởng phòng', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 210],

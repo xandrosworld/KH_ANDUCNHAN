@@ -6,6 +6,7 @@ const ROLE_SLUGS = [
   'truong_phong',
   'chuyen_gia',
   'chuyen_vien',
+  'hoc_vien',
   'ctv_khach',
   'ctv_nguon',
   'chu_nha',
@@ -14,12 +15,59 @@ const ROLE_SLUGS = [
   'doi_tac',
 ];
 
+const ADMIN_IMPERSONATION_ROLE_SLUGS = [
+  'chuyen_vien',
+  'chuyen_gia',
+  'hoc_vien',
+  'giam_doc_dieu_hanh',
+  'pho_giam_doc_dieu_hanh',
+  'giam_doc',
+  'pho_giam_doc_khu_vuc',
+  'giam_doc_khoi',
+  'pho_giam_doc_khoi',
+  'truong_phong',
+  'pho_phong',
+  'tro_ly',
+  'thu_ky',
+  'admin',
+  'ctv_nguon',
+  'ctv_khach',
+  'nguoi_gioi_thieu',
+  'doi_tac',
+  'khach_mua',
+  'chu_nha',
+];
+
+const ROLE_DASHBOARD_PATHS: Record<string, string> = {
+  admin: '/quan-tri',
+  giam_doc: '/quan-tri',
+  truong_phong: '/quan-tri',
+  pho_phong: '/quan-tri',
+  giam_doc_khoi: '/quan-tri',
+  pho_giam_doc_khoi: '/quan-tri',
+  pho_giam_doc_khu_vuc: '/quan-tri',
+  giam_doc_dieu_hanh: '/quan-tri',
+  pho_giam_doc_dieu_hanh: '/quan-tri',
+  tro_ly: '/quan-tri',
+  thu_ky: '/quan-tri',
+  chuyen_gia: '/chuyen-gia',
+  chuyen_vien: '/chuyen-vien',
+  hoc_vien: '/hoc-vien',
+  ctv_khach: '/ctv',
+  ctv_nguon: '/ctv',
+  chu_nha: '/chu-nha',
+  khach_mua: '/khach-mua',
+  nguoi_gioi_thieu: '/nguoi-gioi-thieu',
+  doi_tac: '/nguoi-gioi-thieu',
+};
+
 const ROLE_NAMES: Record<string, string> = {
   admin: 'Quan tri vien',
   giam_doc: 'Giam doc khu vuc',
   truong_phong: 'Truong phong',
   chuyen_gia: 'Chuyen gia',
   chuyen_vien: 'Chuyen vien',
+  hoc_vien: 'Hoc vien',
   ctv_khach: 'CTV tim khach',
   ctv_nguon: 'CTV tim nguon',
   chu_nha: 'Chu nha',
@@ -202,6 +250,7 @@ const roleApprovalSettings = [
   { id: 'role_approval_ctv_nguon', slug: 'ctv_nguon', label: 'CTV gioi thieu nguon', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 50 },
   { id: 'role_approval_chuyen_vien', slug: 'chuyen_vien', label: 'Chuyen vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 110 },
   { id: 'role_approval_chuyen_gia', slug: 'chuyen_gia', label: 'Chuyen gia', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 120 },
+  { id: 'role_approval_hoc_vien', slug: 'hoc_vien', label: 'Hoc vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 125 },
   { id: 'role_approval_truong_phong', slug: 'truong_phong', label: 'Truong phong', roleGroup: 'Quan ly', requiresApproval: true, sortOrder: 210 },
   { id: 'role_approval_giam_doc', slug: 'giam_doc', label: 'Giam doc khu vuc', roleGroup: 'Quan ly', requiresApproval: true, sortOrder: 250 },
 ];
@@ -218,16 +267,17 @@ const publicRoutes = [
 ];
 
 const roleRoutes = [
-  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/xay-dung-he-thong', '/profile', '/notifications'] },
-  { role: 'nguoi_gioi_thieu', paths: ['/nguoi-gioi-thieu', '/nguoi-gioi-thieu/ma-gioi-thieu', '/xay-dung-he-thong', '/profile', '/notifications'] },
+  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'hoc_vien', paths: ['/hoc-vien', '/hoc-vien/viec-can-lam', '/hoc-vien/dao-tao', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'nguoi_gioi_thieu', paths: ['/nguoi-gioi-thieu', '/nguoi-gioi-thieu/ma-gioi-thieu', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
 ];
 
-function userFor(role: string) {
+function userFor(role: string, roleSlugs = ROLE_SLUGS) {
   return {
     id: `user_${role}`,
     svpId: 'SVP000999',
@@ -238,7 +288,7 @@ function userFor(role: string) {
     referralCode: 'SVP-2026-0001',
     accountStatus: 'active',
     activeRole: role,
-    roles: ROLE_SLUGS.map((slug) => ({ slug, name: ROLE_NAMES[slug], status: 'approved' })),
+    roles: roleSlugs.map((slug) => ({ slug, name: ROLE_NAMES[slug], status: 'approved' })),
   };
 }
 
@@ -261,7 +311,7 @@ function filterByQuery(url: URL, items: any[]) {
   return result;
 }
 
-async function installMocks(page: Page, role = 'admin', authenticated = true) {
+async function installMocks(page: Page, role = 'admin', authenticated = true, roleSlugs = ROLE_SLUGS) {
   if (authenticated) {
     await page.addInitScript((activeRole) => {
       localStorage.setItem('svp_token', 'qa-token');
@@ -284,8 +334,8 @@ async function installMocks(page: Page, role = 'admin', authenticated = true) {
     const path = url.pathname.replace(/^\/api\/svp/, '') || '/';
     const method = request.method();
 
-    if (path === '/auth/me') return ok(route, { user: userFor(role) });
-    if (path === '/auth/login' && method === 'POST') return ok(route, { token: 'qa-token', user: userFor(role) });
+    if (path === '/auth/me') return ok(route, { user: userFor(role, roleSlugs) });
+    if (path === '/auth/login' && method === 'POST') return ok(route, { token: 'qa-token', user: userFor(role, roleSlugs) });
     if (path === '/auth/register' && method === 'POST') return ok(route, { message: 'Da gui yeu cau dang ky' });
     if (path === '/auth/forgot-password' && method === 'POST') return ok(route, { message: 'Da gui email dat lai mat khau' });
     if (path === '/auth/reset-password' && method === 'POST') return ok(route, { message: 'Da dat lai mat khau' });
@@ -773,6 +823,24 @@ test.describe('V1 core workflows', () => {
     await page.getByRole('button', { name: /Chuyên gia|Chuy.n gia/i }).click();
     await page.waitForURL(/\/chuyen-gia$/);
     await expectUsablePage(page, testInfo, 'workflow-login');
+  });
+
+  test('admin-only account can select every role for QA', async ({ page }, testInfo) => {
+    await installMocks(page, 'admin', true, ['admin']);
+    await page.goto('/select-role', { waitUntil: 'networkidle' });
+
+    for (const slug of ADMIN_IMPERSONATION_ROLE_SLUGS) {
+      await expect(page.getByTestId(`select-role-card-${slug}`), `Missing admin QA role card: ${slug}`).toBeVisible();
+    }
+
+    for (const slug of ADMIN_IMPERSONATION_ROLE_SLUGS) {
+      await page.getByTestId(`select-role-card-${slug}`).click();
+      await page.waitForURL((url) => url.pathname === ROLE_DASHBOARD_PATHS[slug]);
+      await expect.poll(() => page.evaluate(() => localStorage.getItem('svp_active_role'))).toBe(slug);
+      await page.goto('/select-role', { waitUntil: 'networkidle' });
+    }
+
+    await expectUsablePage(page, testInfo, 'workflow-admin-role-impersonation');
   });
 
   test('expert can use AI description and submit a property', async ({ page }, testInfo) => {

@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
   Bell,
+  Bot,
   Briefcase,
   Building2,
   Calendar,
   CheckSquare,
+  GraduationCap,
   Heart,
   Home,
   Network,
@@ -86,6 +88,14 @@ function getTabsForRole(role: string): NavTab[] {
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
       ];
+    case 'hoc_vien':
+      return [
+        { path: '/hoc-vien', label: 'Trang chủ', icon: Home },
+        { path: '/hoc-vien/viec-can-lam', label: 'Việc cần làm', icon: CheckSquare },
+        { path: '/hoc-vien/dao-tao', label: 'Đào tạo', icon: GraduationCap },
+        { path: '/ai', label: 'AI', icon: Bot },
+        { path: '/profile', label: 'Tài khoản', icon: User },
+      ];
     case 'ctv_khach':
     case 'ctv_nguon':
       return [
@@ -115,20 +125,31 @@ const BottomNav = () => {
   const activeRole = user?.activeRole || '';
   const baseTabs = getTabsForRole(activeRole);
   const systemTab: NavTab = { path: '/xay-dung-he-thong', label: 'Hệ thống', icon: Network };
+  const aiTab: NavTab = { path: '/ai', label: 'AI', icon: Bot };
   const hasSystem = baseTabs.some((tab) => tab.path === systemTab.path);
+  const hasAi = baseTabs.some((tab) => tab.path === aiTab.path);
   const withSystem = hasSystem ? baseTabs : [
     ...baseTabs.filter((tab) => tab.path !== '/profile'),
     systemTab,
     ...baseTabs.filter((tab) => tab.path === '/profile'),
   ];
-  const profileTab = withSystem.find((tab) => tab.path === '/profile');
-  const compactTabs = withSystem.length > 6
+  const withAi = hasAi ? withSystem : [
+    ...withSystem.filter((tab) => tab.path !== '/profile'),
+    aiTab,
+    ...withSystem.filter((tab) => tab.path === '/profile'),
+  ];
+  const profileTab = withAi.find((tab) => tab.path === '/profile');
+  const aiEntry = withAi.find((tab) => tab.path === aiTab.path);
+  const systemEntry = withAi.find((tab) => tab.path === systemTab.path);
+  const essentials = [aiEntry, systemEntry, profileTab].filter(Boolean) as NavTab[];
+  const compactTabs = withAi.length > 6
     ? [
-        ...withSystem.filter((tab) => tab.path !== '/profile' && tab.path !== systemTab.path && tab.path !== '/notifications').slice(0, 4),
-        systemTab,
-        ...(profileTab ? [profileTab] : []),
+        ...withAi
+          .filter((tab) => !essentials.some((essential) => essential.path === tab.path) && tab.path !== '/notifications')
+          .slice(0, 6 - essentials.length),
+        ...essentials,
       ]
-    : withSystem;
+    : withAi;
   const tabs = compactTabs;
 
   return (
