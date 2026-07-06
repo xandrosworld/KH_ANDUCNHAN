@@ -83,6 +83,7 @@ define('AI_GEMINI_KEY', getenv('AI_GEMINI_KEY') ?: '');
 
 // Email notifications
 define('MAIL_FROM', 'contact@sodovanphuc.vn');
+define('MAIL_FROM_NAME', 'Sổ Đỏ Vạn Phúc');
 define('ADMIN_EMAIL', 'contact@sodovanphuc.vn');
 define('SMTP_HOST', 'localhost');
 define('SMTP_PORT', 25);

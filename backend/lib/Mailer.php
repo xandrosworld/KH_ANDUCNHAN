@@ -31,7 +31,10 @@ class Mailer
 
     private static function getAppName(): string
     {
-        return defined('APP_NAME') ? APP_NAME : 'So Do Van Phuc';
+        if (defined('MAIL_FROM_NAME') && MAIL_FROM_NAME) {
+            return MAIL_FROM_NAME;
+        }
+        return defined('APP_NAME') ? APP_NAME : 'Sổ Đỏ Vạn Phúc';
     }
 
     private static function getFrontendUrl(): string
@@ -89,6 +92,10 @@ class Mailer
         }
 
         $mail->setFrom(self::getFrom(), self::getAppName());
+        $adminEmail = self::getAdminEmail();
+        if ($adminEmail && filter_var($adminEmail, FILTER_VALIDATE_EMAIL) && $adminEmail !== self::getFrom()) {
+            $mail->addReplyTo($adminEmail, self::getAppName());
+        }
         $mail->isHTML(true);
         $mail->CharSet = 'UTF-8';
 
@@ -270,20 +277,40 @@ class Mailer
      */
     private static function wrapHtml(string $subject, string $body): string
     {
+        $safeSubject = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
+        $safeAppName = htmlspecialchars(self::getAppName(), ENT_QUOTES, 'UTF-8');
+        $frontendUrl = htmlspecialchars(self::getFrontendUrl(), ENT_QUOTES, 'UTF-8');
+        $logoUrl = $frontendUrl . '/logo11.png';
+        $year = date('Y');
+
         return "
         <!DOCTYPE html>
         <html>
-        <head><meta charset='UTF-8'><title>{$subject}</title></head>
-        <body style='margin:0;padding:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif'>
-            <div style='max-width:600px;margin:20px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)'>
-                <div style='background:#0c0c12;padding:20px 24px;text-align:center'>
-                    <h1 style='margin:0;color:#F6D37A;font-size:20px;letter-spacing:1px'>" . htmlspecialchars(self::getAppName(), ENT_QUOTES, 'UTF-8') . "</h1>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width,initial-scale=1'>
+            <title>{$safeSubject}</title>
+        </head>
+        <body style='margin:0;padding:0;background:#f7f2ef;font-family:Arial,Helvetica,sans-serif;color:#201c1f'>
+            <div style='display:none;max-height:0;overflow:hidden;opacity:0;color:transparent'>{$safeSubject}</div>
+            <div style='width:100%;background:#f7f2ef;padding:24px 10px'>
+                <div style='max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #eadad6;box-shadow:0 18px 42px rgba(104,0,10,0.10)'>
+                    <div style='background:#b90012;padding:22px 24px;text-align:center'>
+                        <img src='{$logoUrl}' alt='{$safeAppName}' width='72' height='72' style='display:block;margin:0 auto 12px;border-radius:50%;background:#ffffff;object-fit:contain;border:3px solid rgba(255,255,255,0.75)'>
+                        <div style='font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;letter-spacing:.3px'>{$safeAppName}</div>
+                        <div style='margin-top:6px;font-size:13px;line-height:1.5;color:#ffe5df'>Hệ thống quản lý nguồn nhà và khách hàng</div>
+                    </div>
+                    <div style='height:5px;background:linear-gradient(90deg,#8d000d,#d40016,#f0b85a)'></div>
+                    <div style='padding:26px 28px 24px'>
+                        <div style='margin:0 0 18px;color:#b90012;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.12em'>Thông báo từ hệ thống</div>
+                        <div style='font-size:15px;line-height:1.7;color:#2b2528'>
+                            {$body}
+                        </div>
+                    </div>
+                    <div style='background:#fff8f6;border-top:1px solid #f0ded9;padding:18px 28px;text-align:center'>
+                        <p style='margin:0 0 6px;color:#7c6c6c;font-size:13px;line-height:1.5'>Email được gửi tự động từ hệ thống {$safeAppName}.</p>
+                        <p style='margin:0;color:#9b8b8b;font-size:12px;line-height:1.5'>© {$year} {$safeAppName}. Vui lòng không chuyển tiếp email chứa thông tin đăng nhập.</p>
                 </div>
-                <div style='padding:24px'>
-                    {$body}
-                </div>
-                <div style='background:#f9f9f9;padding:16px 24px;text-align:center;border-top:1px solid #eee'>
-                    <p style='margin:0;color:#999;font-size:12px'>© " . date('Y') . " " . htmlspecialchars(self::getAppName(), ENT_QUOTES, 'UTF-8') . ". All rights reserved.</p>
                 </div>
             </div>
         </body>
