@@ -139,6 +139,20 @@ async function assertHealthyPage(page: Page, route: string) {
   await assertNoMojibake(page, route);
 }
 
+async function selectRoleIfNeeded(page: Page, roleSlug: string, roleName: RegExp) {
+  await page.waitForLoadState('networkidle').catch(() => undefined);
+  const currentPath = new URL(page.url()).pathname.replace(/\/+$/, '');
+  if (currentPath !== '/select-role') return;
+
+  const roleCard = page.getByTestId(`select-role-card-${roleSlug}`);
+  if (await roleCard.count()) {
+    await roleCard.click();
+  } else {
+    await page.getByRole('button', { name: roleName }).first().click();
+  }
+  await page.waitForLoadState('networkidle').catch(() => undefined);
+}
+
 test.describe('So Do Van Phuc live hosting smoke', () => {
   for (const route of PUBLIC_ROUTES) {
     test(`${route.path} loads in the browser without runtime failures`, async ({ page }) => {
@@ -194,14 +208,8 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await page.locator('#identifier').fill(adminUsername);
     await page.locator('#password').fill(adminPassword);
     await page.getByRole('button', { name: /^Đăng nhập$/ }).click();
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-
-    if (/\/select-role$/.test(page.url())) {
-      const adminRole = page.getByRole('button', { name: /Quản trị|Admin/i }).first();
-      if (await adminRole.count()) {
-        await adminRole.click();
-      }
-    }
+    await page.waitForURL(/\/(select-role|quan-tri)\/?$/, { timeout: 20_000 });
+    await selectRoleIfNeeded(page, 'admin', /Quản trị|Admin/i);
 
     try {
       await page.waitForURL(/\/quan-tri$/, { timeout: 20_000 });
@@ -243,15 +251,8 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await page.locator('#identifier').fill(username);
     await page.locator('#password').fill(password);
     await page.getByRole('button', { name: /^Đăng nhập$/ }).click();
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-
-    if (/\/select-role$/.test(page.url())) {
-      const expertRole = page.getByRole('button', { name: /Chuyên gia/i }).first();
-      if (await expertRole.count()) {
-        await expertRole.click();
-        await page.waitForLoadState('networkidle').catch(() => undefined);
-      }
-    }
+    await page.waitForURL(/\/(select-role|chuyen-gia|quan-tri)\/?$/, { timeout: 20_000 });
+    await selectRoleIfNeeded(page, 'chuyen_gia', /Chuyên gia/i);
 
     await expect
       .poll(
