@@ -118,6 +118,89 @@ function svp_v1_role_requires_approval(string $roleSlug): bool {
     return !in_array($roleSlug, svp_v1_public_roles(), true);
 }
 
+function svp_v1_role_label(string $roleSlug): string {
+    try {
+        return svp_role_display_name_from_config(Database::getInstance(), $roleSlug);
+    } catch (Throwable $e) {
+        error_log('[SVP_V1_ROLE_LABEL] ' . $e->getMessage());
+    }
+    return $roleSlug;
+}
+
+function svp_v1_mail_send(string $to, string $subject, string $body): void {
+    try {
+        Mailer::send($to, $subject, $body);
+    } catch (Throwable $e) {
+        error_log('[SVP_MAIL] ' . $e->getMessage());
+    }
+}
+
+function svp_v1_mail_notify_admin(string $subject, string $body): void {
+    try {
+        Mailer::notifyAdmin($subject, $body);
+    } catch (Throwable $e) {
+        error_log('[SVP_MAIL_ADMIN] ' . $e->getMessage());
+    }
+}
+
+function svp_v1_send_registration_email(string $email, string $fullName, string $svpId, string $refCode, array $roles): void {
+    $approved = [];
+    $pending = [];
+    foreach ($roles as $role) {
+        $label = htmlspecialchars(svp_v1_role_label((string) ($role['slug'] ?? '')), ENT_QUOTES, 'UTF-8');
+        if (($role['status'] ?? '') === 'approved') {
+            $approved[] = $label;
+        } else {
+            $pending[] = $label;
+        }
+    }
+
+    $safeName = htmlspecialchars($fullName ?: 'anh/chị', ENT_QUOTES, 'UTF-8');
+    $safeSvpId = htmlspecialchars($svpId, ENT_QUOTES, 'UTF-8');
+    $safeRef = htmlspecialchars($refCode, ENT_QUOTES, 'UTF-8');
+    $loginUrl = htmlspecialchars((defined('FRONTEND_URL') ? rtrim(FRONTEND_URL, '/') : 'https://sodovanphuc.vn') . '/login', ENT_QUOTES, 'UTF-8');
+    $approvedText = $approved ? implode(', ', $approved) : 'Chưa có vai trò dùng ngay';
+    $pendingText = $pending ? implode(', ', $pending) : 'Không có';
+
+    $body = "
+        <h2>Chào mừng đến với Sổ Đỏ Vạn Phúc</h2>
+        <p>Xin chào <strong>{$safeName}</strong>, tài khoản của anh/chị đã được tạo thành công.</p>
+        <table style='border-collapse:collapse;width:100%;margin:16px 0'>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>SVP ID</td><td style='padding:8px;border-bottom:1px solid #eee'><strong>{$safeSvpId}</strong></td></tr>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>Mã giới thiệu</td><td style='padding:8px;border-bottom:1px solid #eee'><strong>{$safeRef}</strong></td></tr>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>Vai trò dùng ngay</td><td style='padding:8px;border-bottom:1px solid #eee'>{$approvedText}</td></tr>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>Vai trò chờ duyệt</td><td style='padding:8px;border-bottom:1px solid #eee'>{$pendingText}</td></tr>
+        </table>
+        <p style='margin:20px 0;text-align:center'>
+            <a href='{$loginUrl}' style='background:#c40012;color:#fff;padding:12px 22px;text-decoration:none;border-radius:10px;font-weight:bold;display:inline-block'>Vào hệ thống</a>
+        </p>
+    ";
+    svp_v1_mail_send($email, 'Tài khoản Sổ Đỏ Vạn Phúc đã được tạo', $body);
+}
+
+function svp_v1_notify_admin_role_request(string $fullName, string $email, string $phone, array $roleSlugs): void {
+    $safeName = htmlspecialchars($fullName ?: 'Chưa có tên', ENT_QUOTES, 'UTF-8');
+    $safeEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+    $safePhone = htmlspecialchars($phone, ENT_QUOTES, 'UTF-8');
+    $labels = array_map(fn($role) => htmlspecialchars(svp_v1_role_label((string) $role), ENT_QUOTES, 'UTF-8'), $roleSlugs);
+    $roleText = $labels ? implode(', ', $labels) : 'Không có';
+    $adminUrl = htmlspecialchars((defined('FRONTEND_URL') ? rtrim(FRONTEND_URL, '/') : 'https://sodovanphuc.vn') . '/quan-tri/duyet-vai-tro', ENT_QUOTES, 'UTF-8');
+
+    $body = "
+        <h2>Có yêu cầu vai trò cần duyệt</h2>
+        <p><strong>{$safeName}</strong> vừa đăng ký/xin thêm vai trò cần quản trị duyệt.</p>
+        <table style='border-collapse:collapse;width:100%;margin:16px 0'>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>Email</td><td style='padding:8px;border-bottom:1px solid #eee'>{$safeEmail}</td></tr>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>SĐT</td><td style='padding:8px;border-bottom:1px solid #eee'>{$safePhone}</td></tr>
+            <tr><td style='padding:8px;border-bottom:1px solid #eee;color:#777'>Vai trò</td><td style='padding:8px;border-bottom:1px solid #eee'><strong>{$roleText}</strong></td></tr>
+        </table>
+        <p style='margin:20px 0;text-align:center'>
+            <a href='{$adminUrl}' style='background:#c40012;color:#fff;padding:12px 22px;text-decoration:none;border-radius:10px;font-weight:bold;display:inline-block'>Mở trang duyệt vai trò</a>
+        </p>
+    ";
+    svp_v1_mail_notify_admin('Sổ Đỏ Vạn Phúc: yêu cầu vai trò cần duyệt', $body);
+}
+
 function svp_v1_role_name(string $roleSlug): string {
     try {
         return svp_role_display_name_from_config(Database::getInstance(), $roleSlug);
@@ -405,6 +488,16 @@ $router->add('POST', '/api/svp/auth/register', function () {
         'referral_code' => $refCode,
     ];
     $roles = svp_v1_get_user_roles($db, $userId);
+    svp_v1_send_registration_email($email, $fullName, $svpId, $refCode, $roles);
+
+    $pendingRoleSlugs = array_values(array_map(
+        fn($role) => (string) ($role['slug'] ?? ''),
+        array_filter($roles, fn($role) => ($role['status'] ?? '') === 'pending')
+    ));
+    if ($pendingRoleSlugs) {
+        svp_v1_notify_admin_role_request($fullName, $email, $phone, $pendingRoleSlugs);
+    }
+
     $auth = svp_v1_login_payload($user, $roles);
     $data = $auth['data'];
     $data['message'] = $auth['status'] === 200
@@ -619,6 +712,26 @@ $router->add('POST', '/api/svp/auth/register-role', function () {
     if ($status === 'pending') {
         $db->prepare("INSERT INTO svp_role_applications (user_id, role_slug, status, reason, created_at) VALUES (:uid, :role, 'pending', :reason, NOW())")
            ->execute(['uid' => $payload['sub'], 'role' => $roleSlug, 'reason' => $reason]);
+    }
+
+    $userStmt = $db->prepare("SELECT full_name, email, phone FROM users WHERE id = :id LIMIT 1");
+    $userStmt->execute(['id' => $payload['sub']]);
+    $user = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    if ($status === 'pending') {
+        svp_v1_notify_admin_role_request(
+            (string) ($user['full_name'] ?? ''),
+            (string) ($user['email'] ?? ''),
+            (string) ($user['phone'] ?? ''),
+            [$roleSlug]
+        );
+    } elseif (!empty($user['email'])) {
+        $roleLabel = htmlspecialchars(svp_v1_role_label($roleSlug), ENT_QUOTES, 'UTF-8');
+        svp_v1_mail_send((string) $user['email'], 'Vai trò mới đã được mở trên Sổ Đỏ Vạn Phúc', "
+            <h2>Vai trò đã được kích hoạt</h2>
+            <p>Vai trò <strong>{$roleLabel}</strong> đã được mở cho tài khoản của anh/chị.</p>
+            <p>Anh/chị có thể đăng nhập và chọn vai trò này để sử dụng ngay.</p>
+        ");
     }
 
     Response::json(['message' => $status === 'approved' ? 'Đã thêm vai trò' : 'Đã gửi yêu cầu thêm vai trò']);

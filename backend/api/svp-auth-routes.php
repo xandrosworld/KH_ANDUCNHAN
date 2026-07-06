@@ -850,8 +850,13 @@ $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params
     $db->prepare("UPDATE svp_role_applications SET status = :s, admin_notes = :n, reviewed_by = :by, reviewed_at = NOW() WHERE id = :id")
        ->execute(['s' => $status, 'n' => $notes, 'by' => $payload['sub'], 'id' => $id]);
 
-    // Get application to find user_id and role_slug
-    $stmt = $db->prepare("SELECT user_id, role_slug FROM svp_role_applications WHERE id = :id");
+    // Get application to find user_id, role_slug and recipient email.
+    $stmt = $db->prepare("
+        SELECT a.user_id, a.role_slug, u.full_name, u.email
+        FROM svp_role_applications a
+        LEFT JOIN users u ON u.id = a.user_id
+        WHERE a.id = :id
+    ");
     $stmt->execute(['id' => $id]);
     $app = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -861,6 +866,41 @@ $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params
 
         // Audit
         svp_insert_audit($db, $payload['sub'], $status === 'approved' ? 'approve' : 'reject', 'role_application', (string) $id, null, ['roleSlug' => $app['role_slug'], 'userId' => $app['user_id']]);
+
+        if (!empty($app['email'])) {
+            $roleLabelRaw = function_exists('svp_v1_role_label') ? svp_v1_role_label((string) $app['role_slug']) : (string) $app['role_slug'];
+            $roleLabel = htmlspecialchars($roleLabelRaw, ENT_QUOTES, 'UTF-8');
+            $safeName = htmlspecialchars((string) ($app['full_name'] ?: 'anh/chị'), ENT_QUOTES, 'UTF-8');
+            $safeNotes = htmlspecialchars($notes, ENT_QUOTES, 'UTF-8');
+            $loginUrl = htmlspecialchars((defined('FRONTEND_URL') ? rtrim(FRONTEND_URL, '/') : 'https://sodovanphuc.vn') . '/login', ENT_QUOTES, 'UTF-8');
+            $subject = $status === 'approved'
+                ? 'Vai trò đã được duyệt trên Sổ Đỏ Vạn Phúc'
+                : 'Yêu cầu vai trò chưa được duyệt trên Sổ Đỏ Vạn Phúc';
+            $body = $status === 'approved'
+                ? "
+                    <h2>Vai trò đã được duyệt</h2>
+                    <p>Chào {$safeName},</p>
+                    <p>Vai trò <strong>{$roleLabel}</strong> đã được duyệt. Anh/chị có thể đăng nhập và sử dụng ngay.</p>
+                    <p><a href=\"{$loginUrl}\">Đăng nhập Sổ Đỏ Vạn Phúc</a></p>
+                "
+                : "
+                    <h2>Yêu cầu vai trò chưa được duyệt</h2>
+                    <p>Chào {$safeName},</p>
+                    <p>Vai trò <strong>{$roleLabel}</strong> hiện chưa được duyệt.</p>
+                    " . ($safeNotes !== '' ? "<p>Ghi chú từ quản trị: {$safeNotes}</p>" : '') . "
+                    <p>Anh/chị có thể bổ sung thông tin và gửi lại khi cần.</p>
+                ";
+
+            if (function_exists('svp_v1_mail_send')) {
+                svp_v1_mail_send((string) $app['email'], $subject, $body);
+            } else {
+                try {
+                    Mailer::send((string) $app['email'], $subject, $body);
+                } catch (Throwable $mailError) {
+                    error_log('SVP role application mail failed: ' . $mailError->getMessage());
+                }
+            }
+        }
     }
 
     Response::json(['message' => $status === 'approved' ? 'Đã duyệt' : 'Đã từ chối']);
@@ -1113,6 +1153,30 @@ $router->add('POST', '/api/svp/admin/users/{id}/reset-password', function ($para
         'email' => $user['email'] ?? '',
         'temporary' => true,
     ]);
+
+    if (!empty($user['email'])) {
+        $safeName = htmlspecialchars((string) ($user['full_name'] ?: 'anh/chị'), ENT_QUOTES, 'UTF-8');
+        $safeTempPassword = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+        $loginUrl = htmlspecialchars((defined('FRONTEND_URL') ? rtrim(FRONTEND_URL, '/') : 'https://sodovanphuc.vn') . '/login', ENT_QUOTES, 'UTF-8');
+        $body = "
+            <h2>Mật khẩu tạm Sổ Đỏ Vạn Phúc</h2>
+            <p>Chào {$safeName},</p>
+            <p>Quản trị viên vừa tạo mật khẩu tạm cho tài khoản của anh/chị.</p>
+            <p><strong>Mật khẩu tạm:</strong> <code>{$safeTempPassword}</code></p>
+            <p>Anh/chị vui lòng đăng nhập và đổi lại mật khẩu để bảo mật tài khoản.</p>
+            <p><a href=\"{$loginUrl}\">Đăng nhập Sổ Đỏ Vạn Phúc</a></p>
+        ";
+
+        if (function_exists('svp_v1_mail_send')) {
+            svp_v1_mail_send((string) $user['email'], 'Mật khẩu tạm Sổ Đỏ Vạn Phúc', $body);
+        } else {
+            try {
+                Mailer::send((string) $user['email'], 'Mật khẩu tạm Sổ Đỏ Vạn Phúc', $body);
+            } catch (Throwable $mailError) {
+                error_log('SVP admin reset password mail failed: ' . $mailError->getMessage());
+            }
+        }
+    }
 
     Response::json([
         'message' => 'Da tao mat khau tam',
