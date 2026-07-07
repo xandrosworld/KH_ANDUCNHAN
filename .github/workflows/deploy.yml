@@ -242,6 +242,20 @@ jobs:
               " from=" . preg_replace('/^(.{2}).+(@.+)$/', '$1***$2', $from) .
               " to=" . preg_replace('/^(.{2}).+(@.+)$/', '$1***$2', $to) . "\n";
 
+          foreach (['mail.hocvienvanphuc.edu.vn', 'pro57.emailserver.vn', 'localhost'] as $host) {
+              foreach ([25, 465, 587, 2525] as $port) {
+                  $errno = 0;
+                  $errstr = '';
+                  $fp = @fsockopen($host, $port, $errno, $errstr, 5);
+                  if ($fp) {
+                      fclose($fp);
+                      echo "MAIL_CONNECT_OK {$host}:{$port}\n";
+                  } else {
+                      echo "MAIL_CONNECT_FAIL {$host}:{$port} {$errno} {$errstr}\n";
+                  }
+              }
+          }
+
           try {
               $sent = Mailer::send($to, 'SVP deploy mail diagnostic', '<p>SVP deploy mail diagnostic.</p>');
               if (!$sent) {
