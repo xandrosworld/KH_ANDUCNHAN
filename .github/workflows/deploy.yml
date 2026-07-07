@@ -167,38 +167,41 @@ jobs:
           fs.writeFileSync('.mail-config.json', JSON.stringify(values));
           NODE
 
+          cat > .patch-mail-config.mjs <<'NODE'
+          import fs from 'node:fs';
+
+          const values = JSON.parse(fs.readFileSync('.mail-config.json', 'utf8'));
+          let content = fs.readFileSync('.remote-config.php', 'utf8');
+
+          function phpString(value) {
+            return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          }
+
+          function upsertPhpConstant(name, replacement) {
+            const pattern = new RegExp(`define\\('${name}',\\s*(?:'((?:\\\\'|[^'])*)'|\\d+)\\);`);
+            if (pattern.test(content)) {
+              content = content.replace(pattern, replacement);
+              return;
+            }
+            content += `\n${replacement}\n`;
+          }
+
+          for (const [name, rawValue] of Object.entries(values)) {
+            if (name === 'SMTP_PORT') {
+              const port = Number.parseInt(String(rawValue), 10);
+              if (!Number.isInteger(port) || port <= 0) throw new Error('SVP_SMTP_PORT must be a positive integer');
+              upsertPhpConstant(name, `define('${name}', ${port});`);
+            } else {
+              upsertPhpConstant(name, `define('${name}', '${phpString(rawValue)}');`);
+            }
+          }
+
+          fs.writeFileSync('.remote-config.php', content);
+          NODE
+
           if [ "$(cat .mail-config.json)" != "{}" ]; then
             ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat '$REMOTE_WEBROOT/backend/config/config.php'" > .remote-config.php
-            node <<'NODE'
-            const fs = require('fs');
-            const values = JSON.parse(fs.readFileSync('.mail-config.json', 'utf8'));
-            let content = fs.readFileSync('.remote-config.php', 'utf8');
-
-            function phpString(value) {
-              return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-            }
-
-            function upsertPhpConstant(name, replacement) {
-              const pattern = new RegExp(`define\\('${name}',\\s*(?:'((?:\\\\'|[^'])*)'|\\d+)\\);`);
-              if (pattern.test(content)) {
-                content = content.replace(pattern, replacement);
-                return;
-              }
-              content += `\n${replacement}\n`;
-            }
-
-            for (const [name, rawValue] of Object.entries(values)) {
-              if (name === 'SMTP_PORT') {
-                const port = Number.parseInt(String(rawValue), 10);
-                if (!Number.isInteger(port) || port <= 0) throw new Error('SVP_SMTP_PORT must be a positive integer');
-                upsertPhpConstant(name, `define('${name}', ${port});`);
-              } else {
-                upsertPhpConstant(name, `define('${name}', '${phpString(rawValue)}');`);
-              }
-            }
-
-            fs.writeFileSync('.remote-config.php', content);
-            NODE
+            node .patch-mail-config.mjs
             ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > '$REMOTE_WEBROOT/backend/config/config.php' && chmod 600 '$REMOTE_WEBROOT/backend/config/config.php' || true" < .remote-config.php
           fi
 
