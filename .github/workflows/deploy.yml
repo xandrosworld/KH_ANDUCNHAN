@@ -142,10 +142,10 @@ jobs:
           set -euo pipefail
           ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
             set -e
-            find '$REMOTE_WEBROOT' -type d -exec chmod 755 {} \; || true
-            find '$REMOTE_WEBROOT' -type f -exec chmod 644 {} \; || true
-            chmod 755 '$REMOTE_WEBROOT/backend/uploads' || true
-            chown -R apache:apache '$REMOTE_WEBROOT' 2>/dev/null || true
+            chmod 755 '$REMOTE_WEBROOT' '$REMOTE_WEBROOT/backend' '$REMOTE_WEBROOT/backend/api' || true
+            find '$REMOTE_WEBROOT/backend/uploads' -type d -exec chmod 777 {} \; || true
+            find '$REMOTE_WEBROOT/backend/uploads' -type f -exec chmod 644 {} \; || true
+            chown -R apache:apache '$REMOTE_WEBROOT/backend/uploads' 2>/dev/null || true
           "
           reset_file=".codex-opcache-reset-${GITHUB_RUN_ID}.php"
           cleanup_reset() {
