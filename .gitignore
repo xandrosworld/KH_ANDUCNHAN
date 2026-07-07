@@ -32,6 +32,7 @@ hosting-complete-reports/
 domain-cutover-reports/
 playwright-report/
 test-results/
+outputs/
 
 # Backend sensitive config and uploaded files
 backend/config/config.php

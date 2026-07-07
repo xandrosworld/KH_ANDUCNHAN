@@ -34,6 +34,14 @@ jobs:
       SVP_OAUTH_APPLE_TEAM_ID: ${{ secrets.SVP_OAUTH_APPLE_TEAM_ID }}
       SVP_OAUTH_APPLE_KEY_ID: ${{ secrets.SVP_OAUTH_APPLE_KEY_ID }}
       SVP_OAUTH_APPLE_PRIVATE_KEY: ${{ secrets.SVP_OAUTH_APPLE_PRIVATE_KEY }}
+      SVP_MAIL_FROM: ${{ secrets.SVP_MAIL_FROM }}
+      SVP_MAIL_FROM_NAME: ${{ secrets.SVP_MAIL_FROM_NAME }}
+      SVP_ADMIN_EMAIL: ${{ secrets.SVP_ADMIN_EMAIL }}
+      SVP_SMTP_HOST: ${{ secrets.SVP_SMTP_HOST }}
+      SVP_SMTP_PORT: ${{ secrets.SVP_SMTP_PORT }}
+      SVP_SMTP_USER: ${{ secrets.SVP_SMTP_USER }}
+      SVP_SMTP_PASS: ${{ secrets.SVP_SMTP_PASS }}
+      SVP_SMTP_SECURE: ${{ secrets.SVP_SMTP_SECURE }}
 
     steps:
       - name: Checkout
@@ -135,6 +143,63 @@ jobs:
               mv '$REMOTE_WEBROOT/backend/.env.tmp' '$REMOTE_WEBROOT/backend/.env'
               chmod 600 '$REMOTE_WEBROOT/backend/.env' || true
             " < .oauth-env
+          fi
+
+      - name: Sync mail config secrets
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const envToConstant = {
+            SVP_MAIL_FROM: 'MAIL_FROM',
+            SVP_MAIL_FROM_NAME: 'MAIL_FROM_NAME',
+            SVP_ADMIN_EMAIL: 'ADMIN_EMAIL',
+            SVP_SMTP_HOST: 'SMTP_HOST',
+            SVP_SMTP_PORT: 'SMTP_PORT',
+            SVP_SMTP_USER: 'SMTP_USER',
+            SVP_SMTP_PASS: 'SMTP_PASS',
+            SVP_SMTP_SECURE: 'SMTP_SECURE',
+          };
+          const values = {};
+          for (const [envName, constantName] of Object.entries(envToConstant)) {
+            if (process.env[envName]) values[constantName] = process.env[envName];
+          }
+          fs.writeFileSync('.mail-config.json', JSON.stringify(values));
+          NODE
+
+          if [ "$(cat .mail-config.json)" != "{}" ]; then
+            ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat '$REMOTE_WEBROOT/backend/config/config.php'" > .remote-config.php
+            node <<'NODE'
+            const fs = require('fs');
+            const values = JSON.parse(fs.readFileSync('.mail-config.json', 'utf8'));
+            let content = fs.readFileSync('.remote-config.php', 'utf8');
+
+            function phpString(value) {
+              return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            }
+
+            function upsertPhpConstant(name, replacement) {
+              const pattern = new RegExp(`define\\('${name}',\\s*(?:'((?:\\\\'|[^'])*)'|\\d+)\\);`);
+              if (pattern.test(content)) {
+                content = content.replace(pattern, replacement);
+                return;
+              }
+              content += `\n${replacement}\n`;
+            }
+
+            for (const [name, rawValue] of Object.entries(values)) {
+              if (name === 'SMTP_PORT') {
+                const port = Number.parseInt(String(rawValue), 10);
+                if (!Number.isInteger(port) || port <= 0) throw new Error('SVP_SMTP_PORT must be a positive integer');
+                upsertPhpConstant(name, `define('${name}', ${port});`);
+              } else {
+                upsertPhpConstant(name, `define('${name}', '${phpString(rawValue)}');`);
+              }
+            }
+
+            fs.writeFileSync('.remote-config.php', content);
+            NODE
+            ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > '$REMOTE_WEBROOT/backend/config/config.php' && chmod 600 '$REMOTE_WEBROOT/backend/config/config.php' || true" < .remote-config.php
           fi
 
       - name: Fix permissions and smoke test
