@@ -343,6 +343,16 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     if (path === '/auth/change-password' && method === 'POST') return ok(route, { message: 'Da doi mat khau' });
     if (path === '/auth/register-role' && method === 'POST') return ok(route, { message: 'Da gui yeu cau vai tro' });
     if (path === '/auth/referrer-lookup' && method === 'GET') return ok(route, { item: { id: 'user_admin', fullName: 'Nguoi gioi thieu QA', svpId: 'SVP000001', phone: '0909***999', referralCode: 'SVP-2026-0001' } });
+    if (path === '/auth/oauth/providers' && method === 'GET') {
+      return ok(route, {
+        items: [
+          { provider: 'google', label: 'Google', configured: false },
+          { provider: 'facebook', label: 'Facebook', configured: false },
+          { provider: 'apple', label: 'Apple', configured: false },
+          { provider: 'zalo', label: 'Zalo', configured: false },
+        ],
+      });
+    }
     if (path === '/my-system') return ok(route, {
       user: {
         id: `user_${role}`,
@@ -612,11 +622,12 @@ test.describe('V1 core workflows', () => {
     });
     expect(loginCardFitsViewport).toBe(true);
 
-    await expect(page.getByTestId('social-login-google')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/google\/start$/);
-    await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/facebook\/start$/);
-    await expect(page.getByTestId('social-login-apple')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/apple\/start$/);
-    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/zalo\/start$/);
-    await expect(page.getByTestId('social-login-zalo')).not.toHaveAttribute('target', '_blank');
+    await expect(page.getByTestId('social-login-google')).toHaveAttribute('data-configured', 'false');
+    await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('data-configured', 'false');
+    await expect(page.getByTestId('social-login-apple')).toHaveAttribute('data-configured', 'false');
+    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('data-configured', 'false');
+    await page.getByTestId('social-login-google').click();
+    await expect(page.getByTestId('social-login-notice')).toContainText(/Google/);
 
     await page.getByTestId('auth-support-toggle').click();
     const supportMenu = page.getByTestId('auth-support-menu');

@@ -166,6 +166,13 @@ const SOCIAL_LOGIN_PROVIDERS = [
   { provider: 'zalo', label: 'Zalo', icon: <SvpZaloIcon className="h-6 w-6" /> },
 ] as const;
 
+type SocialProvider = typeof SOCIAL_LOGIN_PROVIDERS[number]['provider'];
+
+const DEFAULT_SOCIAL_PROVIDER_STATUS = SOCIAL_LOGIN_PROVIDERS.reduce((status, item) => {
+  status[item.provider] = false;
+  return status;
+}, {} as Record<SocialProvider, boolean>);
+
 function socialLoginUrl(provider: string): string {
   return `${getApiBase()}/api/svp/auth/oauth/${provider}/start`;
 }
@@ -186,6 +193,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [socialProviderStatus, setSocialProviderStatus] = useState<Record<SocialProvider, boolean>>(DEFAULT_SOCIAL_PROVIDER_STATUS);
+  const [socialNotice, setSocialNotice] = useState('');
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -228,6 +237,29 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         if (cancelled) return;
         setRegistrationRoles(PUBLIC_REGISTRATION_ROLES);
         setSiteDisplay(defaultSiteDisplay);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getApiBase()}/api/svp/auth/oauth/providers`, { headers: { Accept: 'application/json' } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('oauth providers unavailable')))
+      .then((json) => {
+        if (cancelled) return;
+        const items = (json?.data?.items || json?.items || []) as Array<{ provider?: string; configured?: boolean }>;
+        const nextStatus = SOCIAL_LOGIN_PROVIDERS.reduce((status, item) => {
+          status[item.provider] = items.some((provider) => provider.provider === item.provider && provider.configured === true);
+          return status;
+        }, {} as Record<SocialProvider, boolean>);
+        setSocialProviderStatus(nextStatus);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSocialProviderStatus(DEFAULT_SOCIAL_PROVIDER_STATUS);
       });
 
     return () => {
@@ -304,6 +336,11 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
       return;
     }
     navigate('/select-role');
+  };
+
+  const showInactiveSocialNotice = (label: string) => {
+    setLoginError('');
+    setSocialNotice(`Đăng nhập ${label} chưa được kích hoạt. Vui lòng đăng nhập bằng email/số điện thoại và mật khẩu.`);
   };
 
   const handleLogin = async (event: FormEvent) => {
@@ -589,9 +626,16 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                     label={item.label}
                     href={socialLoginUrl(item.provider)}
                     icon={item.icon}
+                    configured={socialProviderStatus[item.provider] === true}
+                    onUnavailable={() => showInactiveSocialNotice(item.label)}
                   />
                 ))}
               </div>
+              {socialNotice ? (
+                <div data-testid="social-login-notice" className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-semibold leading-5 text-amber-800">
+                  {socialNotice}
+                </div>
+              ) : null}
 
               <div className="mt-6 hidden rounded-xl border border-[#eadfd7] bg-[#fffaf7] p-4 sm:flex sm:items-start sm:gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-[#c40012]">
@@ -1032,13 +1076,46 @@ function SupportLink({
   );
 }
 
-function SocialButton({ icon, label, href, provider }: { icon: ReactNode; label: string; href: string; provider: string }) {
+function SocialButton({
+  icon,
+  label,
+  href,
+  provider,
+  configured,
+  onUnavailable,
+}: {
+  icon: ReactNode;
+  label: string;
+  href: string;
+  provider: string;
+  configured: boolean;
+  onUnavailable: () => void;
+}) {
+  const className = "flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white px-1 text-[11px] font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100 sm:min-h-[72px] sm:text-xs";
+
+  if (!configured) {
+    return (
+      <button
+        type="button"
+        aria-label={`Đăng nhập với ${label} chưa được kích hoạt`}
+        data-testid={`social-login-${provider}`}
+        data-configured="false"
+        onClick={onUnavailable}
+        className={className}
+      >
+        {icon}
+        {label}
+      </button>
+    );
+  }
+
   return (
     <a
       href={href}
       aria-label={`Đăng nhập với ${label}`}
       data-testid={`social-login-${provider}`}
-      className="flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white px-1 text-[11px] font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100 sm:min-h-[72px] sm:text-xs"
+      data-configured="true"
+      className={className}
     >
       {icon}
       {label}
