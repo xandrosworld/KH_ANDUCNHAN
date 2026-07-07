@@ -225,6 +225,10 @@ jobs:
           ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > '$REMOTE_WEBROOT/$mail_diag'" <<'PHP'
           <?php
           header('Content-Type: text/plain; charset=utf-8');
+          if (function_exists('opcache_reset')) {
+              @opcache_reset();
+          }
+          clearstatcache();
           require_once __DIR__ . '/backend/config/config.php';
           require_once __DIR__ . '/backend/lib/Mailer.php';
 
