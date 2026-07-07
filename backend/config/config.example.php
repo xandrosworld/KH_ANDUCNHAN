@@ -51,6 +51,26 @@ define('BASE_URL', 'https://sodovanphuc.vn/backend');
 // Public frontend URL without trailing slash.
 define('FRONTEND_URL', 'https://sodovanphuc.vn');
 
+// Social login OAuth credentials, optional but required for the visible social
+// login buttons to complete real provider login. Register these redirect URIs:
+// https://sodovanphuc.vn/api/svp/auth/oauth/google/callback
+// https://sodovanphuc.vn/api/svp/auth/oauth/facebook/callback
+// https://sodovanphuc.vn/api/svp/auth/oauth/apple/callback
+// https://sodovanphuc.vn/api/svp/auth/oauth/zalo/callback
+define('SVP_OAUTH_GOOGLE_CLIENT_ID', getenv('SVP_OAUTH_GOOGLE_CLIENT_ID') ?: '');
+define('SVP_OAUTH_GOOGLE_CLIENT_SECRET', getenv('SVP_OAUTH_GOOGLE_CLIENT_SECRET') ?: '');
+define('SVP_OAUTH_FACEBOOK_CLIENT_ID', getenv('SVP_OAUTH_FACEBOOK_CLIENT_ID') ?: '');
+define('SVP_OAUTH_FACEBOOK_CLIENT_SECRET', getenv('SVP_OAUTH_FACEBOOK_CLIENT_SECRET') ?: '');
+define('SVP_OAUTH_ZALO_CLIENT_ID', getenv('SVP_OAUTH_ZALO_CLIENT_ID') ?: '');
+define('SVP_OAUTH_ZALO_CLIENT_SECRET', getenv('SVP_OAUTH_ZALO_CLIENT_SECRET') ?: '');
+define('SVP_OAUTH_APPLE_CLIENT_ID', getenv('SVP_OAUTH_APPLE_CLIENT_ID') ?: '');
+// Either set a pre-generated Apple client secret or set TEAM_ID, KEY_ID,
+// and PRIVATE_KEY so the backend can generate the client secret JWT.
+define('SVP_OAUTH_APPLE_CLIENT_SECRET', getenv('SVP_OAUTH_APPLE_CLIENT_SECRET') ?: '');
+define('SVP_OAUTH_APPLE_TEAM_ID', getenv('SVP_OAUTH_APPLE_TEAM_ID') ?: '');
+define('SVP_OAUTH_APPLE_KEY_ID', getenv('SVP_OAUTH_APPLE_KEY_ID') ?: '');
+define('SVP_OAUTH_APPLE_PRIVATE_KEY', getenv('SVP_OAUTH_APPLE_PRIVATE_KEY') ?: '');
+
 // Upload limits
 define('UPLOAD_MAX_SIZE', 20 * 1024 * 1024);
 define('UPLOAD_MAX_IMAGES', 41);

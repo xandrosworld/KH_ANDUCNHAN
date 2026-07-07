@@ -23,6 +23,17 @@ jobs:
       SSH_USER: ${{ secrets.MATBAO_SSH_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.MATBAO_SSH_PRIVATE_KEY }}
       REMOTE_WEBROOT: ${{ secrets.MATBAO_WEBROOT || '/var/www/sodovanphuc/public_html' }}
+      SVP_OAUTH_GOOGLE_CLIENT_ID: ${{ secrets.SVP_OAUTH_GOOGLE_CLIENT_ID }}
+      SVP_OAUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.SVP_OAUTH_GOOGLE_CLIENT_SECRET }}
+      SVP_OAUTH_FACEBOOK_CLIENT_ID: ${{ secrets.SVP_OAUTH_FACEBOOK_CLIENT_ID }}
+      SVP_OAUTH_FACEBOOK_CLIENT_SECRET: ${{ secrets.SVP_OAUTH_FACEBOOK_CLIENT_SECRET }}
+      SVP_OAUTH_ZALO_CLIENT_ID: ${{ secrets.SVP_OAUTH_ZALO_CLIENT_ID }}
+      SVP_OAUTH_ZALO_CLIENT_SECRET: ${{ secrets.SVP_OAUTH_ZALO_CLIENT_SECRET }}
+      SVP_OAUTH_APPLE_CLIENT_ID: ${{ secrets.SVP_OAUTH_APPLE_CLIENT_ID }}
+      SVP_OAUTH_APPLE_CLIENT_SECRET: ${{ secrets.SVP_OAUTH_APPLE_CLIENT_SECRET }}
+      SVP_OAUTH_APPLE_TEAM_ID: ${{ secrets.SVP_OAUTH_APPLE_TEAM_ID }}
+      SVP_OAUTH_APPLE_KEY_ID: ${{ secrets.SVP_OAUTH_APPLE_KEY_ID }}
+      SVP_OAUTH_APPLE_PRIVATE_KEY: ${{ secrets.SVP_OAUTH_APPLE_PRIVATE_KEY }}
 
     steps:
       - name: Checkout
@@ -86,6 +97,45 @@ jobs:
             set -e
             tar -xzf - -C '$REMOTE_WEBROOT'
           "
+
+      - name: Sync optional OAuth secrets
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const keys = [
+            'SVP_OAUTH_GOOGLE_CLIENT_ID',
+            'SVP_OAUTH_GOOGLE_CLIENT_SECRET',
+            'SVP_OAUTH_FACEBOOK_CLIENT_ID',
+            'SVP_OAUTH_FACEBOOK_CLIENT_SECRET',
+            'SVP_OAUTH_ZALO_CLIENT_ID',
+            'SVP_OAUTH_ZALO_CLIENT_SECRET',
+            'SVP_OAUTH_APPLE_CLIENT_ID',
+            'SVP_OAUTH_APPLE_CLIENT_SECRET',
+            'SVP_OAUTH_APPLE_TEAM_ID',
+            'SVP_OAUTH_APPLE_KEY_ID',
+            'SVP_OAUTH_APPLE_PRIVATE_KEY',
+          ];
+          const lines = keys
+            .filter((key) => process.env[key])
+            .map((key) => `${key}=${JSON.stringify(process.env[key])}`);
+          fs.writeFileSync('.oauth-env', lines.length ? `${lines.join('\n')}\n` : '');
+          NODE
+
+          if [ -s .oauth-env ]; then
+            ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+              set -e
+              mkdir -p '$REMOTE_WEBROOT/backend'
+              if [ -f '$REMOTE_WEBROOT/backend/.env' ]; then
+                grep -v -E '^SVP_OAUTH_(GOOGLE|FACEBOOK|ZALO|APPLE)_' '$REMOTE_WEBROOT/backend/.env' > '$REMOTE_WEBROOT/backend/.env.tmp' || true
+              else
+                : > '$REMOTE_WEBROOT/backend/.env.tmp'
+              fi
+              cat >> '$REMOTE_WEBROOT/backend/.env.tmp'
+              mv '$REMOTE_WEBROOT/backend/.env.tmp' '$REMOTE_WEBROOT/backend/.env'
+              chmod 600 '$REMOTE_WEBROOT/backend/.env' || true
+            " < .oauth-env
+          fi
 
       - name: Fix permissions and smoke test
         run: |

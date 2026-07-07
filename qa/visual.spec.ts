@@ -612,11 +612,11 @@ test.describe('V1 core workflows', () => {
     });
     expect(loginCardFitsViewport).toBe(true);
 
-    await expect(page.getByTestId('social-login-google')).toHaveAttribute('href', 'https://accounts.google.com/');
-    await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('href', 'https://www.facebook.com/login/');
-    await expect(page.getByTestId('social-login-apple')).toHaveAttribute('href', 'https://appleid.apple.com/');
-    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('href', 'https://id.zalo.me/account');
-    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('target', '_blank');
+    await expect(page.getByTestId('social-login-google')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/google\/start$/);
+    await expect(page.getByTestId('social-login-facebook')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/facebook\/start$/);
+    await expect(page.getByTestId('social-login-apple')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/apple\/start$/);
+    await expect(page.getByTestId('social-login-zalo')).toHaveAttribute('href', /\/api\/svp\/auth\/oauth\/zalo\/start$/);
+    await expect(page.getByTestId('social-login-zalo')).not.toHaveAttribute('target', '_blank');
 
     await page.getByTestId('auth-support-toggle').click();
     const supportMenu = page.getByTestId('auth-support-menu');

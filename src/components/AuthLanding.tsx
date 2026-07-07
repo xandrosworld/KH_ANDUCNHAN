@@ -8,13 +8,13 @@ import { svpApi } from '../services/svpApi';
 import type { SvpConfigGroup } from '../types/svp';
 import LegalModal from './LegalModal';
 import {
-  SvpAppleIcon,
   SvpBoltIcon,
   SvpBriefcaseIcon,
   SvpCrownIcon,
   SvpExpertIcon,
   SvpEyeIcon,
   SvpEyeOffIcon,
+  SvpAppleIcon,
   SvpFacebookIcon,
   SvpGiftIcon,
   SvpGoogleIcon,
@@ -32,6 +32,7 @@ import {
   SvpUserIcon,
   SvpZaloIcon,
 } from './SvpIcons';
+import { getApiBase } from '../services/apiClient';
 
 type AuthPanel = 'login' | 'register';
 
@@ -152,18 +153,22 @@ const benefits = [
   { title: 'Hiệu quả', desc: 'Kết nối đúng người, chốt giao dịch tốt hơn', icon: SvpTargetIcon, color: 'text-orange-600 bg-orange-50' },
 ];
 
-const SOCIAL_LOGIN_LINKS = {
-  google: 'https://accounts.google.com/',
-  facebook: 'https://www.facebook.com/login/',
-  apple: 'https://appleid.apple.com/',
-  zalo: 'https://id.zalo.me/account',
-};
-
 const SUPPORT_PHONE = '0912886794';
 const SUPPORT_PHONE_LABEL = '0912 886 794';
 const SUPPORT_EMAIL = 'contact@sodovanphuc.vn';
 const SUPPORT_ZALO_URL = `https://zalo.me/${SUPPORT_PHONE}`;
 const BRAND_TITLE_FONT = '"UTM Avo", "SVN-Avo", "Avo", "Montserrat", "Inter", "Arial", sans-serif';
+
+const SOCIAL_LOGIN_PROVIDERS = [
+  { provider: 'google', label: 'Google', icon: <SvpGoogleIcon className="h-6 w-6" /> },
+  { provider: 'facebook', label: 'Facebook', icon: <SvpFacebookIcon className="h-6 w-6" /> },
+  { provider: 'apple', label: 'Apple', icon: <SvpAppleIcon className="h-6 w-6 text-black" /> },
+  { provider: 'zalo', label: 'Zalo', icon: <SvpZaloIcon className="h-6 w-6" /> },
+] as const;
+
+function socialLoginUrl(provider: string): string {
+  return `${getApiBase()}/api/svp/auth/oauth/${provider}/start`;
+}
 
 export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps) {
   const navigate = useNavigate();
@@ -577,10 +582,15 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
               </div>
 
               <div className="grid grid-cols-4 gap-2 max-[360px]:gap-1">
-                <SocialButton label="Google" href={SOCIAL_LOGIN_LINKS.google} icon={<SvpGoogleIcon className="h-6 w-6" />} />
-                <SocialButton label="Facebook" href={SOCIAL_LOGIN_LINKS.facebook} icon={<SvpFacebookIcon className="h-6 w-6" />} />
-                <SocialButton label="Apple" href={SOCIAL_LOGIN_LINKS.apple} icon={<SvpAppleIcon className="h-6 w-6 text-black" />} />
-                <SocialButton label="Zalo" href={SOCIAL_LOGIN_LINKS.zalo} icon={<SvpZaloIcon className="h-6 w-6" />} />
+                {SOCIAL_LOGIN_PROVIDERS.map((item) => (
+                  <SocialButton
+                    key={item.provider}
+                    provider={item.provider}
+                    label={item.label}
+                    href={socialLoginUrl(item.provider)}
+                    icon={item.icon}
+                  />
+                ))}
               </div>
 
               <div className="mt-6 hidden rounded-xl border border-[#eadfd7] bg-[#fffaf7] p-4 sm:flex sm:items-start sm:gap-3">
@@ -1022,14 +1032,12 @@ function SupportLink({
   );
 }
 
-function SocialButton({ icon, label, href }: { icon: ReactNode; label: string; href: string }) {
+function SocialButton({ icon, label, href, provider }: { icon: ReactNode; label: string; href: string; provider: string }) {
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       aria-label={`Đăng nhập với ${label}`}
-      data-testid={`social-login-${label.toLowerCase()}`}
+      data-testid={`social-login-${provider}`}
       className="flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#ebe3dd] bg-white px-1 text-[11px] font-bold text-[#4d5562] transition hover:border-[#c40012] hover:text-[#c40012] hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100 sm:min-h-[72px] sm:text-xs"
     >
       {icon}

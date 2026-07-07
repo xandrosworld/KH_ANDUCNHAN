@@ -418,6 +418,605 @@ function svp_v1_login_payload(array $user, array $roles): array {
     ];
 }
 
+function svp_v1_base64url_encode(string $data): string {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function svp_v1_base64url_decode(string $data): string {
+    $padding = strlen($data) % 4;
+    if ($padding > 0) {
+        $data .= str_repeat('=', 4 - $padding);
+    }
+    return (string) base64_decode(strtr($data, '-_', '+/'), true);
+}
+
+function svp_v1_config_value(string $constantName, string $envName = ''): string {
+    if (defined($constantName)) {
+        $value = constant($constantName);
+        if (is_scalar($value) && trim((string) $value) !== '') {
+            return trim((string) $value);
+        }
+    }
+
+    $envValue = getenv($envName !== '' ? $envName : $constantName);
+    return is_string($envValue) ? trim($envValue) : '';
+}
+
+function svp_v1_frontend_url(): string {
+    return rtrim(defined('FRONTEND_URL') && FRONTEND_URL ? (string) FRONTEND_URL : 'https://sodovanphuc.vn', '/');
+}
+
+function svp_v1_current_origin(): string {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $scheme = $isHttps ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'sodovanphuc.vn';
+    return $scheme . '://' . $host;
+}
+
+function svp_v1_oauth_redirect_uri(string $provider): string {
+    return svp_v1_current_origin() . '/api/svp/auth/oauth/' . rawurlencode($provider) . '/callback';
+}
+
+function svp_v1_oauth_callback_redirect(array $params): void {
+    $fragment = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    header('Location: ' . svp_v1_frontend_url() . '/oauth/callback#' . $fragment, true, 302);
+    exit;
+}
+
+function svp_v1_oauth_provider_label(string $provider): string {
+    $labels = [
+        'google' => 'Google',
+        'facebook' => 'Facebook',
+        'apple' => 'Apple',
+        'zalo' => 'Zalo',
+    ];
+    return $labels[$provider] ?? $provider;
+}
+
+function svp_v1_ecdsa_der_to_raw_signature(string $der, int $partLength = 32): string {
+    $offset = 0;
+    if (ord($der[$offset++] ?? "\0") !== 0x30) return '';
+    $seqLength = ord($der[$offset++] ?? "\0");
+    if ($seqLength & 0x80) {
+        $lengthBytes = $seqLength & 0x7f;
+        $seqLength = 0;
+        for ($i = 0; $i < $lengthBytes; $i++) {
+            $seqLength = ($seqLength << 8) + ord($der[$offset++] ?? "\0");
+        }
+    }
+    if (ord($der[$offset++] ?? "\0") !== 0x02) return '';
+    $rLength = ord($der[$offset++] ?? "\0");
+    $r = substr($der, $offset, $rLength);
+    $offset += $rLength;
+    if (ord($der[$offset++] ?? "\0") !== 0x02) return '';
+    $sLength = ord($der[$offset++] ?? "\0");
+    $s = substr($der, $offset, $sLength);
+
+    $r = str_pad(ltrim($r, "\0"), $partLength, "\0", STR_PAD_LEFT);
+    $s = str_pad(ltrim($s, "\0"), $partLength, "\0", STR_PAD_LEFT);
+    if (strlen($r) !== $partLength || strlen($s) !== $partLength) return '';
+    return $r . $s;
+}
+
+function svp_v1_oauth_apple_client_secret(string $clientId): string {
+    $explicitSecret = svp_v1_config_value('SVP_OAUTH_APPLE_CLIENT_SECRET', 'SVP_OAUTH_APPLE_CLIENT_SECRET');
+    if ($explicitSecret !== '') {
+        return $explicitSecret;
+    }
+
+    $teamId = svp_v1_config_value('SVP_OAUTH_APPLE_TEAM_ID', 'SVP_OAUTH_APPLE_TEAM_ID');
+    $keyId = svp_v1_config_value('SVP_OAUTH_APPLE_KEY_ID', 'SVP_OAUTH_APPLE_KEY_ID');
+    $privateKey = svp_v1_config_value('SVP_OAUTH_APPLE_PRIVATE_KEY', 'SVP_OAUTH_APPLE_PRIVATE_KEY');
+    if ($teamId === '' || $keyId === '' || $privateKey === '') {
+        return '';
+    }
+
+    $privateKey = str_replace('\n', "\n", $privateKey);
+    $header = svp_v1_base64url_encode(json_encode(['alg' => 'ES256', 'kid' => $keyId], JSON_UNESCAPED_SLASHES));
+    $payload = svp_v1_base64url_encode(json_encode([
+        'iss' => $teamId,
+        'iat' => time(),
+        'exp' => time() + 86400 * 30,
+        'aud' => 'https://appleid.apple.com',
+        'sub' => $clientId,
+    ], JSON_UNESCAPED_SLASHES));
+
+    $signature = '';
+    $ok = openssl_sign($header . '.' . $payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+    if (!$ok || $signature === '') {
+        error_log('[SVP_OAUTH_APPLE] Cannot sign client secret');
+        return '';
+    }
+    $rawSignature = svp_v1_ecdsa_der_to_raw_signature($signature);
+    if ($rawSignature === '') {
+        error_log('[SVP_OAUTH_APPLE] Cannot convert client secret signature');
+        return '';
+    }
+    return $header . '.' . $payload . '.' . svp_v1_base64url_encode($rawSignature);
+}
+
+function svp_v1_oauth_provider_config(string $provider): ?array {
+    $provider = strtolower(trim($provider));
+    if (!in_array($provider, ['google', 'facebook', 'apple', 'zalo'], true)) {
+        return null;
+    }
+
+    $clientId = svp_v1_config_value('SVP_OAUTH_' . strtoupper($provider) . '_CLIENT_ID', 'SVP_OAUTH_' . strtoupper($provider) . '_CLIENT_ID');
+    $clientSecret = svp_v1_config_value('SVP_OAUTH_' . strtoupper($provider) . '_CLIENT_SECRET', 'SVP_OAUTH_' . strtoupper($provider) . '_CLIENT_SECRET');
+
+    if ($provider === 'apple' && $clientSecret === '' && $clientId !== '') {
+        $clientSecret = svp_v1_oauth_apple_client_secret($clientId);
+    }
+
+    $configs = [
+        'google' => [
+            'provider' => 'google',
+            'label' => 'Google',
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'scope' => 'openid email profile',
+            'authUrl' => 'https://accounts.google.com/o/oauth2/v2/auth',
+            'tokenUrl' => 'https://oauth2.googleapis.com/token',
+            'profileUrl' => 'https://openidconnect.googleapis.com/v1/userinfo',
+        ],
+        'facebook' => [
+            'provider' => 'facebook',
+            'label' => 'Facebook',
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'scope' => 'email,public_profile',
+            'authUrl' => 'https://www.facebook.com/v25.0/dialog/oauth',
+            'tokenUrl' => 'https://graph.facebook.com/v25.0/oauth/access_token',
+            'profileUrl' => 'https://graph.facebook.com/v25.0/me',
+        ],
+        'apple' => [
+            'provider' => 'apple',
+            'label' => 'Apple',
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'scope' => 'name email',
+            'authUrl' => 'https://appleid.apple.com/auth/authorize',
+            'tokenUrl' => 'https://appleid.apple.com/auth/token',
+            'profileUrl' => '',
+        ],
+        'zalo' => [
+            'provider' => 'zalo',
+            'label' => 'Zalo',
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'scope' => '',
+            'authUrl' => 'https://oauth.zaloapp.com/v4/permission',
+            'tokenUrl' => 'https://oauth.zaloapp.com/v4/access_token',
+            'profileUrl' => 'https://graph.zalo.me/v2.0/me',
+        ],
+    ];
+
+    return $configs[$provider];
+}
+
+function svp_v1_oauth_is_configured(array $config): bool {
+    return trim((string) ($config['clientId'] ?? '')) !== '' && trim((string) ($config['clientSecret'] ?? '')) !== '';
+}
+
+function svp_v1_oauth_sign_state(array $state): string {
+    $payload = svp_v1_base64url_encode(json_encode($state, JSON_UNESCAPED_SLASHES));
+    $secret = defined('JWT_SECRET') && JWT_SECRET ? (string) JWT_SECRET : 'svp-oauth-state';
+    $signature = svp_v1_base64url_encode(hash_hmac('sha256', $payload, $secret, true));
+    return $payload . '.' . $signature;
+}
+
+function svp_v1_oauth_verify_state(string $state, string $provider): array {
+    $parts = explode('.', $state);
+    if (count($parts) !== 2) {
+        Response::error('Phien dang nhap xa hoi khong hop le', 400);
+    }
+    [$payload, $signature] = $parts;
+    $secret = defined('JWT_SECRET') && JWT_SECRET ? (string) JWT_SECRET : 'svp-oauth-state';
+    $expected = svp_v1_base64url_encode(hash_hmac('sha256', $payload, $secret, true));
+    if (!hash_equals($expected, $signature)) {
+        Response::error('Phien dang nhap xa hoi khong hop le', 400);
+    }
+
+    $decoded = json_decode(svp_v1_base64url_decode($payload), true);
+    if (!is_array($decoded) || ($decoded['provider'] ?? '') !== $provider || (int) ($decoded['iat'] ?? 0) < time() - 900) {
+        Response::error('Phien dang nhap xa hoi da het han', 400);
+    }
+    return $decoded;
+}
+
+function svp_v1_http_request(string $method, string $url, array $headers = [], ?string $body = null): array {
+    $method = strtoupper($method);
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_HTTPHEADER => $headers,
+        ]);
+        if ($body !== null) {
+            curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+        }
+        $raw = curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
+        if ($raw === false) {
+            return ['status' => 0, 'json' => null, 'raw' => '', 'error' => $error ?: 'HTTP request failed'];
+        }
+        return ['status' => $status, 'json' => json_decode((string) $raw, true), 'raw' => (string) $raw, 'error' => ''];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => $method,
+            'timeout' => 15,
+            'header' => implode("\r\n", $headers),
+            'content' => $body ?? '',
+            'ignore_errors' => true,
+        ],
+    ]);
+    $raw = @file_get_contents($url, false, $context);
+    $status = 0;
+    foreach (($http_response_header ?? []) as $headerLine) {
+        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $headerLine, $m)) {
+            $status = (int) $m[1];
+            break;
+        }
+    }
+    if ($raw === false) {
+        return ['status' => $status, 'json' => null, 'raw' => '', 'error' => 'HTTP request failed'];
+    }
+    return ['status' => $status, 'json' => json_decode((string) $raw, true), 'raw' => (string) $raw, 'error' => ''];
+}
+
+function svp_v1_oauth_exchange_code(array $config, string $code, array $state): array {
+    $provider = (string) $config['provider'];
+    $redirectUri = svp_v1_oauth_redirect_uri($provider);
+
+    if ($provider === 'facebook') {
+        $url = $config['tokenUrl'] . '?' . http_build_query([
+            'client_id' => $config['clientId'],
+            'client_secret' => $config['clientSecret'],
+            'redirect_uri' => $redirectUri,
+            'code' => $code,
+        ], '', '&', PHP_QUERY_RFC3986);
+        $response = svp_v1_http_request('GET', $url, ['Accept: application/json']);
+    } else {
+        $body = [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => $redirectUri,
+        ];
+        $headers = ['Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'];
+
+        if ($provider === 'zalo') {
+            $body['app_id'] = $config['clientId'];
+            $body['code_verifier'] = (string) ($state['codeVerifier'] ?? '');
+            $headers[] = 'secret_key: ' . $config['clientSecret'];
+        } else {
+            $body['client_id'] = $config['clientId'];
+            $body['client_secret'] = $config['clientSecret'];
+        }
+
+        $response = svp_v1_http_request('POST', $config['tokenUrl'], $headers, http_build_query($body, '', '&', PHP_QUERY_RFC3986));
+    }
+
+    if ($response['status'] < 200 || $response['status'] >= 300 || !is_array($response['json'])) {
+        error_log('[SVP_OAUTH_TOKEN] ' . $provider . ' ' . $response['status'] . ' ' . substr((string) $response['raw'], 0, 500));
+        Response::error('Khong lay duoc phien dang nhap tu ' . svp_v1_oauth_provider_label($provider), 502);
+    }
+    return $response['json'];
+}
+
+function svp_v1_oauth_decode_jwt_payload(string $jwt): array {
+    $parts = explode('.', $jwt);
+    if (count($parts) < 2) return [];
+    $payload = json_decode(svp_v1_base64url_decode($parts[1]), true);
+    return is_array($payload) ? $payload : [];
+}
+
+function svp_v1_oauth_fetch_profile(array $config, array $tokens, array $state, array $callbackInput = []): array {
+    $provider = (string) $config['provider'];
+    $accessToken = (string) ($tokens['access_token'] ?? '');
+
+    if ($provider === 'google') {
+        $response = svp_v1_http_request('GET', $config['profileUrl'], [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $accessToken,
+        ]);
+        $data = is_array($response['json']) ? $response['json'] : [];
+        return [
+            'provider' => $provider,
+            'providerUserId' => (string) ($data['sub'] ?? ''),
+            'email' => strtolower(trim((string) ($data['email'] ?? ''))),
+            'fullName' => trim((string) ($data['name'] ?? 'Google User')),
+            'avatar' => (string) ($data['picture'] ?? ''),
+        ];
+    }
+
+    if ($provider === 'facebook') {
+        $url = $config['profileUrl'] . '?' . http_build_query([
+            'fields' => 'id,name,email,picture.type(large)',
+            'access_token' => $accessToken,
+        ], '', '&', PHP_QUERY_RFC3986);
+        $response = svp_v1_http_request('GET', $url, ['Accept: application/json']);
+        $data = is_array($response['json']) ? $response['json'] : [];
+        $picture = $data['picture']['data']['url'] ?? '';
+        return [
+            'provider' => $provider,
+            'providerUserId' => (string) ($data['id'] ?? ''),
+            'email' => strtolower(trim((string) ($data['email'] ?? ''))),
+            'fullName' => trim((string) ($data['name'] ?? 'Facebook User')),
+            'avatar' => (string) $picture,
+        ];
+    }
+
+    if ($provider === 'apple') {
+        $claims = svp_v1_oauth_decode_jwt_payload((string) ($tokens['id_token'] ?? ''));
+        $appleUser = json_decode((string) ($callbackInput['user'] ?? ''), true);
+        $nameParts = [];
+        if (is_array($appleUser) && isset($appleUser['name']) && is_array($appleUser['name'])) {
+            $nameParts[] = (string) ($appleUser['name']['firstName'] ?? '');
+            $nameParts[] = (string) ($appleUser['name']['lastName'] ?? '');
+        }
+        return [
+            'provider' => $provider,
+            'providerUserId' => (string) ($claims['sub'] ?? ''),
+            'email' => strtolower(trim((string) ($claims['email'] ?? ''))),
+            'fullName' => trim(implode(' ', array_filter($nameParts))) ?: 'Apple User',
+            'avatar' => '',
+        ];
+    }
+
+    if ($provider === 'zalo') {
+        $url = $config['profileUrl'] . '?' . http_build_query([
+            'fields' => 'id,name,picture,email',
+        ], '', '&', PHP_QUERY_RFC3986);
+        $response = svp_v1_http_request('GET', $url, [
+            'Accept: application/json',
+            'access_token: ' . $accessToken,
+        ]);
+        $data = is_array($response['json']) ? $response['json'] : [];
+        $picture = is_array($data['picture'] ?? null)
+            ? (string) ($data['picture']['data']['url'] ?? '')
+            : (string) ($data['picture'] ?? '');
+        return [
+            'provider' => $provider,
+            'providerUserId' => (string) ($data['id'] ?? ''),
+            'email' => strtolower(trim((string) ($data['email'] ?? ''))),
+            'fullName' => trim((string) ($data['name'] ?? 'Zalo User')),
+            'avatar' => $picture,
+        ];
+    }
+
+    Response::error('Nha cung cap dang nhap khong hop le', 400);
+}
+
+function svp_v1_ensure_oauth_table(PDO $db): void {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS svp_oauth_accounts (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            provider VARCHAR(30) NOT NULL,
+            provider_user_id VARCHAR(191) NOT NULL,
+            user_id VARCHAR(64) NOT NULL,
+            email VARCHAR(200) DEFAULT NULL,
+            full_name VARCHAR(200) DEFAULT NULL,
+            avatar_url VARCHAR(1000) DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_provider_user (provider, provider_user_id),
+            INDEX idx_user_id (user_id),
+            INDEX idx_oauth_email (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
+function svp_v1_oauth_placeholder_email(string $provider, string $providerUserId): string {
+    return 'oauth-' . $provider . '-' . substr(hash('sha256', $providerUserId), 0, 20) . '@oauth.sodovanphuc.vn';
+}
+
+function svp_v1_oauth_login_or_create(PDO $db, array $profile): array {
+    svp_v1_ensure_account_status_column($db);
+    svp_v1_ensure_profile_columns($db);
+    svp_v1_ensure_oauth_table($db);
+
+    $provider = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($profile['provider'] ?? '')));
+    $providerUserId = trim((string) ($profile['providerUserId'] ?? ''));
+    if ($provider === '' || $providerUserId === '') {
+        Response::error('Khong nhan duoc thong tin tai khoan tu nha cung cap dang nhap', 502);
+    }
+
+    $email = strtolower(trim((string) ($profile['email'] ?? '')));
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $email = '';
+    }
+    $fullName = trim((string) ($profile['fullName'] ?? '')) ?: svp_v1_oauth_provider_label($provider) . ' User';
+    $avatar = trim((string) ($profile['avatar'] ?? ''));
+
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare("
+            SELECT u.*
+            FROM svp_oauth_accounts oa
+            INNER JOIN users u ON u.id = oa.user_id
+            WHERE oa.provider = :provider AND oa.provider_user_id = :providerUserId
+            LIMIT 1
+        ");
+        $stmt->execute(['provider' => $provider, 'providerUserId' => $providerUserId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user && $email !== '') {
+            $stmt = $db->prepare("SELECT * FROM users WHERE email = :email LIMIT 1");
+            $stmt->execute(['email' => $email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if (!$user) {
+            $userId = bin2hex(random_bytes(16));
+            $svpId = svp_v1_generate_svp_id($db);
+            $refCode = svp_v1_generate_referral_code($svpId);
+            $userEmail = $email !== '' ? $email : svp_v1_oauth_placeholder_email($provider, $providerUserId);
+            $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
+
+            $stmt = $db->prepare("
+                INSERT INTO users (id, full_name, email, phone, password_hash, svp_id, referral_code, avatar_url, created_at)
+                VALUES (:id, :fullName, :email, NULL, :passwordHash, :svpId, :refCode, :avatar, NOW())
+            ");
+            $stmt->execute([
+                'id' => $userId,
+                'fullName' => $fullName,
+                'email' => $userEmail,
+                'passwordHash' => $passwordHash,
+                'svpId' => $svpId,
+                'refCode' => $refCode,
+                'avatar' => $avatar,
+            ]);
+
+            $db->prepare("
+                INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_at)
+                VALUES (:uid, 'khach_mua', 'approved', NOW(), NOW())
+            ")->execute(['uid' => $userId]);
+
+            $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        } elseif ($avatar !== '' && empty($user['avatar_url'])) {
+            $db->prepare("UPDATE users SET avatar_url = :avatar WHERE id = :id")->execute(['avatar' => $avatar, 'id' => $user['id']]);
+            $user['avatar_url'] = $avatar;
+        }
+
+        $db->prepare("
+            INSERT INTO svp_oauth_accounts (provider, provider_user_id, user_id, email, full_name, avatar_url)
+            VALUES (:provider, :providerUserId, :userId, :email, :fullName, :avatar)
+            ON DUPLICATE KEY UPDATE
+              user_id = VALUES(user_id),
+              email = VALUES(email),
+              full_name = VALUES(full_name),
+              avatar_url = VALUES(avatar_url),
+              updated_at = NOW()
+        ")->execute([
+            'provider' => $provider,
+            'providerUserId' => $providerUserId,
+            'userId' => $user['id'],
+            'email' => $email !== '' ? $email : null,
+            'fullName' => $fullName,
+            'avatar' => $avatar !== '' ? $avatar : null,
+        ]);
+
+        $roles = svp_v1_get_user_roles($db, $user['id']);
+        if (empty($roles)) {
+            $db->prepare("
+                INSERT IGNORE INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_at)
+                VALUES (:uid, 'khach_mua', 'approved', NOW(), NOW())
+            ")->execute(['uid' => $user['id']]);
+            $roles = svp_v1_get_user_roles($db, $user['id']);
+        }
+
+        $db->commit();
+        return svp_v1_login_payload($user, $roles);
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log('[SVP_OAUTH_LOGIN] ' . $e->getMessage());
+        Response::error('Khong hoan tat duoc dang nhap xa hoi', 500);
+    }
+}
+
+$router->add('GET', '/api/svp/auth/oauth/providers', function () {
+    $items = [];
+    foreach (['google', 'facebook', 'apple', 'zalo'] as $provider) {
+        $config = svp_v1_oauth_provider_config($provider);
+        $items[] = [
+            'provider' => $provider,
+            'label' => svp_v1_oauth_provider_label($provider),
+            'configured' => $config ? svp_v1_oauth_is_configured($config) : false,
+        ];
+    }
+    Response::json(['items' => $items]);
+});
+
+$router->add('GET', '/api/svp/auth/oauth/{provider}/start', function ($params) {
+    $provider = strtolower((string) ($params['provider'] ?? ''));
+    $config = svp_v1_oauth_provider_config($provider);
+    if (!$config) {
+        svp_v1_oauth_callback_redirect(['error' => 'Nha cung cap dang nhap khong hop le']);
+    }
+    if (!svp_v1_oauth_is_configured($config)) {
+        svp_v1_oauth_callback_redirect(['error' => 'Dang nhap ' . svp_v1_oauth_provider_label($provider) . ' chua duoc cau hinh tren hosting.']);
+    }
+
+    $state = [
+        'provider' => $provider,
+        'iat' => time(),
+        'nonce' => bin2hex(random_bytes(16)),
+    ];
+    $params = [
+        'redirect_uri' => svp_v1_oauth_redirect_uri($provider),
+        'response_type' => 'code',
+        'state' => svp_v1_oauth_sign_state($state),
+    ];
+
+    if ($provider === 'zalo') {
+        $codeVerifier = svp_v1_base64url_encode(random_bytes(32));
+        $state['codeVerifier'] = $codeVerifier;
+        $params['state'] = svp_v1_oauth_sign_state($state);
+        $params['app_id'] = $config['clientId'];
+        $params['code_challenge'] = svp_v1_base64url_encode(hash('sha256', $codeVerifier, true));
+        $params['code_challenge_method'] = 'S256';
+    } else {
+        $params['client_id'] = $config['clientId'];
+        $params['scope'] = $config['scope'];
+        if ($provider === 'google') {
+            $params['prompt'] = 'select_account';
+        }
+        if ($provider === 'apple') {
+            $params['response_mode'] = 'form_post';
+        }
+    }
+
+    header('Location: ' . $config['authUrl'] . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986), true, 302);
+    exit;
+});
+
+$svpV1OauthCallback = function ($params) {
+    $provider = strtolower((string) ($params['provider'] ?? ''));
+    $input = array_merge($_GET, $_POST);
+    if (!empty($input['error'])) {
+        svp_v1_oauth_callback_redirect(['error' => (string) ($input['error_description'] ?? $input['error'])]);
+    }
+
+    $state = svp_v1_oauth_verify_state((string) ($input['state'] ?? ''), $provider);
+    $code = trim((string) ($input['code'] ?? ''));
+    if ($code === '') {
+        svp_v1_oauth_callback_redirect(['error' => 'Khong nhan duoc ma xac thuc tu ' . svp_v1_oauth_provider_label($provider)]);
+    }
+
+    $config = svp_v1_oauth_provider_config($provider);
+    if (!$config || !svp_v1_oauth_is_configured($config)) {
+        svp_v1_oauth_callback_redirect(['error' => 'Dang nhap ' . svp_v1_oauth_provider_label($provider) . ' chua duoc cau hinh tren hosting.']);
+    }
+
+    try {
+        $tokens = svp_v1_oauth_exchange_code($config, $code, $state);
+        $profile = svp_v1_oauth_fetch_profile($config, $tokens, $state, $input);
+        $auth = svp_v1_oauth_login_or_create(Database::getInstance(), $profile);
+        if (($auth['status'] ?? 500) !== 200 || empty($auth['data']['token'])) {
+            svp_v1_oauth_callback_redirect(['error' => $auth['data']['error'] ?? 'Tai khoan dang cho phe duyet']);
+        }
+        svp_v1_oauth_callback_redirect(['token' => $auth['data']['token']]);
+    } catch (Throwable $e) {
+        error_log('[SVP_OAUTH_CALLBACK] ' . $provider . ' ' . $e->getMessage());
+        svp_v1_oauth_callback_redirect(['error' => 'Khong hoan tat duoc dang nhap ' . svp_v1_oauth_provider_label($provider)]);
+    }
+};
+
+$router->add('GET', '/api/svp/auth/oauth/{provider}/callback', $svpV1OauthCallback);
+$router->add('POST', '/api/svp/auth/oauth/{provider}/callback', $svpV1OauthCallback);
+
 $router->add('POST', '/api/svp/auth/register', function () {
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);

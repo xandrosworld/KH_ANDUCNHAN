@@ -14,6 +14,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const SelectRolePage = lazy(() => import('./pages/SelectRolePage'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
+            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
             <Route path="/pending-approval" element={<PendingApprovalPage />} />
             <Route path="/cho-duyet" element={<PendingApprovalPage />} />
             <Route path="/select-role" element={<SelectRolePage />} />

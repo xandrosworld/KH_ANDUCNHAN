@@ -23,6 +23,25 @@ Tạo các secret sau:
 - `MATBAO_SSH_PORT`: port SSH, thường là `22`.
 - `MATBAO_WEBROOT`: thư mục public web, mặc định là `/var/www/sodovanphuc/public_html`.
 
+OAuth dang nhap xa hoi la tuy chon, nhung bat buoc phai cau hinh neu muon cac nut Google/Facebook/Apple/Zalo dang nhap that:
+
+- `SVP_OAUTH_GOOGLE_CLIENT_ID`
+- `SVP_OAUTH_GOOGLE_CLIENT_SECRET`
+- `SVP_OAUTH_FACEBOOK_CLIENT_ID`
+- `SVP_OAUTH_FACEBOOK_CLIENT_SECRET`
+- `SVP_OAUTH_ZALO_CLIENT_ID`
+- `SVP_OAUTH_ZALO_CLIENT_SECRET`
+- `SVP_OAUTH_APPLE_CLIENT_ID`
+- `SVP_OAUTH_APPLE_CLIENT_SECRET`
+- Hoac voi Apple: `SVP_OAUTH_APPLE_TEAM_ID`, `SVP_OAUTH_APPLE_KEY_ID`, `SVP_OAUTH_APPLE_PRIVATE_KEY`
+
+Redirect URI can khai bao trong tung provider:
+
+- `https://sodovanphuc.vn/api/svp/auth/oauth/google/callback`
+- `https://sodovanphuc.vn/api/svp/auth/oauth/facebook/callback`
+- `https://sodovanphuc.vn/api/svp/auth/oauth/apple/callback`
+- `https://sodovanphuc.vn/api/svp/auth/oauth/zalo/callback`
+
 ## Tạo SSH key deploy
 
 Tạo key riêng cho GitHub Actions ở máy local:
