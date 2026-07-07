@@ -178,9 +178,16 @@ jobs:
           }
 
           function upsertPhpConstant(name, replacement) {
-            const pattern = new RegExp(`define\\('${name}',\\s*(?:'((?:\\\\'|[^'])*)'|\\d+)\\);`);
+            const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(
+              `define\\(\\s*['"]${escapedName}['"]\\s*,\\s*(?:"(?:\\\\"|[^"])*"|'(?:\\\\'|[^'])*'|\\d+)\\s*\\);`,
+            );
             if (pattern.test(content)) {
               content = content.replace(pattern, replacement);
+              return;
+            }
+            if (/\?>\s*$/.test(content)) {
+              content = content.replace(/\?>\s*$/, `\n${replacement}\n?>`);
               return;
             }
             content += `\n${replacement}\n`;
