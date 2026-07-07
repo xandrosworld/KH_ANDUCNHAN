@@ -162,7 +162,8 @@ jobs:
           };
           const values = {};
           for (const [envName, constantName] of Object.entries(envToConstant)) {
-            if (process.env[envName]) values[constantName] = process.env[envName];
+            const rawValue = process.env[envName];
+            if (rawValue) values[constantName] = rawValue === '__EMPTY__' ? '' : rawValue;
           }
           fs.writeFileSync('.mail-config.json', JSON.stringify(values));
           NODE
@@ -225,11 +226,7 @@ jobs:
           <?php
           header('Content-Type: text/plain; charset=utf-8');
           require_once __DIR__ . '/backend/config/config.php';
-          require_once __DIR__ . '/backend/lib/PHPMailer/Exception.php';
-          require_once __DIR__ . '/backend/lib/PHPMailer/PHPMailer.php';
-          require_once __DIR__ . '/backend/lib/PHPMailer/SMTP.php';
-
-          use PHPMailer\PHPMailer\PHPMailer;
+          require_once __DIR__ . '/backend/lib/Mailer.php';
 
           $to = defined('ADMIN_EMAIL') ? ADMIN_EMAIL : '';
           $from = defined('MAIL_FROM') ? MAIL_FROM : '';
@@ -246,24 +243,14 @@ jobs:
               " to=" . preg_replace('/^(.{2}).+(@.+)$/', '$1***$2', $to) . "\n";
 
           try {
-              $mail = new PHPMailer(true);
-              $mail->isSMTP();
-              $mail->Host = SMTP_HOST;
-              $mail->Port = defined('SMTP_PORT') ? SMTP_PORT : 587;
-              $mail->SMTPAuth = true;
-              $mail->Username = SMTP_USER;
-              $mail->Password = SMTP_PASS;
-              $mail->SMTPSecure = defined('SMTP_SECURE') ? SMTP_SECURE : PHPMailer::ENCRYPTION_STARTTLS;
-              $mail->CharSet = 'UTF-8';
-              $mail->setFrom($from, defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'So Do Van Phuc');
-              $mail->addAddress($to);
-              $mail->Subject = 'SVP deploy mail diagnostic';
-              $mail->Body = '<p>SVP deploy mail diagnostic.</p>';
-              $mail->AltBody = 'SVP deploy mail diagnostic.';
-              $mail->send();
+              $sent = Mailer::send($to, 'SVP deploy mail diagnostic', '<p>SVP deploy mail diagnostic.</p>');
+              if (!$sent) {
+                  echo "MAIL_FAIL Mailer::send returned false\n";
+                  exit(1);
+              }
               echo "MAIL_OK\n";
           } catch (Throwable $e) {
-              echo "MAIL_FAIL " . str_replace([SMTP_PASS, SMTP_USER], ['***', '***'], $e->getMessage()) . "\n";
+              echo "MAIL_FAIL " . str_replace([(defined('SMTP_PASS') ? SMTP_PASS : ''), (defined('SMTP_USER') ? SMTP_USER : '')], ['***', '***'], $e->getMessage()) . "\n";
               exit(1);
           }
           PHP
