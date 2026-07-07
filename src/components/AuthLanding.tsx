@@ -155,7 +155,7 @@ const benefits = [
 
 const SUPPORT_PHONE = '0912886794';
 const SUPPORT_PHONE_LABEL = '0912 886 794';
-const SUPPORT_EMAIL = 'contact@sodovanphuc.vn';
+const SUPPORT_EMAIL = 'info@hocvienvanphuc.edu.vn';
 const SUPPORT_ZALO_URL = `https://zalo.me/${SUPPORT_PHONE}`;
 const BRAND_TITLE_FONT = '"UTM Avo", "SVN-Avo", "Avo", "Montserrat", "Inter", "Arial", sans-serif';
 

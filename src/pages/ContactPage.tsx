@@ -104,7 +104,7 @@ export default function ContactPage() {
 
         {/* Email */}
         <a
-          href="mailto:contact@sodovanphuc.vn"
+          href="mailto:info@hocvienvanphuc.edu.vn"
           className="bg-[#15151D] rounded-xl border border-white/[0.085] p-5 flex items-center gap-4 hover:border-[#B88717]/40 transition-colors group min-w-0"
         >
           <div className="w-12 h-12 rounded-full bg-[#B88717]/10 flex items-center justify-center shrink-0">
@@ -115,7 +115,7 @@ export default function ContactPage() {
               Email
             </p>
             <p className="text-[#F5F0E6] font-semibold text-sm sm:text-base group-hover:text-[#F6D37A] transition-colors break-words">
-              contact@sodovanphuc.vn
+              info@hocvienvanphuc.edu.vn
             </p>
           </div>
         </a>
@@ -131,7 +131,7 @@ export default function ContactPage() {
           {t('contact.callNow')}
         </a>
         <a
-          href="mailto:contact@sodovanphuc.vn"
+          href="mailto:info@hocvienvanphuc.edu.vn"
           className="flex-1 flex items-center justify-center gap-2 bg-[#15151D] border border-[#B88717]/40 hover:border-[#B88717] text-[#F6D37A] font-semibold py-3.5 px-6 rounded-xl transition-colors text-center min-w-0"
         >
           <Mail className="w-4 h-4 flex-shrink-0" />

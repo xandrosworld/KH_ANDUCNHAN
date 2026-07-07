@@ -634,7 +634,7 @@ test.describe('V1 core workflows', () => {
     await expect(supportMenu).toBeVisible();
     await expect(supportMenu.getByRole('link', { name: /Goi hotline|Gọi hotline/i })).toHaveAttribute('href', 'tel:0912886794');
     await expect(supportMenu.getByRole('link', { name: /Nhan Zalo|Nhắn Zalo/i })).toHaveAttribute('href', 'https://zalo.me/0912886794');
-    await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveAttribute('href', /mailto:contact@sodovanphuc\.vn/);
+    await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveAttribute('href', /mailto:info@hocvienvanphuc\.edu\.vn/);
 
     await expectUsablePage(page, testInfo, 'workflow-auth-support-social');
   });
