@@ -270,7 +270,7 @@ const roleRoutes = [
   { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
-  { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha-tong', '/chuyen-gia/kho-nha-rieng', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chuyen_vien', paths: ['/chuyen-vien', '/chuyen-vien/khach-hang', '/chuyen-vien/them-khach', '/chuyen-vien/tim-nha', '/chuyen-vien/lich-xem', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'hoc_vien', paths: ['/hoc-vien', '/hoc-vien/viec-can-lam', '/hoc-vien/dao-tao', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'ctv_khach', paths: ['/ctv', '/ctv/cong-viec', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
@@ -896,7 +896,7 @@ test.describe('V1 core workflows', () => {
     await page.getByRole('button', { name: /^AI viết$/ }).click();
     await expect(page.locator('textarea:visible').first()).toHaveValue(/Mo ta AI/);
     await page.getByRole('button', { name: /Đăng nhà|lên bài|Gửi duyệt/i }).click();
-    await page.waitForURL(/\/chuyen-gia\/kho-nha$/);
+    await page.waitForURL(/\/chuyen-gia\/kho-nha-rieng$/);
     await expectUsablePage(page, testInfo, 'workflow-expert-property');
   });
 

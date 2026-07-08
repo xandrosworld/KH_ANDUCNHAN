@@ -1,34 +1,45 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Clock, FolderOpen, Home, Plus, Search, TrendingUp } from 'lucide-react';
+import { Clock, FolderOpen, Home, Plus, Search, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { svpAxios as api } from '../../services/svpAxios';
-import { areaText, formatVndShort, isPropertyActive, isPropertyPending, isPropertySold, propertyStatusLabel } from '../../utils/svpFormat';
+import { areaText, formatVndShort, isPropertyActive, isPropertyPending, propertyStatusLabel } from '../../utils/svpFormat';
 
 export default function ExpertDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [properties, setProperties] = useState<any[]>([]);
+  const [myProperties, setMyProperties] = useState<any[]>([]);
+  const [allProperties, setAllProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/properties', { params: { createdBy: user?.id } })
-      .then((response) => setProperties(response.data?.items || []))
-      .catch(() => setProperties([]))
+    setLoading(true);
+    Promise.all([
+      api.get('/properties'),
+      api.get('/properties', { params: { createdBy: user?.id } }),
+    ])
+      .then(([allResponse, mineResponse]) => {
+        setAllProperties(allResponse.data?.items || []);
+        setMyProperties(mineResponse.data?.items || []);
+      })
+      .catch(() => {
+        setAllProperties([]);
+        setMyProperties([]);
+      })
       .finally(() => setLoading(false));
   }, [user?.id]);
 
   const stats = useMemo(() => ({
-    total: properties.length,
-    active: properties.filter((item) => isPropertyActive(item.statusId || item.status)).length,
-    sold: properties.filter((item) => isPropertySold(item.statusId || item.status)).length,
-    pending: properties.filter((item) => isPropertyPending(item.statusId || item.status)).length,
-  }), [properties]);
+    total: allProperties.length,
+    mine: myProperties.length,
+    active: myProperties.filter((item) => isPropertyActive(item.statusId || item.status)).length,
+    pending: myProperties.filter((item) => isPropertyPending(item.statusId || item.status)).length,
+  }), [allProperties, myProperties]);
 
   const cards = [
-    { label: 'Tổng nguồn', value: stats.total, icon: Home, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Kho tổng', value: stats.total, icon: FolderOpen, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Kho riêng', value: stats.mine, icon: Home, color: 'bg-red-50 text-[#c40012]' },
     { label: 'Đang bán', value: stats.active, icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Đã bán', value: stats.sold, icon: CheckCircle, color: 'bg-orange-50 text-orange-600' },
     { label: 'Chờ duyệt', value: stats.pending, icon: Clock, color: 'bg-amber-50 text-amber-700' },
   ];
 
@@ -58,10 +69,11 @@ export default function ExpertDashboardPage() {
         ))}
       </section>
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-3">
+      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ActionCard icon={Plus} title="Đăng nhà mới" desc="Nhập nguồn nhà theo quy trình" onClick={() => navigate('/chuyen-gia/dang-nha')} primary />
         <ActionCard icon={Search} title="Kiểm tra trùng" desc="Tự cảnh báo theo SĐT, địa chỉ, sổ" onClick={() => navigate('/chuyen-gia/dang-nha')} />
-        <ActionCard icon={FolderOpen} title="Kho nhà" desc="Xem các nguồn đang phụ trách" onClick={() => navigate('/chuyen-gia/kho-nha')} />
+        <ActionCard icon={FolderOpen} title="Kho nhà tổng" desc="Xem nguồn trong hệ thống theo phân quyền" onClick={() => navigate('/chuyen-gia/kho-nha-tong')} />
+        <ActionCard icon={Home} title="Kho nhà riêng" desc="Nguồn cá nhân đã nhập hoặc phụ trách" onClick={() => navigate('/chuyen-gia/kho-nha-rieng')} />
       </section>
 
       <section className="mt-6">
@@ -70,14 +82,14 @@ export default function ExpertDashboardPage() {
             <h2 className="text-lg font-black text-[#25202a]">Nguồn gần đây</h2>
             <p className="text-sm font-medium text-[#747b88]">Các nhà bạn đã nhập hoặc đang phụ trách.</p>
           </div>
-          <button onClick={() => navigate('/chuyen-gia/kho-nha')} className="text-sm font-black text-[#c40012]">Xem kho</button>
+          <button onClick={() => navigate('/chuyen-gia/kho-nha-rieng')} className="text-sm font-black text-[#c40012]">Xem kho riêng</button>
         </div>
 
         {loading ? (
           <div className="grid gap-3 lg:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => <PropertySkeleton key={index} />)}
           </div>
-        ) : properties.length === 0 ? (
+        ) : myProperties.length === 0 ? (
           <div className="rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-gray-100">
             <Home className="mx-auto h-12 w-12 text-red-200" />
             <p className="mt-3 font-black text-[#25202a]">Chưa có nguồn nhà</p>
@@ -89,7 +101,7 @@ export default function ExpertDashboardPage() {
           </div>
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
-            {properties.slice(0, 6).map((item) => <ExpertPropertyCard key={item.id} item={item} onClick={() => navigate(`/chuyen-gia/nha/${item.id}`)} />)}
+            {myProperties.slice(0, 6).map((item) => <ExpertPropertyCard key={item.id} item={item} onClick={() => navigate(`/chuyen-gia/nha/${item.id}`)} />)}
           </div>
         )}
       </section>

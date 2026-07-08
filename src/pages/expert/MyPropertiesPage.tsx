@@ -15,23 +15,33 @@ const STATUS_MAP: Record<string, string[]> = {
   'Ẩn': ['st_hidden', 'hidden'],
 };
 
-export default function ExpertMyPropertiesPage() {
+type ExpertPropertyScope = 'all' | 'mine';
+
+export default function ExpertMyPropertiesPage({ scope = 'mine' }: { scope?: ExpertPropertyScope }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const createdState = location.state as { createdPropertyId?: string; createdPropertyCode?: string; createdPropertyTitle?: string; createdProperty?: any } | null;
   const createdProperty = createdState?.createdProperty;
+  const isAllScope = scope === 'all';
+  const pageTitle = isAllScope ? 'Kho nhà tổng' : 'Kho nhà riêng';
+  const pageDesc = isAllScope
+    ? 'Xem các nguồn trong hệ thống mà tài khoản Chuyên gia được phân quyền truy cập.'
+    : 'Quản lý các nguồn nhà cá nhân do bạn đã nhập hoặc đang phụ trách.';
   const [tab, setTab] = useState('Tất cả');
   const [items, setItems] = useState<any[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/properties', { params: { createdBy: user?.id } })
-      .then((response) => setItems(mergeCreatedProperty(response.data?.items || [], createdProperty)))
-      .catch(() => setItems(createdProperty ? [createdProperty] : []))
+    setLoading(true);
+    const params = isAllScope ? {} : { createdBy: user?.id };
+    const optimisticCreated = isAllScope ? undefined : createdProperty;
+    api.get('/properties', { params })
+      .then((response) => setItems(mergeCreatedProperty(response.data?.items || [], optimisticCreated)))
+      .catch(() => setItems(optimisticCreated ? [optimisticCreated] : []))
       .finally(() => setLoading(false));
-  }, [user?.id, createdProperty]);
+  }, [user?.id, createdProperty, isAllScope]);
 
   const filtered = useMemo(() => {
     const tabbed = tab === 'Tất cả' ? items : items.filter((item) => STATUS_MAP[tab]?.includes(item.statusId || item.status));
@@ -60,12 +70,33 @@ export default function ExpertMyPropertiesPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chuyên gia</p>
-            <h1 className="mt-1 text-2xl font-black text-[#25202a]">Kho nhà</h1>
-            <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">Quản lý các nguồn nhà đã nhập hoặc đang phụ trách.</p>
+            <h1 className="mt-1 text-2xl font-black text-[#25202a]">{pageTitle}</h1>
+            <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">{pageDesc}</p>
           </div>
           <button onClick={() => navigate('/chuyen-gia/dang-nha')} className="hidden min-h-11 items-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white sm:inline-flex">
             <Plus className="h-4 w-4" />
             Đăng nhà
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => navigate('/chuyen-gia/kho-nha-tong')}
+            className={`min-h-11 rounded-2xl px-4 text-sm font-black transition ${
+              isAllScope ? 'bg-[#25202a] text-white' : 'bg-[#faf7f5] text-[#747b88] ring-1 ring-gray-100 hover:text-[#25202a]'
+            }`}
+          >
+            Kho nhà tổng
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/chuyen-gia/kho-nha-rieng')}
+            className={`min-h-11 rounded-2xl px-4 text-sm font-black transition ${
+              !isAllScope ? 'bg-[#c40012] text-white' : 'bg-[#faf7f5] text-[#747b88] ring-1 ring-gray-100 hover:text-[#25202a]'
+            }`}
+          >
+            Kho nhà riêng cá nhân
           </button>
         </div>
 
@@ -82,7 +113,7 @@ export default function ExpertMyPropertiesPage() {
 
       {createdState?.createdPropertyId ? (
         <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold leading-6 text-emerald-700">
-          Đã đăng nguồn {createdState.createdPropertyCode || createdState.createdPropertyTitle || 'vừa đăng'}. Nguồn đã nằm trong kho nhà cá nhân và admin/kho tổng có thể xem để xử lý.
+          Đã đăng nguồn {createdState.createdPropertyCode || createdState.createdPropertyTitle || 'vừa đăng'}. Nguồn đã nằm trong kho nhà riêng cá nhân và kho nhà tổng có thể xem theo phân quyền.
         </div>
       ) : null}
 
@@ -102,7 +133,9 @@ export default function ExpertMyPropertiesPage() {
         <div className="rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-gray-100">
           <Home className="mx-auto h-12 w-12 text-red-200" />
           <p className="mt-3 font-black text-[#25202a]">Chưa có nguồn nhà phù hợp</p>
-          <p className="mt-1 text-sm font-medium text-[#747b88]">Thử đổi từ khóa hoặc đăng nguồn mới.</p>
+          <p className="mt-1 text-sm font-medium text-[#747b88]">
+            {isAllScope ? 'Thử đổi từ khóa hoặc kiểm tra lại quyền xem nguồn trong hệ thống.' : 'Thử đổi từ khóa hoặc đăng nguồn mới vào kho riêng cá nhân.'}
+          </p>
         </div>
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">

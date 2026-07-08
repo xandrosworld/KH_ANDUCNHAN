@@ -406,7 +406,7 @@ export default function ExpertAddPropertyPage() {
         enforceDuplicateRule: true,
       });
       await uploadMediaGroups(property.id);
-      navigate('/chuyen-gia/kho-nha', {
+      navigate('/chuyen-gia/kho-nha-rieng', {
         state: {
           createdPropertyId: property.id,
           createdPropertyCode: property.code,

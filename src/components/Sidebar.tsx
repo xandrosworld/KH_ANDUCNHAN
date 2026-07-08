@@ -74,7 +74,8 @@ function getMenuForRole(role: string): MenuItem[] {
     case 'chuyen_gia':
       return [
         { path: '/chuyen-gia', label: 'Trang chủ', icon: Home },
-        { path: '/chuyen-gia/kho-nha', label: 'Kho nhà', icon: Warehouse },
+        { path: '/chuyen-gia/kho-nha-tong', label: 'Kho nhà tổng', icon: Warehouse },
+        { path: '/chuyen-gia/kho-nha-rieng', label: 'Kho nhà riêng', icon: Home },
         { path: '/chuyen-gia/dang-nha', label: 'Đăng nhà', icon: PlusCircle },
         { path: '/notifications', label: 'Thông báo', icon: Bell },
       ];
@@ -113,6 +114,13 @@ function getMenuForRole(role: string): MenuItem[] {
   }
 }
 
+function isActivePath(currentPath: string, itemPath: string) {
+  if (currentPath === itemPath) return true;
+  if (itemPath === '/') return false;
+  const depth = itemPath.split('/').filter(Boolean).length;
+  return depth > 1 && currentPath.startsWith(itemPath + '/');
+}
+
 const Sidebar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -142,7 +150,7 @@ const Sidebar = () => {
       <nav className="flex-1 overflow-y-auto px-3 py-3">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'));
+          const isActive = isActivePath(location.pathname, item.path);
           return (
             <Link
               key={item.path}

@@ -74,7 +74,8 @@ function getTabsForRole(role: string): NavTab[] {
     case 'chuyen_gia':
       return [
         { path: '/chuyen-gia', label: 'Trang chủ', icon: Home },
-        { path: '/chuyen-gia/kho-nha', label: 'Kho nhà', icon: Warehouse },
+        { path: '/chuyen-gia/kho-nha-tong', label: 'Kho tổng', icon: Warehouse },
+        { path: '/chuyen-gia/kho-nha-rieng', label: 'Kho riêng', icon: Home },
         { path: '/chuyen-gia/dang-nha', label: 'Đăng nhà', icon: PlusCircle },
         { path: '/notifications', label: 'Thông báo', icon: Bell },
         { path: '/profile', label: 'Tài khoản', icon: User },
@@ -119,6 +120,13 @@ function getTabsForRole(role: string): NavTab[] {
   }
 }
 
+function isActivePath(currentPath: string, itemPath: string) {
+  if (currentPath === itemPath) return true;
+  if (itemPath === '/') return false;
+  const depth = itemPath.split('/').filter(Boolean).length;
+  return depth > 1 && currentPath.startsWith(itemPath + '/');
+}
+
 const BottomNav = () => {
   const location = useLocation();
   const { user } = useAuth();
@@ -126,14 +134,15 @@ const BottomNav = () => {
   const baseTabs = getTabsForRole(activeRole);
   const systemTab: NavTab = { path: '/xay-dung-he-thong', label: 'Hệ thống', icon: Network };
   const aiTab: NavTab = { path: '/ai', label: 'AI', icon: Bot };
+  const shouldAppendUtilityTabs = activeRole !== 'chuyen_gia';
   const hasSystem = baseTabs.some((tab) => tab.path === systemTab.path);
   const hasAi = baseTabs.some((tab) => tab.path === aiTab.path);
-  const withSystem = hasSystem ? baseTabs : [
+  const withSystem = !shouldAppendUtilityTabs || hasSystem ? baseTabs : [
     ...baseTabs.filter((tab) => tab.path !== '/profile'),
     systemTab,
     ...baseTabs.filter((tab) => tab.path === '/profile'),
   ];
-  const withAi = hasAi ? withSystem : [
+  const withAi = !shouldAppendUtilityTabs || hasAi ? withSystem : [
     ...withSystem.filter((tab) => tab.path !== '/profile'),
     aiTab,
     ...withSystem.filter((tab) => tab.path === '/profile'),
@@ -157,7 +166,7 @@ const BottomNav = () => {
       <div className="grid h-16 items-center px-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = location.pathname === tab.path || (tab.path !== '/' && location.pathname.startsWith(tab.path + '/'));
+          const isActive = isActivePath(location.pathname, tab.path);
           return (
             <Link
               key={tab.path}

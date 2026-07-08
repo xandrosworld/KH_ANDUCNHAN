@@ -113,7 +113,9 @@ export default function App() {
 
                 <Route path="/chuyen-gia" element={<ExpertDashboard />} />
                 <Route path="/chuyen-gia/dang-nha" element={<ExpertAddProperty />} />
-                <Route path="/chuyen-gia/kho-nha" element={<ExpertMyProperties />} />
+                <Route path="/chuyen-gia/kho-nha" element={<Navigate to="/chuyen-gia/kho-nha-rieng" replace />} />
+                <Route path="/chuyen-gia/kho-nha-tong" element={<ExpertMyProperties scope="all" />} />
+                <Route path="/chuyen-gia/kho-nha-rieng" element={<ExpertMyProperties scope="mine" />} />
                 <Route path="/chuyen-gia/nha/:id" element={<ExpertPropertyDetail />} />
 
                 <Route path="/chuyen-vien" element={<SpecialistDashboard />} />

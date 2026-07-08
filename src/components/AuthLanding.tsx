@@ -490,8 +490,24 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         <div className="absolute inset-x-0 top-[250px] h-36 bg-gradient-to-b from-transparent to-[#fff8f2] sm:top-[330px] sm:h-48" />
 
         <div className="relative mx-auto w-full max-w-[1180px] px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 lg:px-8">
-          <div className="mb-1 flex items-center justify-between sm:mb-2">
+          <div className="mb-1 flex items-center justify-between gap-2 sm:mb-2">
             <div className="h-10 w-10" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/gioi-thieu')}
+                className="inline-flex h-9 items-center rounded-full bg-white/95 px-3 text-xs font-black text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:px-4 sm:text-sm"
+              >
+                Giới thiệu
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/tin-tuc')}
+                className="inline-flex h-9 items-center rounded-full bg-white/95 px-3 text-xs font-black text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:px-4 sm:text-sm"
+              >
+                Tin tức
+              </button>
+            </div>
             <div className="relative">
               <button
                 type="button"
