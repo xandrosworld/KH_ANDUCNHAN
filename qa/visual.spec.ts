@@ -567,6 +567,15 @@ test.describe('V1 public pages', () => {
       expect(errors).toEqual([]);
     });
   }
+
+  test('news page exposes the full thổ cư article set', async ({ page }) => {
+    await installMocks(page, 'admin', false);
+    await page.goto('/tin-tuc', { waitUntil: 'networkidle' });
+
+    await expect(page.getByTestId('public-news-article')).toHaveCount(20);
+    await expect(page.locator('body')).toContainText('Kiểm tra sổ đỏ trước khi đi xem nhà');
+    await expect(page.locator('body')).toContainText('Dữ liệu minh bạch giúp giao dịch bớt rủi ro');
+  });
 });
 
 test.describe('V1 role pages', () => {

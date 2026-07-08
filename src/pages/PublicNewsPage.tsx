@@ -59,7 +59,7 @@ export default function PublicNewsPage() {
               <NewsSkeleton />
             </>
           ) : posts.map((post) => (
-            <article key={post.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-red-100">
+            <article key={post.id} data-testid="public-news-article" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-red-100">
               {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="h-36 w-full object-cover" /> : null}
               <div className="p-4">
                 <h2 className="font-black leading-6">{post.title}</h2>
