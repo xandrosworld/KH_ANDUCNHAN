@@ -15,7 +15,7 @@ interface AboutContent {
 const fallbackAbout: AboutContent = {
   title: 'Sổ Đỏ Vạn Phúc',
   subtitle: 'Hệ thống hỗ trợ quản lý nguồn nhà, khách hàng, lịch xem, giới thiệu và dữ liệu vận hành.',
-  body: 'Mục tiêu của bản V1 là giúp người dùng nhập liệu nhanh, theo dõi việc cần làm rõ ràng và giảm thao tác thừa trong công việc hằng ngày.',
+  body: 'Sổ Đỏ Vạn Phúc giúp người dùng nhập liệu nhanh, theo dõi việc cần làm rõ ràng và giảm thao tác thừa trong công việc hằng ngày.',
   imageUrl: '/logo11.png',
   videoUrl: '',
   linkUrl: '',
@@ -78,7 +78,7 @@ export default function PublicAboutPage() {
           {[
             { icon: Building2, title: 'Quản lý nguồn nhà', text: 'Đăng nguồn, lưu thông tin chủ nhà, trạng thái và phân quyền xem.' },
             { icon: CheckCircle2, title: 'Vận hành gọn', text: 'Ưu tiên màn hình nhỏ, thao tác ít, nhìn nhanh được việc cần làm.' },
-            { icon: ShieldCheck, title: 'Dữ liệu rõ ràng', text: 'Lưu lịch sử, người giới thiệu, phân vai trò và cấu trúc để mở rộng sau.' },
+            { icon: ShieldCheck, title: 'Dữ liệu rõ ràng', text: 'Lưu lịch sử, người giới thiệu, phân vai trò và quyền xem theo từng nhu cầu sử dụng.' },
           ].map((item) => {
             const Icon = item.icon;
             return (

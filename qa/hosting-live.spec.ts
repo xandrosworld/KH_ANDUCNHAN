@@ -37,6 +37,11 @@ const FORBIDDEN_TEXT = [
   'database/skeleton',
   'Create Account',
   'Sign In',
+  'Bản V1',
+  'admin xem',
+  'phase cấu hình',
+  'mở rộng sau',
+  'vận hành cơ bản',
 ];
 
 function watchRuntimeFailures(page: Page) {

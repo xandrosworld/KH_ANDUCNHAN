@@ -873,7 +873,7 @@ export default function AdminConfigPage() {
             <div className="min-w-0">
               <h2 className="text-lg font-black text-[#25202a]">Giới thiệu / Tin tức</h2>
               <p className="mt-1 text-sm font-medium leading-6 text-[#667085]">
-                Bản V1 cho phép sửa nội dung đơn giản: tiêu đề, nội dung, ảnh, video/link và bật tắt hiển thị.
+                Sửa nội dung công khai: tiêu đề, nội dung, ảnh, video/link và trạng thái hiển thị.
               </p>
             </div>
           </div>
@@ -1058,7 +1058,7 @@ export default function AdminConfigPage() {
                     </div>
                   ) : group.id === 'property_field_labels' ? (
                     <div className="my-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-[#735a18]">
-                      V1 cho phép sửa tên và ẩn/hiện các trường không bắt buộc. Tạo field hoàn toàn mới được tách sang phase cấu hình nâng cao để tránh phá form nghiệp vụ.
+                      Có thể sửa tên và ẩn/hiện các trường không bắt buộc. Trường hoàn toàn mới nên được cấu hình riêng để không ảnh hưởng form nghiệp vụ đang dùng.
                     </div>
                   ) : null}
                   {[...(group.options || [])].sort((first, second) => first.sortOrder - second.sortOrder).map((option, optionIndex, sortedOptions) => {

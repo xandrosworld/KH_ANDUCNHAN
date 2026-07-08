@@ -14,8 +14,8 @@ interface NewsPost {
 
 const fallbackPosts: NewsPost[] = [
   {
-    id: 'fallback-v1',
-    title: 'Bản V1 ưu tiên thao tác nhanh trên điện thoại',
+    id: 'fallback-mobile',
+    title: 'Thao tác nhanh trên điện thoại',
     body: 'Các màn đăng nhập, đăng ký, đăng nhà và kho nhà được tinh gọn để người dùng xử lý việc chính với ít lần bấm hơn.',
     imageUrl: '',
     videoUrl: '',
@@ -24,7 +24,7 @@ const fallbackPosts: NewsPost[] = [
   {
     id: 'fallback-expert',
     title: 'Chuyên gia có thể gửi nguồn nhà chờ duyệt',
-    body: 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà cá nhân, kèm trạng thái để admin xem chi tiết và phê duyệt.',
+    body: 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà riêng, kèm trạng thái để đội ngũ quản lý xem chi tiết và phê duyệt.',
     imageUrl: '',
     videoUrl: '',
     linkUrl: '',
@@ -81,9 +81,9 @@ export default function PublicNewsPage() {
             <Newspaper className="h-6 w-6" />
           </div>
           <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-[#c40012]">Tin tức</p>
-          <h1 className="mt-2 text-2xl font-black leading-tight sm:text-4xl">Cập nhật vận hành</h1>
+          <h1 className="mt-2 text-2xl font-black leading-tight sm:text-4xl">Tin tức Sổ Đỏ Vạn Phúc</h1>
           <p className="mt-3 text-sm font-semibold leading-7 text-[#656b76]">
-            Khu vực hiển thị nhanh các thông tin giới thiệu, cập nhật hệ thống và ghi chú vận hành cơ bản.
+            Cập nhật nhanh các thông tin mới, hướng dẫn sử dụng và hoạt động của hệ thống.
           </p>
         </section>
 

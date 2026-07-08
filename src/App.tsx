@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
@@ -62,88 +62,123 @@ const AdminCustomers = lazy(() => import('./pages/admin/CustomersPage'));
 const AdminConfig = lazy(() => import('./pages/admin/ConfigPage'));
 const AdminAudit = lazy(() => import('./pages/admin/AuditPage'));
 
+const routePrefetchers = [
+  () => import('./pages/RegisterPage'),
+  () => import('./pages/ForgotPasswordPage'),
+  () => import('./pages/PublicAboutPage'),
+  () => import('./pages/PublicNewsPage'),
+  () => import('./pages/SelectRolePage'),
+  () => import('./pages/ProfilePage'),
+  () => import('./pages/NotificationsPage'),
+  () => import('./pages/expert/DashboardPage'),
+  () => import('./pages/expert/AddPropertyPage'),
+  () => import('./pages/expert/MyPropertiesPage'),
+  () => import('./pages/admin/DashboardPage'),
+  () => import('./pages/admin/UsersPage'),
+  () => import('./pages/admin/PropertiesPage'),
+  () => import('./pages/admin/ConfigPage'),
+];
+
+function AppRoutes() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      routePrefetchers.forEach((load) => {
+        load().catch(() => undefined);
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <Suspense key={location.pathname} fallback={<LoadingScreen />}>
+      <Routes location={location}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/sign-in" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/dang-ky" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+        <Route path="/pending-approval" element={<PendingApprovalPage />} />
+        <Route path="/cho-duyet" element={<PendingApprovalPage />} />
+        <Route path="/select-role" element={<SelectRolePage />} />
+        <Route path="/chon-vai-tro" element={<SelectRolePage />} />
+        <Route path="/dieu-khoan-su-dung" element={<LegalPage type="terms" />} />
+        <Route path="/terms" element={<LegalPage type="terms" />} />
+        <Route path="/chinh-sach-bao-mat" element={<LegalPage type="privacy" />} />
+        <Route path="/privacy" element={<LegalPage type="privacy" />} />
+        <Route path="/gioi-thieu" element={<PublicAboutPage />} />
+        <Route path="/gioi-thieu-cong-ty" element={<PublicAboutPage />} />
+        <Route path="/tin-tuc" element={<PublicNewsPage />} />
+        <Route path="/nha/:id" element={<PropertyDetailPage />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/xay-dung-he-thong" element={<SystemBuilderPage />} />
+            <Route path="/he-thong" element={<SystemBuilderPage />} />
+            <Route path="/ai" element={<AiAssistantPage />} />
+            <Route path="/tro-ly-ai" element={<AiAssistantPage />} />
+
+            <Route path="/chu-nha" element={<OwnerDashboard />} />
+            <Route path="/chu-nha/gui-ban" element={<OwnerSubmitProperty />} />
+            <Route path="/chu-nha/nha-cua-toi" element={<OwnerMyProperties />} />
+
+            <Route path="/khach-mua" element={<BuyerDashboard />} />
+            <Route path="/khach-mua/tim-nha" element={<BuyerSearch />} />
+            <Route path="/khach-mua/yeu-thich" element={<BuyerFavorites />} />
+
+            <Route path="/hoc-vien" element={<StudentDashboard />} />
+            <Route path="/hoc-vien/viec-can-lam" element={<StudentDashboard />} />
+            <Route path="/hoc-vien/dao-tao" element={<StudentDashboard />} />
+
+            <Route path="/chuyen-gia" element={<ExpertDashboard />} />
+            <Route path="/chuyen-gia/dang-nha" element={<ExpertAddProperty />} />
+            <Route path="/chuyen-gia/kho-nha" element={<Navigate to="/chuyen-gia/kho-nha-rieng" replace />} />
+            <Route path="/chuyen-gia/kho-nha-tong" element={<ExpertMyProperties scope="all" />} />
+            <Route path="/chuyen-gia/kho-nha-rieng" element={<ExpertMyProperties scope="mine" />} />
+            <Route path="/chuyen-gia/nha/:id" element={<ExpertPropertyDetail />} />
+
+            <Route path="/chuyen-vien" element={<SpecialistDashboard />} />
+            <Route path="/chuyen-vien/khach-hang" element={<SpecialistCustomers />} />
+            <Route path="/chuyen-vien/them-khach" element={<SpecialistAddCustomer />} />
+            <Route path="/chuyen-vien/tim-nha" element={<SpecialistSearchProperty />} />
+            <Route path="/chuyen-vien/lich-xem" element={<SpecialistSchedule />} />
+
+            <Route path="/ctv" element={<CollabDashboard />} />
+            <Route path="/ctv/cong-viec" element={<CollabWork />} />
+
+            <Route path="/nguoi-gioi-thieu" element={<ReferrerDashboard />} />
+            <Route path="/nguoi-gioi-thieu/ma-gioi-thieu" element={<ReferrerCode />} />
+            <Route path="/ma-gioi-thieu" element={<ReferrerCode />} />
+
+            <Route path="/quan-tri" element={<AdminDashboard />} />
+            <Route path="/quan-tri/nguoi-dung" element={<AdminUsers />} />
+            <Route path="/quan-tri/duyet-vai-tro" element={<AdminRoleApprovals />} />
+            <Route path="/quan-tri/nha" element={<AdminProperties />} />
+            <Route path="/quan-tri/khach-hang" element={<AdminCustomers />} />
+            <Route path="/quan-tri/cau-hinh" element={<AdminConfig />} />
+            <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Suspense fallback={<LoadingScreen />}>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/sign-in" element={<HomePage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dang-ky" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
-            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-            <Route path="/pending-approval" element={<PendingApprovalPage />} />
-            <Route path="/cho-duyet" element={<PendingApprovalPage />} />
-            <Route path="/select-role" element={<SelectRolePage />} />
-            <Route path="/chon-vai-tro" element={<SelectRolePage />} />
-            <Route path="/dieu-khoan-su-dung" element={<LegalPage type="terms" />} />
-            <Route path="/terms" element={<LegalPage type="terms" />} />
-            <Route path="/chinh-sach-bao-mat" element={<LegalPage type="privacy" />} />
-            <Route path="/privacy" element={<LegalPage type="privacy" />} />
-            <Route path="/gioi-thieu" element={<PublicAboutPage />} />
-            <Route path="/gioi-thieu-cong-ty" element={<PublicAboutPage />} />
-            <Route path="/tin-tuc" element={<PublicNewsPage />} />
-            <Route path="/nha/:id" element={<PropertyDetailPage />} />
-
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppLayout />}>
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/xay-dung-he-thong" element={<SystemBuilderPage />} />
-                <Route path="/he-thong" element={<SystemBuilderPage />} />
-                <Route path="/ai" element={<AiAssistantPage />} />
-                <Route path="/tro-ly-ai" element={<AiAssistantPage />} />
-
-                <Route path="/chu-nha" element={<OwnerDashboard />} />
-                <Route path="/chu-nha/gui-ban" element={<OwnerSubmitProperty />} />
-                <Route path="/chu-nha/nha-cua-toi" element={<OwnerMyProperties />} />
-
-                <Route path="/khach-mua" element={<BuyerDashboard />} />
-                <Route path="/khach-mua/tim-nha" element={<BuyerSearch />} />
-                <Route path="/khach-mua/yeu-thich" element={<BuyerFavorites />} />
-
-                <Route path="/hoc-vien" element={<StudentDashboard />} />
-                <Route path="/hoc-vien/viec-can-lam" element={<StudentDashboard />} />
-                <Route path="/hoc-vien/dao-tao" element={<StudentDashboard />} />
-
-                <Route path="/chuyen-gia" element={<ExpertDashboard />} />
-                <Route path="/chuyen-gia/dang-nha" element={<ExpertAddProperty />} />
-                <Route path="/chuyen-gia/kho-nha" element={<Navigate to="/chuyen-gia/kho-nha-rieng" replace />} />
-                <Route path="/chuyen-gia/kho-nha-tong" element={<ExpertMyProperties scope="all" />} />
-                <Route path="/chuyen-gia/kho-nha-rieng" element={<ExpertMyProperties scope="mine" />} />
-                <Route path="/chuyen-gia/nha/:id" element={<ExpertPropertyDetail />} />
-
-                <Route path="/chuyen-vien" element={<SpecialistDashboard />} />
-                <Route path="/chuyen-vien/khach-hang" element={<SpecialistCustomers />} />
-                <Route path="/chuyen-vien/them-khach" element={<SpecialistAddCustomer />} />
-                <Route path="/chuyen-vien/tim-nha" element={<SpecialistSearchProperty />} />
-                <Route path="/chuyen-vien/lich-xem" element={<SpecialistSchedule />} />
-
-                <Route path="/ctv" element={<CollabDashboard />} />
-                <Route path="/ctv/cong-viec" element={<CollabWork />} />
-
-                <Route path="/nguoi-gioi-thieu" element={<ReferrerDashboard />} />
-                <Route path="/nguoi-gioi-thieu/ma-gioi-thieu" element={<ReferrerCode />} />
-                <Route path="/ma-gioi-thieu" element={<ReferrerCode />} />
-
-                <Route path="/quan-tri" element={<AdminDashboard />} />
-                <Route path="/quan-tri/nguoi-dung" element={<AdminUsers />} />
-                <Route path="/quan-tri/duyet-vai-tro" element={<AdminRoleApprovals />} />
-                <Route path="/quan-tri/nha" element={<AdminProperties />} />
-                <Route path="/quan-tri/khach-hang" element={<AdminCustomers />} />
-                <Route path="/quan-tri/cau-hinh" element={<AdminConfig />} />
-                <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
-              </Route>
-            </Route>
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+        <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   );

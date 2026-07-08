@@ -411,7 +411,7 @@ function svp_ensure_public_page_config(PDO $db): void
         ],
         [
             'id' => 'public_news_v1',
-            'label' => 'Bản V1 ưu tiên thao tác nhanh',
+            'label' => 'Thao tác nhanh trên điện thoại',
             'value' => 'news_v1',
             'sortOrder' => 110,
             'metadata' => [
@@ -429,7 +429,7 @@ function svp_ensure_public_page_config(PDO $db): void
             'sortOrder' => 120,
             'metadata' => [
                 'type' => 'news',
-                'body' => 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà cá nhân, kèm trạng thái để admin xem chi tiết và phê duyệt.',
+                'body' => 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà riêng, kèm trạng thái để đội ngũ quản lý xem chi tiết và phê duyệt.',
                 'imageUrl' => '',
                 'videoUrl' => '',
                 'linkUrl' => '',
@@ -455,8 +455,16 @@ function svp_ensure_public_page_config(PDO $db): void
          VALUES (:id, 'public_pages', :label, :value, :metadata_json, :sort_order, 1)
          ON DUPLICATE KEY UPDATE
            sort_order = VALUES(sort_order),
+           label = CASE
+             WHEN label LIKE '%V1%' THEN VALUES(label)
+             ELSE label
+           END,
            metadata_json = CASE
-             WHEN metadata_json IS NULL OR metadata_json = '' THEN VALUES(metadata_json)
+             WHEN metadata_json IS NULL OR metadata_json = ''
+               OR metadata_json LIKE '%V1%'
+               OR metadata_json LIKE '%admin%'
+               OR metadata_json LIKE '%mở rộng sau%'
+             THEN VALUES(metadata_json)
              ELSE metadata_json
            END"
     );
