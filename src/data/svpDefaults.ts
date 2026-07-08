@@ -1,4 +1,5 @@
 import type { SvpConfigGroup } from '../types/svp';
+import { publicPagesConfigOptions } from './publicPages';
 import { DEFAULT_REGISTRATION_ROLE_SLUGS, ROLE_DEFINITIONS } from './roles';
 
 const defaultRegistrationRoleSet = new Set<string>(DEFAULT_REGISTRATION_ROLE_SLUGS);
@@ -72,6 +73,35 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
       sortOrder: (index + 1) * 10,
       isActive: true,
     })),
+  },
+  {
+    id: 'site_display',
+    name: 'Hiển thị website',
+    description: 'Logo, tên hệ thống, khẩu hiệu và nội dung chân trang hiển thị công khai.',
+    sortOrder: 7,
+    isSystem: true,
+    options: [
+      ['site_logo_url', 'Logo', '/logo11.png'],
+      ['site_name', 'Tên website', 'Sổ Đỏ Vạn Phúc'],
+      ['site_slogan_line_1', 'Khẩu hiệu dòng 1', 'Hệ điều hành nghề Môi giới'],
+      ['site_slogan_line_2', 'Khẩu hiệu dòng 2', 'Thổ cư Việt Nam'],
+      ['site_footer_text', 'Chân trang', 'Sổ Đỏ Vạn Phúc'],
+    ].map(([value, label, optionValue], index) => ({
+      id: value,
+      groupId: 'site_display',
+      label,
+      value: optionValue,
+      sortOrder: (index + 1) * 10,
+      isActive: true,
+    })),
+  },
+  {
+    id: 'public_pages',
+    name: 'Trang giới thiệu / tin tức',
+    description: 'Nội dung công khai dạng đơn giản để hiển thị ở cuối trang đăng nhập.',
+    sortOrder: 8,
+    isSystem: true,
+    options: publicPagesConfigOptions,
   },
   {
     id: 'company_units',

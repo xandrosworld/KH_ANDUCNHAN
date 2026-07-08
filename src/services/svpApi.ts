@@ -60,6 +60,9 @@ const defaultRegistrationRoleSet = new Set<string>(DEFAULT_REGISTRATION_ROLE_SLU
 const defaultRoleApprovalGroup = svpDefaultConfigGroups.find((group) => group.id === 'account_role_approval');
 const defaultRoleApprovalOptions = defaultRoleApprovalGroup?.options || [];
 const defaultRoleApprovalOptionMap = new Map(defaultRoleApprovalOptions.map((option) => [option.value, option]));
+const defaultPublicPagesGroup = svpDefaultConfigGroups.find((group) => group.id === 'public_pages');
+const defaultPublicPageOptions = defaultPublicPagesGroup?.options || [];
+const defaultPublicPageOptionMap = new Map(defaultPublicPageOptions.map((option) => [option.id, option]));
 const legacyRoleLabels: Record<string, string[]> = {
   khach_mua: ['Tôi cần mua nhà'],
   chu_nha: ['Tôi cần bán nhà'],
@@ -69,44 +72,96 @@ const legacyRoleLabels: Record<string, string[]> = {
   chuyen_vien: ['Chuyên viên'],
 };
 
+const legacyPublicPagePatterns = [
+  /Bản V1/i,
+  /Cập nhật vận hành/i,
+  /phase/i,
+  /admin/i,
+  /mở rộng sau/i,
+  /Các màn đăng nhập/i,
+  /Nguồn mới sau khi gửi/i,
+  /Mỗi tài khoản có mã/i,
+  /Chuyên gia gửi nguồn nhà chờ duyệt/i,
+  /Thao tác nhanh trên điện thoại/i,
+  /chuyên viên và chuyên gia/i,
+];
+
+function migrateConfigOption(option: SvpConfigOption, defaultOption: SvpConfigOption): SvpConfigOption {
+  return {
+    ...option,
+    label: defaultOption.label,
+    metadata: {
+      ...(option.metadata || {}),
+      ...(defaultOption.metadata || {}),
+    },
+    sortOrder: defaultOption.sortOrder,
+    isActive: defaultOption.isActive,
+  };
+}
+
+function optionHasLegacyPublicCopy(option: SvpConfigOption) {
+  const haystack = `${option.label}\n${option.value}\n${JSON.stringify(option.metadata || {})}`;
+  return legacyPublicPagePatterns.some((pattern) => pattern.test(haystack));
+}
+
 function migrateLocalConfigGroups(groups: SvpConfigGroup[]): SvpConfigGroup[] {
   const roleGroup = groups.find((group) => group.id === 'account_role_approval');
   const hasLegacyRoleCopy = roleGroup?.options.some((option) =>
     (legacyRoleLabels[option.value] || []).includes(option.label),
   );
 
-  if (!roleGroup || !hasLegacyRoleCopy) return groups;
+  const migratedGroups = groups.map((group) => {
+    if (group.id === 'account_role_approval' && hasLegacyRoleCopy) {
+      const seenValues = new Set<string>();
+      const migratedOptions = group.options.map((option) => {
+        seenValues.add(option.value);
+        const defaultOption = defaultRoleApprovalOptionMap.get(option.value);
+        if (!defaultOption) return option;
 
-  return groups.map((group) => {
-    if (group.id !== 'account_role_approval') return group;
+        return {
+          ...migrateConfigOption(option, defaultOption),
+          isActive: option.value === 'admin' || defaultRegistrationRoleSet.has(option.value),
+        };
+      });
 
-    const seenValues = new Set<string>();
-    const migratedOptions = group.options.map((option) => {
-      seenValues.add(option.value);
-      const defaultOption = defaultRoleApprovalOptionMap.get(option.value);
-      if (!defaultOption) return option;
+      defaultRoleApprovalOptions.forEach((option) => {
+        if (!seenValues.has(option.value)) migratedOptions.push(option);
+      });
 
       return {
-        ...option,
-        label: defaultOption.label,
-        metadata: {
-          ...(option.metadata || {}),
-          ...(defaultOption.metadata || {}),
-        },
-        sortOrder: defaultOption.sortOrder,
-        isActive: option.value === 'admin' || defaultRegistrationRoleSet.has(option.value),
+        ...group,
+        options: migratedOptions.sort((first, second) => first.sortOrder - second.sortOrder),
       };
-    });
+    }
 
-    defaultRoleApprovalOptions.forEach((option) => {
-      if (!seenValues.has(option.value)) migratedOptions.push(option);
-    });
+    if (group.id === 'public_pages') {
+      const seenIds = new Set<string>();
+      const migratedOptions = group.options.map((option) => {
+        seenIds.add(option.id);
+        const defaultOption = defaultPublicPageOptionMap.get(option.id);
+        if (!defaultOption || !optionHasLegacyPublicCopy(option)) return option;
+        return migrateConfigOption(option, defaultOption);
+      });
 
-    return {
-      ...group,
-      options: migratedOptions.sort((first, second) => first.sortOrder - second.sortOrder),
-    };
+      defaultPublicPageOptions.forEach((option) => {
+        if (!seenIds.has(option.id)) migratedOptions.push(option);
+      });
+
+      return {
+        ...group,
+        options: migratedOptions.sort((first, second) => first.sortOrder - second.sortOrder),
+      };
+    }
+
+    return group;
   });
+
+  const migratedGroupIds = new Set(migratedGroups.map((group) => group.id));
+  svpDefaultConfigGroups.forEach((group) => {
+    if (!migratedGroupIds.has(group.id)) migratedGroups.push(group);
+  });
+
+  return migratedGroups.sort((first, second) => first.sortOrder - second.sortOrder);
 }
 
 function readConfigGroups(): SvpConfigGroup[] {

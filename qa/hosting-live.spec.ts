@@ -42,6 +42,12 @@ const FORBIDDEN_TEXT = [
   'phase cấu hình',
   'mở rộng sau',
   'vận hành cơ bản',
+  'Cập nhật vận hành',
+  'Thao tác nhanh trên điện thoại',
+  'Chuyên gia gửi nguồn nhà chờ duyệt',
+  'Các màn đăng nhập',
+  'Nguồn mới sau khi gửi',
+  'Mỗi tài khoản có mã',
 ];
 
 function watchRuntimeFailures(page: Page) {

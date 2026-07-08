@@ -534,7 +534,7 @@ async function expectUsablePage(page: Page, testInfo: TestInfo, routeLabel: stri
     return {
       textLength: text.trim().length,
       badEncoding: /(\u00c3[\u00a0-\u00bf]|\u00c4[\u0080-\u00bf]|\u00c2[\u00a0\u00b7]|\u00e2[\u20ac\u201c\u201d\u2013\u2014]|\u00e1\u00ba|\u00e1\u00bb)/.exec(text)?.[0] || '',
-      hasForbidden: /(GlobalForum|Global Forum|Roadmap|Audit log|Create Account|Sign In|AUTO-SMOKE|localStorage|database\/skeleton|KHU VUC NOI BO|st_[a-z_]+)/.exec(text)?.[0] || '',
+      hasForbidden: /(GlobalForum|Global Forum|Roadmap|Audit log|Create Account|Sign In|AUTO-SMOKE|localStorage|database\/skeleton|KHU VUC NOI BO|st_[a-z_]+|Bản V1|Cập nhật vận hành|Thao tác nhanh trên điện thoại|Chuyên gia gửi nguồn nhà chờ duyệt|Các màn đăng nhập|Nguồn mới sau khi gửi|Mỗi tài khoản có mã)/.exec(text)?.[0] || '',
       overflow,
       title: document.title,
     };
@@ -661,6 +661,63 @@ test.describe('V1 core workflows', () => {
     await expect(roleList).toContainText('Khách mua');
     await expect(roleList).toContainText('Cộng tác viên');
     await expect(roleList).not.toContainText(/Tôi cần mua nhà|Tôi cần bán nhà|Chuyên viên/);
+  });
+
+  test('public pages migrate old cached intro and news copy', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.removeItem('svp_token');
+      localStorage.removeItem('svp_active_role');
+      localStorage.setItem('svp_config_groups', JSON.stringify([
+        {
+          id: 'public_pages',
+          name: 'Trang gioi thieu / tin tuc',
+          sortOrder: 8,
+          isSystem: true,
+          options: [
+            {
+              id: 'public_page_about',
+              groupId: 'public_pages',
+              label: 'Giới thiệu',
+              value: 'about',
+              metadata: {
+                type: 'about',
+                subtitle: 'Hệ thống vận hành nguồn nhà và khách hàng cho đội ngũ Sổ Đỏ Vạn Phúc.',
+                body: 'Sổ Đỏ Vạn Phúc tập trung vào thao tác nhanh trên điện thoại, dữ liệu rõ ràng và quy trình làm việc minh bạch cho chủ nhà, khách mua, cộng tác viên, chuyên viên và chuyên gia.',
+                imageUrl: '/logo11.png',
+              },
+              sortOrder: 10,
+              isActive: true,
+            },
+            {
+              id: 'public_news_v1',
+              groupId: 'public_pages',
+              label: 'Thao tác nhanh trên điện thoại',
+              value: 'news_v1',
+              metadata: { type: 'news', body: 'Các màn đăng nhập, đăng ký, đăng nhà và kho nhà được tinh gọn để người dùng xử lý việc chính với ít lần bấm hơn.' },
+              sortOrder: 110,
+              isActive: true,
+            },
+            {
+              id: 'public_news_expert',
+              groupId: 'public_pages',
+              label: 'Chuyên gia gửi nguồn nhà chờ duyệt',
+              value: 'news_expert',
+              metadata: { type: 'news', body: 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà riêng, kèm trạng thái để đội ngũ quản lý xem chi tiết và phê duyệt.' },
+              sortOrder: 120,
+              isActive: true,
+            },
+          ],
+        },
+      ]));
+    });
+
+    await page.goto('/tin-tuc', { waitUntil: 'networkidle' });
+    await expect(page.locator('body')).toContainText('Kết nối nhu cầu mua bán nhà rõ ràng hơn');
+    await expect(page.locator('body')).not.toContainText(/Thao tác nhanh trên điện thoại|Chuyên gia gửi nguồn nhà chờ duyệt|Các màn đăng nhập|Nguồn mới sau khi gửi/);
+
+    await page.goto('/gioi-thieu', { waitUntil: 'networkidle' });
+    await expect(page.locator('body')).toContainText('Hệ thống kết nối nguồn nhà, khách mua');
+    await expect(page.locator('body')).not.toContainText(/chuyên viên và chuyên gia|Hệ thống vận hành nguồn nhà/);
   });
 
   test('auth login layout fits common phone widths', async ({ page }, testInfo) => {

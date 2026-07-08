@@ -2,45 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Newspaper } from 'lucide-react';
 import { svpApi } from '../services/svpApi';
-
-interface NewsPost {
-  id: string;
-  title: string;
-  body: string;
-  imageUrl: string;
-  videoUrl: string;
-  linkUrl: string;
-}
-
-const fallbackPosts: NewsPost[] = [
-  {
-    id: 'fallback-mobile',
-    title: 'Thao tác nhanh trên điện thoại',
-    body: 'Các màn đăng nhập, đăng ký, đăng nhà và kho nhà được tinh gọn để người dùng xử lý việc chính với ít lần bấm hơn.',
-    imageUrl: '',
-    videoUrl: '',
-    linkUrl: '',
-  },
-  {
-    id: 'fallback-expert',
-    title: 'Chuyên gia có thể gửi nguồn nhà chờ duyệt',
-    body: 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà riêng, kèm trạng thái để đội ngũ quản lý xem chi tiết và phê duyệt.',
-    imageUrl: '',
-    videoUrl: '',
-    linkUrl: '',
-  },
-  {
-    id: 'fallback-referral',
-    title: 'Mã giới thiệu giúp ghi nhận nguồn người dùng',
-    body: 'Mỗi tài khoản có mã/link giới thiệu riêng để theo dõi người giới thiệu khi đăng ký tài khoản mới.',
-    imageUrl: '',
-    videoUrl: '',
-    linkUrl: '',
-  },
-];
+import { defaultPublicNewsPosts, type PublicNewsPost } from '../data/publicPages';
 
 export default function PublicNewsPage() {
-  const [posts, setPosts] = useState<NewsPost[]>(fallbackPosts);
+  const [posts, setPosts] = useState<PublicNewsPost[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,9 +24,9 @@ export default function PublicNewsPage() {
             linkUrl: String(option.metadata?.linkUrl || ''),
           }))
           .filter((item) => item.title.trim() || item.body.trim());
-        setPosts(items.length ? items : fallbackPosts);
+        setPosts(items.length ? items : defaultPublicNewsPosts);
       })
-      .catch(() => setPosts(fallbackPosts));
+      .catch(() => setPosts(defaultPublicNewsPosts));
 
     return () => {
       cancelled = true;
@@ -88,7 +53,12 @@ export default function PublicNewsPage() {
         </section>
 
         <section className="mt-4 space-y-3">
-          {posts.map((post) => (
+          {posts === null ? (
+            <>
+              <NewsSkeleton />
+              <NewsSkeleton />
+            </>
+          ) : posts.map((post) => (
             <article key={post.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-red-100">
               {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="h-36 w-full object-cover" /> : null}
               <div className="p-4">
@@ -106,5 +76,17 @@ export default function PublicNewsPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function NewsSkeleton() {
+  return (
+    <article className="overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-red-100">
+      <div className="h-5 w-2/3 animate-pulse rounded bg-red-50" />
+      <div className="mt-3 space-y-2">
+        <div className="h-3 w-full animate-pulse rounded bg-[#f2ebe6]" />
+        <div className="h-3 w-5/6 animate-pulse rounded bg-[#f2ebe6]" />
+      </div>
+    </article>
   );
 }

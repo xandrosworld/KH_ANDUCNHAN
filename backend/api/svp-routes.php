@@ -403,8 +403,8 @@ function svp_ensure_public_page_config(PDO $db): void
             'sortOrder' => 10,
             'metadata' => [
                 'type' => 'about',
-                'subtitle' => 'Hệ thống vận hành nguồn nhà và khách hàng cho đội ngũ Sổ Đỏ Vạn Phúc.',
-                'body' => 'Sổ Đỏ Vạn Phúc tập trung vào thao tác nhanh trên điện thoại, dữ liệu rõ ràng và quy trình làm việc minh bạch cho chủ nhà, khách mua, cộng tác viên, chuyên viên và chuyên gia.',
+                'subtitle' => 'Hệ thống kết nối nguồn nhà, khách mua và đội ngũ môi giới Sổ Đỏ Vạn Phúc.',
+                'body' => 'Sổ Đỏ Vạn Phúc giúp chủ nhà gửi thông tin bán nhà, khách mua để lại nhu cầu và đội ngũ phụ trách xử lý dữ liệu tập trung, rõ trạng thái, đúng phân quyền.',
                 'imageUrl' => '/logo11.png',
                 'videoUrl' => '',
                 'linkUrl' => '',
@@ -412,12 +412,13 @@ function svp_ensure_public_page_config(PDO $db): void
         ],
         [
             'id' => 'public_news_v1',
-            'label' => 'Thao tác nhanh trên điện thoại',
+            'label' => 'Kết nối nhu cầu mua bán nhà rõ ràng hơn',
             'value' => 'news_v1',
             'sortOrder' => 110,
+            'isActive' => true,
             'metadata' => [
                 'type' => 'news',
-                'body' => 'Các màn đăng nhập, đăng ký, đăng nhà và kho nhà được tinh gọn để người dùng xử lý việc chính với ít lần bấm hơn.',
+                'body' => 'Khách mua và chủ nhà có thể để lại thông tin ngay trên website. Đội ngũ Sổ Đỏ Vạn Phúc tiếp nhận, kiểm tra và phản hồi theo từng nhu cầu cụ thể.',
                 'imageUrl' => '',
                 'videoUrl' => '',
                 'linkUrl' => '',
@@ -425,12 +426,13 @@ function svp_ensure_public_page_config(PDO $db): void
         ],
         [
             'id' => 'public_news_expert',
-            'label' => 'Chuyên gia gửi nguồn nhà chờ duyệt',
+            'label' => 'Nguồn nhà được kiểm tra và lưu trữ tập trung',
             'value' => 'news_expert',
             'sortOrder' => 120,
+            'isActive' => true,
             'metadata' => [
                 'type' => 'news',
-                'body' => 'Nguồn mới sau khi gửi sẽ nằm trong kho nhà riêng, kèm trạng thái để đội ngũ quản lý xem chi tiết và phê duyệt.',
+                'body' => 'Thông tin nhà bán được ghi nhận theo mã nguồn, khu vực, mức giá và trạng thái xử lý để việc tư vấn diễn ra nhanh và thống nhất hơn.',
                 'imageUrl' => '',
                 'videoUrl' => '',
                 'linkUrl' => '',
@@ -438,12 +440,13 @@ function svp_ensure_public_page_config(PDO $db): void
         ],
         [
             'id' => 'public_news_referral',
-            'label' => 'Mã giới thiệu ghi nhận nguồn người dùng',
+            'label' => 'Thông tin liên hệ được chuyển đúng người phụ trách',
             'value' => 'news_referral',
             'sortOrder' => 130,
+            'isActive' => true,
             'metadata' => [
                 'type' => 'news',
-                'body' => 'Mỗi tài khoản có mã/link giới thiệu riêng để theo dõi người giới thiệu khi đăng ký tài khoản mới.',
+                'body' => 'Các yêu cầu hỗ trợ, nhu cầu mua bán và thông tin giới thiệu được ghi nhận để đội ngũ phụ trách dễ theo dõi và chăm sóc khách hàng.',
                 'imageUrl' => '',
                 'videoUrl' => '',
                 'linkUrl' => '',
@@ -453,20 +456,48 @@ function svp_ensure_public_page_config(PDO $db): void
 
     $stmt = $db->prepare(
         "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
-         VALUES (:id, 'public_pages', :label, :value, :metadata_json, :sort_order, 1)
+         VALUES (:id, 'public_pages', :label, :value, :metadata_json, :sort_order, :is_active)
          ON DUPLICATE KEY UPDATE
            sort_order = VALUES(sort_order),
            label = CASE
-             WHEN label LIKE '%V1%' THEN VALUES(label)
+             WHEN id IN ('public_news_v1', 'public_news_expert', 'public_news_referral')
+               AND (
+                 label LIKE '%V1%'
+                 OR label LIKE '%Cập nhật vận hành%'
+                 OR label LIKE '%Thao tác nhanh trên điện thoại%'
+                 OR label LIKE '%Chuyên gia gửi nguồn nhà chờ duyệt%'
+                 OR label LIKE '%Mã giới thiệu ghi nhận nguồn người dùng%'
+               )
+             THEN VALUES(label)
              ELSE label
            END,
            metadata_json = CASE
              WHEN metadata_json IS NULL OR metadata_json = ''
                OR metadata_json LIKE '%V1%'
                OR metadata_json LIKE '%admin%'
+               OR metadata_json LIKE '%phase%'
                OR metadata_json LIKE '%mở rộng sau%'
+               OR metadata_json LIKE '%Các màn đăng nhập%'
+               OR metadata_json LIKE '%Nguồn mới sau khi gửi%'
+               OR metadata_json LIKE '%Mỗi tài khoản có mã%'
+               OR metadata_json LIKE '%chuyên viên và chuyên gia%'
              THEN VALUES(metadata_json)
              ELSE metadata_json
+           END,
+           is_active = CASE
+             WHEN id IN ('public_news_v1', 'public_news_expert', 'public_news_referral')
+               AND (
+                 label LIKE '%V1%'
+                 OR label LIKE '%Cập nhật vận hành%'
+                 OR label LIKE '%Thao tác nhanh trên điện thoại%'
+                 OR label LIKE '%Chuyên gia gửi nguồn nhà chờ duyệt%'
+                 OR label LIKE '%Mã giới thiệu ghi nhận nguồn người dùng%'
+                 OR metadata_json LIKE '%Các màn đăng nhập%'
+                 OR metadata_json LIKE '%Nguồn mới sau khi gửi%'
+                 OR metadata_json LIKE '%Mỗi tài khoản có mã%'
+               )
+             THEN VALUES(is_active)
+             ELSE is_active
            END"
     );
 
@@ -477,6 +508,7 @@ function svp_ensure_public_page_config(PDO $db): void
             'value' => $item['value'],
             'metadata_json' => svp_json_encode($item['metadata']),
             'sort_order' => $item['sortOrder'],
+            'is_active' => !array_key_exists('isActive', $item) || !empty($item['isActive']) ? 1 : 0,
         ]);
     }
 }
