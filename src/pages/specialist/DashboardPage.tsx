@@ -34,8 +34,8 @@ export default function SpecialistDashboardPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
       <section className="rounded-[28px] bg-gradient-to-br from-[#25202a] to-[#3a2d31] p-5 text-white shadow-lg sm:p-7">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">Chuyên viên / Đầu khách</p>
-        <h1 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">Xin chào, {user?.fullName || 'Chuyên viên'}!</h1>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">Cộng tác viên / Đầu khách</p>
+        <h1 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">Xin chào, {user?.fullName || 'Cộng tác viên'}!</h1>
         <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white/75">
           Quản lý khách mua, ghi nhận nhu cầu và tìm nguồn nhà phù hợp theo dữ liệu đã được phân quyền.
         </p>

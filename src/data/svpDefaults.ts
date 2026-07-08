@@ -1,5 +1,7 @@
 import type { SvpConfigGroup } from '../types/svp';
-import { ROLE_DEFINITIONS } from './roles';
+import { DEFAULT_REGISTRATION_ROLE_SLUGS, ROLE_DEFINITIONS } from './roles';
+
+const defaultRegistrationRoleSet = new Set<string>(DEFAULT_REGISTRATION_ROLE_SLUGS);
 
 export const svpDefaultConfigGroups: SvpConfigGroup[] = [
   {
@@ -11,14 +13,15 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
     options: ROLE_DEFINITIONS.map((role, index) => ({
       id: `role_approval_${role.slug}`,
       groupId: 'account_role_approval',
-      label: role.shortLabel,
+      label: role.label,
       value: role.slug,
       metadata: {
         requiresApproval: role.requiresApproval,
         roleGroup: role.group,
+        description: role.description,
       },
       sortOrder: (index + 1) * 10,
-      isActive: true,
+      isActive: role.slug === 'admin' || defaultRegistrationRoleSet.has(role.slug),
     })),
   },
   {

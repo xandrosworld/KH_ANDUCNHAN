@@ -26,7 +26,7 @@ export default function SearchPropertyPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
       <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chuyên viên</p>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Cộng tác viên</p>
         <h1 className="mt-1 text-2xl font-black text-[#25202a]">Tìm nhà cho khách</h1>
         <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">Tra nhanh nguồn nhà đang mở để tư vấn khách mua.</p>
         <div className="relative mt-4">

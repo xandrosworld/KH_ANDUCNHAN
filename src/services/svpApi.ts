@@ -1,5 +1,6 @@
 import { apiDelete, apiFetch, apiGet, apiPost, apiPut, isApiConfigured } from './apiClient';
 import { svpDefaultConfigGroups } from '../data/svpDefaults';
+import { DEFAULT_REGISTRATION_ROLE_SLUGS } from '../data/roles';
 import type {
   SvpConfigGroup,
   SvpConfigOption,
@@ -53,6 +54,68 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+const defaultRegistrationRoleSet = new Set<string>(DEFAULT_REGISTRATION_ROLE_SLUGS);
+const defaultRoleApprovalGroup = svpDefaultConfigGroups.find((group) => group.id === 'account_role_approval');
+const defaultRoleApprovalOptions = defaultRoleApprovalGroup?.options || [];
+const defaultRoleApprovalOptionMap = new Map(defaultRoleApprovalOptions.map((option) => [option.value, option]));
+const legacyRoleLabels: Record<string, string[]> = {
+  khach_mua: ['Tôi cần mua nhà'],
+  chu_nha: ['Tôi cần bán nhà'],
+  nguoi_gioi_thieu: ['Người giới thiệu', 'Giới thiệu nhân sự'],
+  ctv_khach: ['CTV giới thiệu'],
+  ctv_nguon: ['CTV nguồn'],
+  chuyen_vien: ['Chuyên viên'],
+};
+
+function migrateLocalConfigGroups(groups: SvpConfigGroup[]): SvpConfigGroup[] {
+  const roleGroup = groups.find((group) => group.id === 'account_role_approval');
+  const hasLegacyRoleCopy = roleGroup?.options.some((option) =>
+    (legacyRoleLabels[option.value] || []).includes(option.label),
+  );
+
+  if (!roleGroup || !hasLegacyRoleCopy) return groups;
+
+  return groups.map((group) => {
+    if (group.id !== 'account_role_approval') return group;
+
+    const seenValues = new Set<string>();
+    const migratedOptions = group.options.map((option) => {
+      seenValues.add(option.value);
+      const defaultOption = defaultRoleApprovalOptionMap.get(option.value);
+      if (!defaultOption) return option;
+
+      return {
+        ...option,
+        label: defaultOption.label,
+        metadata: {
+          ...(option.metadata || {}),
+          ...(defaultOption.metadata || {}),
+        },
+        sortOrder: defaultOption.sortOrder,
+        isActive: option.value === 'admin' || defaultRegistrationRoleSet.has(option.value),
+      };
+    });
+
+    defaultRoleApprovalOptions.forEach((option) => {
+      if (!seenValues.has(option.value)) migratedOptions.push(option);
+    });
+
+    return {
+      ...group,
+      options: migratedOptions.sort((first, second) => first.sortOrder - second.sortOrder),
+    };
+  });
+}
+
+function readConfigGroups(): SvpConfigGroup[] {
+  const groups = readJson<SvpConfigGroup[]>(STORAGE_KEYS.config, svpDefaultConfigGroups);
+  const migrated = migrateLocalConfigGroups(groups);
+  if (JSON.stringify(migrated) !== JSON.stringify(groups)) {
+    writeJson(STORAGE_KEYS.config, migrated);
+  }
+  return migrated;
 }
 
 function uid(prefix: string) {
@@ -109,7 +172,7 @@ export const svpApi = {
       if (result.ok && result.data?.groups) return result.data.groups;
     }
 
-    return readJson(STORAGE_KEYS.config, svpDefaultConfigGroups);
+    return readConfigGroups();
   },
 
   async createConfigOption(input: Omit<SvpConfigOption, 'id'>): Promise<SvpConfigOption> {
@@ -119,7 +182,7 @@ export const svpApi = {
       throw new Error(result.error || 'Failed to create config option');
     }
 
-    const groups = readJson(STORAGE_KEYS.config, svpDefaultConfigGroups);
+    const groups = readConfigGroups();
     const next: SvpConfigOption = { ...input, id: uid('opt') };
     const updated = groups.map((group) =>
       group.id === input.groupId ? { ...group, options: [...group.options, next] } : group
@@ -136,7 +199,7 @@ export const svpApi = {
     }
 
     let updatedItem: SvpConfigOption | null = null;
-    const groups = readJson(STORAGE_KEYS.config, svpDefaultConfigGroups).map((group) => ({
+    const groups = readConfigGroups().map((group) => ({
       ...group,
       options: group.options.map((option) => {
         if (option.id !== id) return option;
@@ -156,7 +219,7 @@ export const svpApi = {
       return;
     }
 
-    const groups = readJson(STORAGE_KEYS.config, svpDefaultConfigGroups).map((group) => ({
+    const groups = readConfigGroups().map((group) => ({
       ...group,
       options: group.options.filter((option) => option.id !== id),
     }));
@@ -171,7 +234,7 @@ export const svpApi = {
     }
 
     const orderMap = new Map(items.map((item) => [item.id, item.sortOrder]));
-    const groups = readJson(STORAGE_KEYS.config, svpDefaultConfigGroups).map((group) => ({
+    const groups = readConfigGroups().map((group) => ({
       ...group,
       options: group.options
         .map((option) => orderMap.has(option.id) ? { ...option, sortOrder: orderMap.get(option.id) || option.sortOrder } : option)

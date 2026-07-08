@@ -63,26 +63,26 @@ function svp_uid(string $prefix): string
 function svp_role_approval_definitions(): array
 {
     return [
-        ['slug' => 'khach_mua', 'label' => 'Khách mua', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 10],
-        ['slug' => 'chu_nha', 'label' => 'Chủ nhà', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 20],
-        ['slug' => 'nguoi_gioi_thieu', 'label' => 'Người giới thiệu', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 30],
-        ['slug' => 'ctv_khach', 'label' => 'CTV giới thiệu khách', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 40],
-        ['slug' => 'ctv_nguon', 'label' => 'CTV giới thiệu nguồn', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 50],
-        ['slug' => 'doi_tac', 'label' => 'Đối tác', 'group' => 'Cơ bản', 'requiresApproval' => false, 'sortOrder' => 60],
-        ['slug' => 'chuyen_vien', 'label' => 'Chuyên viên', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 110],
-        ['slug' => 'chuyen_gia', 'label' => 'Chuyên gia', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 120],
-        ['slug' => 'hoc_vien', 'label' => 'Học viên', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 125],
-        ['slug' => 'tro_ly', 'label' => 'Trợ lý', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 130],
-        ['slug' => 'thu_ky', 'label' => 'Thư ký', 'group' => 'Nhân sự', 'requiresApproval' => true, 'sortOrder' => 140],
-        ['slug' => 'truong_phong', 'label' => 'Trưởng phòng', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 210],
-        ['slug' => 'pho_phong', 'label' => 'Phó phòng', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 220],
-        ['slug' => 'giam_doc_khoi', 'label' => 'Giám đốc Khối', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 230],
-        ['slug' => 'pho_giam_doc_khoi', 'label' => 'Phó Giám đốc Khối', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 240],
-        ['slug' => 'giam_doc', 'label' => 'Giám đốc Khu vực', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 250],
-        ['slug' => 'pho_giam_doc_khu_vuc', 'label' => 'Phó Giám đốc Khu vực', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 260],
-        ['slug' => 'giam_doc_dieu_hanh', 'label' => 'Giám đốc Điều hành', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 270],
-        ['slug' => 'pho_giam_doc_dieu_hanh', 'label' => 'Phó Giám đốc Điều hành', 'group' => 'Quản lý', 'requiresApproval' => true, 'sortOrder' => 280],
-        ['slug' => 'admin', 'label' => 'Quản trị hệ thống', 'group' => 'Quản trị', 'requiresApproval' => true, 'sortOrder' => 900],
+        ['slug' => 'khach_mua', 'label' => 'Khách mua', 'group' => 'Cơ bản', 'description' => 'Tìm nguồn nhà phù hợp nhu cầu', 'requiresApproval' => false, 'isActive' => true, 'sortOrder' => 10],
+        ['slug' => 'chu_nha', 'label' => 'Chủ nhà', 'group' => 'Cơ bản', 'description' => 'Gửi thông tin nhà cần bán', 'requiresApproval' => false, 'isActive' => true, 'sortOrder' => 20],
+        ['slug' => 'nguoi_gioi_thieu', 'label' => 'CTV giới thiệu nhân sự', 'group' => 'Cơ bản', 'description' => 'Giới thiệu nhân sự - nhận ghi nhận hệ thống', 'requiresApproval' => false, 'isActive' => true, 'sortOrder' => 30],
+        ['slug' => 'ctv_khach', 'label' => 'CTV giới thiệu khách', 'group' => 'Cơ bản', 'description' => 'Cộng tác viên giới thiệu khách mua', 'requiresApproval' => false, 'isActive' => true, 'sortOrder' => 40],
+        ['slug' => 'ctv_nguon', 'label' => 'CTV giới thiệu nguồn', 'group' => 'Cơ bản', 'description' => 'Giới thiệu chủ nhà hoặc nguồn nhà phù hợp', 'requiresApproval' => false, 'isActive' => true, 'sortOrder' => 50],
+        ['slug' => 'doi_tac', 'label' => 'Đối tác', 'group' => 'Đối tác', 'description' => 'Kết nối dịch vụ hỗ trợ giao dịch', 'requiresApproval' => false, 'isActive' => false, 'sortOrder' => 60],
+        ['slug' => 'chuyen_vien', 'label' => 'Cộng tác viên', 'group' => 'Nhân sự', 'description' => 'Tìm khách mua nhà', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 110],
+        ['slug' => 'chuyen_gia', 'label' => 'Chuyên gia', 'group' => 'Nhân sự', 'description' => 'Tìm chủ bán nhà', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 120],
+        ['slug' => 'hoc_vien', 'label' => 'Học viên', 'group' => 'Nhân sự', 'description' => 'Theo dõi việc cần làm và đào tạo nội bộ', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 125],
+        ['slug' => 'tro_ly', 'label' => 'Trợ lý', 'group' => 'Nhân sự', 'description' => 'Hỗ trợ vận hành và quản lý hồ sơ', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 130],
+        ['slug' => 'thu_ky', 'label' => 'Thư ký', 'group' => 'Nhân sự', 'description' => 'Theo dõi hồ sơ và lịch làm việc', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 140],
+        ['slug' => 'truong_phong', 'label' => 'Trưởng phòng', 'group' => 'Quản lý', 'description' => 'Quản lý đội nhóm', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 210],
+        ['slug' => 'pho_phong', 'label' => 'Phó phòng', 'group' => 'Quản lý', 'description' => 'Hỗ trợ quản lý phòng', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 220],
+        ['slug' => 'giam_doc_khoi', 'label' => 'Giám đốc Khối', 'group' => 'Quản lý', 'description' => 'Quản lý cấp Khối', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 230],
+        ['slug' => 'pho_giam_doc_khoi', 'label' => 'Phó Giám đốc Khối', 'group' => 'Quản lý', 'description' => 'Hỗ trợ quản lý cấp Khối', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 240],
+        ['slug' => 'giam_doc', 'label' => 'Giám đốc Khu vực', 'group' => 'Quản lý', 'description' => 'Quản lý cấp Khu vực', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 250],
+        ['slug' => 'pho_giam_doc_khu_vuc', 'label' => 'Phó Giám đốc Khu vực', 'group' => 'Quản lý', 'description' => 'Hỗ trợ quản lý cấp Khu vực', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 260],
+        ['slug' => 'giam_doc_dieu_hanh', 'label' => 'Giám đốc Điều hành', 'group' => 'Quản lý', 'description' => 'Điều hành hệ thống', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 270],
+        ['slug' => 'pho_giam_doc_dieu_hanh', 'label' => 'Phó Giám đốc Điều hành', 'group' => 'Quản lý', 'description' => 'Hỗ trợ điều hành hệ thống', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 280],
+        ['slug' => 'admin', 'label' => 'Quản trị hệ thống', 'group' => 'Quản lý', 'description' => 'Quản trị toàn bộ hệ thống', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 900],
     ];
 }
 
@@ -188,7 +188,7 @@ function svp_ensure_role_approval_config(PDO $db): void
 
     $stmt = $db->prepare(
         "INSERT INTO svp_config_options (id, group_id, label, value, metadata_json, sort_order, is_active)
-         VALUES (:id, 'account_role_approval', :label, :value, :metadata_json, :sort_order, 1)
+         VALUES (:id, 'account_role_approval', :label, :value, :metadata_json, :sort_order, :is_active)
          ON DUPLICATE KEY UPDATE
            sort_order = VALUES(sort_order),
            metadata_json = CASE
@@ -210,6 +210,7 @@ function svp_ensure_role_approval_config(PDO $db): void
                 'customRole' => false,
             ]),
             'sort_order' => (int) $role['sortOrder'],
+            'is_active' => !empty($role['isActive']) ? 1 : 0,
         ]);
     }
 }

@@ -66,13 +66,13 @@ const ROLE_NAMES: Record<string, string> = {
   giam_doc: 'Giam doc khu vuc',
   truong_phong: 'Truong phong',
   chuyen_gia: 'Chuyen gia',
-  chuyen_vien: 'Chuyen vien',
+  chuyen_vien: 'Cong tac vien',
   hoc_vien: 'Hoc vien',
-  ctv_khach: 'CTV tim khach',
+  ctv_khach: 'CTV gioi thieu khach',
   ctv_nguon: 'CTV tim nguon',
   chu_nha: 'Chu nha',
   khach_mua: 'Khach mua',
-  nguoi_gioi_thieu: 'Nguoi gioi thieu',
+  nguoi_gioi_thieu: 'CTV gioi thieu nhan su',
   doi_tac: 'Doi tac',
 };
 
@@ -245,10 +245,10 @@ const configGroups = [
 const roleApprovalSettings = [
   { id: 'role_approval_khach_mua', slug: 'khach_mua', label: 'Khach mua', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 10 },
   { id: 'role_approval_chu_nha', slug: 'chu_nha', label: 'Chu nha', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 20 },
-  { id: 'role_approval_nguoi_gioi_thieu', slug: 'nguoi_gioi_thieu', label: 'Nguoi gioi thieu', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 30 },
+  { id: 'role_approval_nguoi_gioi_thieu', slug: 'nguoi_gioi_thieu', label: 'CTV gioi thieu nhan su', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 30 },
   { id: 'role_approval_ctv_khach', slug: 'ctv_khach', label: 'CTV gioi thieu khach', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 40 },
   { id: 'role_approval_ctv_nguon', slug: 'ctv_nguon', label: 'CTV gioi thieu nguon', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 50 },
-  { id: 'role_approval_chuyen_vien', slug: 'chuyen_vien', label: 'Chuyen vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 110 },
+  { id: 'role_approval_chuyen_vien', slug: 'chuyen_vien', label: 'Cong tac vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 110 },
   { id: 'role_approval_chuyen_gia', slug: 'chuyen_gia', label: 'Chuyen gia', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 120 },
   { id: 'role_approval_hoc_vien', slug: 'hoc_vien', label: 'Hoc vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 125 },
   { id: 'role_approval_truong_phong', slug: 'truong_phong', label: 'Truong phong', roleGroup: 'Quan ly', requiresApproval: true, sortOrder: 210 },
@@ -401,7 +401,7 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
           roles: [
             { slug: 'chuyen_gia', name: 'Chuyên gia', status: 'approved' },
             { slug: 'khach_mua', name: 'Khách mua', status: 'approved' },
-            { slug: 'nguoi_gioi_thieu', name: 'Người giới thiệu', status: 'approved' },
+            { slug: 'nguoi_gioi_thieu', name: 'CTV giới thiệu nhân sự', status: 'approved' },
           ],
         },
         { ...userFor('chuyen_vien'), accountStatus: 'locked' },
@@ -524,6 +524,7 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
 
 async function expectUsablePage(page: Page, testInfo: TestInfo, routeLabel: string) {
   await expect(page.locator('#root')).not.toBeEmpty();
+  await expect(page.getByTestId('route-transition-overlay')).toHaveCSS('opacity', '0', { timeout: 5_000 });
   await page.waitForTimeout(250);
 
   const result = await page.evaluate(() => {
@@ -637,6 +638,29 @@ test.describe('V1 core workflows', () => {
     await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveAttribute('href', /mailto:info@hocvienvanphuc\.edu\.vn/);
 
     await expectUsablePage(page, testInfo, 'workflow-auth-support-social');
+  });
+
+  test('register roles use final customer copy before config finishes loading', async ({ page }) => {
+    await page.route('**/api/svp/config', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return ok(route, { groups: configGroups, items: configGroups });
+    });
+    await page.route('**/api/svp/auth/oauth/providers', (route) => ok(route, {
+      items: [
+        { provider: 'google', label: 'Google', configured: false },
+        { provider: 'facebook', label: 'Facebook', configured: false },
+        { provider: 'apple', label: 'Apple', configured: false },
+        { provider: 'zalo', label: 'Zalo', configured: false },
+      ],
+    }));
+
+    await page.goto('/register', { waitUntil: 'domcontentloaded' });
+
+    const roleList = page.getByTestId('auth-role-list');
+    await expect(page.getByTestId('auth-role-option-khach_mua')).toBeVisible();
+    await expect(roleList).toContainText('Khách mua');
+    await expect(roleList).toContainText('Cộng tác viên');
+    await expect(roleList).not.toContainText(/Tôi cần mua nhà|Tôi cần bán nhà|Chuyên viên/);
   });
 
   test('auth login layout fits common phone widths', async ({ page }, testInfo) => {
@@ -948,7 +972,7 @@ test.describe('V1 core workflows', () => {
     await page.goto('/quan-tri/cau-hinh', { waitUntil: 'networkidle' });
 
     const specialistCard = page
-      .getByText('Chuyen vien', { exact: true })
+      .getByText('Cong tac vien', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]');
     await specialistCard.getByRole('button', { name: /Dung ngay|D.ng ngay/i }).click();
     await expect(specialistCard).toContainText(/Dang cho dung ngay|.ang cho d.ng ngay/i);

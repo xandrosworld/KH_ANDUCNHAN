@@ -814,7 +814,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                   <div>
                     <p className="text-[13px] font-black text-[#5d4a19] sm:text-sm">Lưu ý về phê duyệt tài khoản</p>
                     <p className="mt-1 text-[12px] leading-[1.45] text-[#725f26] sm:text-[13px] sm:leading-5">
-                      Từ cấp Chuyên viên trở lên cần có người phê duyệt để mở đầy đủ tính năng. Các tài khoản còn lại được sử dụng ngay sau khi đăng ký.
+                      Một số vai trò nội bộ cần được phê duyệt để mở đầy đủ tính năng. Các tài khoản còn lại được sử dụng ngay sau khi đăng ký.
                     </p>
                   </div>
                 </div>
@@ -926,7 +926,7 @@ function BuyerNeedInlineForm({
         <div className="min-w-0">
           <h3 className="text-sm font-black leading-5 text-[#25202a]">Nhu cầu tìm mua nhà</h3>
           <p className="text-[12px] font-semibold leading-4 text-[#747b88]">
-            Điền nhanh để Chuyên viên hỗ trợ đúng nhu cầu ngay sau khi đăng ký.
+            Điền nhanh để đội ngũ nắm đúng nhu cầu ngay sau khi đăng ký.
           </p>
         </div>
       </div>

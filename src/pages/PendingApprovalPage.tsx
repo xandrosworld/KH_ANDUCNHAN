@@ -18,7 +18,7 @@ export default function PendingApprovalPage() {
         </div>
         <h1 className="text-2xl font-black text-[#25202a]">Tài khoản đang chờ phê duyệt</h1>
         <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">
-          Các vai trò từ cấp Chuyên viên trở lên cần được quản trị viên phê duyệt trước khi mở đầy đủ tính năng.
+          Các vai trò nội bộ cần được quản trị viên phê duyệt trước khi mở đầy đủ tính năng.
         </p>
 
         {pendingRoles.length > 0 && (

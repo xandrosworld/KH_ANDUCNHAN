@@ -33,7 +33,7 @@ export const legalDocuments: Record<LegalDocumentType, LegalDocument> = {
         title: '2. Tài khoản và thông tin đăng ký',
         bullets: [
           'Người dùng cần cung cấp thông tin trung thực, chính xác và cập nhật khi đăng ký hoặc sử dụng hệ thống.',
-          'Một số vai trò có thể được sử dụng ngay sau đăng ký; các vai trò từ cấp Chuyên viên trở lên có thể cần phê duyệt trước khi mở đầy đủ tính năng.',
+          'Một số vai trò có thể được sử dụng ngay sau đăng ký; các vai trò nội bộ có thể cần phê duyệt trước khi mở đầy đủ tính năng.',
           'Người dùng chịu trách nhiệm bảo mật tài khoản, mật khẩu và các thao tác phát sinh từ tài khoản của mình.',
         ],
       },

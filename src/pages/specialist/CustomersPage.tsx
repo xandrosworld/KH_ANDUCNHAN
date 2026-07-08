@@ -38,7 +38,7 @@ export default function CustomersPage() {
       <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chuyên viên</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Cộng tác viên</p>
             <h1 className="mt-1 text-2xl font-black text-[#25202a]">Khách hàng</h1>
             <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">Quản lý khách mua, nhu cầu và trạng thái chăm sóc.</p>
           </div>

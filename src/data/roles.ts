@@ -15,7 +15,7 @@ export interface RoleDefinition {
 export const ROLE_DEFINITIONS: RoleDefinition[] = [
   {
     slug: 'khach_mua',
-    label: 'Tôi cần mua nhà',
+    label: 'Khách mua',
     shortLabel: 'Khách mua',
     description: 'Tìm nguồn nhà phù hợp nhu cầu',
     group: 'public',
@@ -24,7 +24,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
   },
   {
     slug: 'chu_nha',
-    label: 'Tôi cần bán nhà',
+    label: 'Chủ nhà',
     shortLabel: 'Chủ nhà',
     description: 'Gửi thông tin nhà cần bán',
     group: 'public',
@@ -33,18 +33,18 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
   },
   {
     slug: 'nguoi_gioi_thieu',
-    label: 'Giới thiệu nhân sự',
-    shortLabel: 'Người giới thiệu',
-    description: 'Giới thiệu nhân sự, chủ nhà hoặc khách mua',
+    label: 'CTV giới thiệu nhân sự',
+    shortLabel: 'CTV giới thiệu nhân sự',
+    description: 'Giới thiệu nhân sự - nhận ghi nhận hệ thống',
     group: 'public',
     requiresApproval: false,
     dashboardPath: '/nguoi-gioi-thieu',
   },
   {
     slug: 'ctv_khach',
-    label: 'CTV giới thiệu',
-    shortLabel: 'CTV giới thiệu',
-    description: 'Cộng tác viên giới thiệu đơn giản',
+    label: 'CTV giới thiệu khách',
+    shortLabel: 'CTV giới thiệu khách',
+    description: 'Cộng tác viên giới thiệu khách mua',
     group: 'public',
     requiresApproval: false,
     dashboardPath: '/ctv',
@@ -60,8 +60,8 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
   },
   {
     slug: 'chuyen_vien',
-    label: 'Chuyên viên',
-    shortLabel: 'Chuyên viên',
+    label: 'Cộng tác viên',
+    shortLabel: 'Cộng tác viên',
     description: 'Tìm khách mua nhà',
     group: 'staff',
     requiresApproval: true,
@@ -205,7 +205,23 @@ export const ROLE_NAMES = ROLE_DEFINITIONS.reduce<Record<string, string>>((acc, 
   return acc;
 }, {});
 
-export const PUBLIC_REGISTRATION_ROLES = ROLE_DEFINITIONS.filter((role) => role.slug !== 'admin');
+export const DEFAULT_REGISTRATION_ROLE_SLUGS = [
+  'khach_mua',
+  'chu_nha',
+  'nguoi_gioi_thieu',
+  'ctv_khach',
+  'ctv_nguon',
+  'chuyen_vien',
+  'chuyen_gia',
+  'hoc_vien',
+  'truong_phong',
+] as const;
+
+const DEFAULT_REGISTRATION_ROLE_SET = new Set<string>(DEFAULT_REGISTRATION_ROLE_SLUGS);
+
+export const PUBLIC_REGISTRATION_ROLES = ROLE_DEFINITIONS.filter((role) =>
+  DEFAULT_REGISTRATION_ROLE_SET.has(role.slug),
+);
 
 export function getRoleDashboardPath(roleSlug: string): string {
   return ROLE_MAP[roleSlug]?.dashboardPath || '/profile';

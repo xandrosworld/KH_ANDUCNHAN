@@ -73,7 +73,7 @@ export default function AddCustomerPage() {
       </button>
 
       <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chuyên viên</p>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Cộng tác viên</p>
         <h1 className="mt-1 text-2xl font-black text-[#25202a]">Thêm khách mua</h1>
         <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">
           Ghi nhận khách, ngân sách và khu vực quan tâm để đối soát nhu cầu, tìm nguồn nhà phù hợp.
