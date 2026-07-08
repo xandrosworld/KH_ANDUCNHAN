@@ -823,6 +823,26 @@ test.describe('V1 core workflows', () => {
     await expectUsablePage(page, testInfo, 'workflow-property-contact-cta');
   });
 
+  test('public navigation masks the previous screen immediately', async ({ page }) => {
+    await installMocks(page, 'admin', false);
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    await page.getByRole('button', { name: /^Tin tức$/i }).first().click({ noWaitAfter: true });
+    await page.waitForTimeout(20);
+
+    const overlayState = await page.getByTestId('route-transition-overlay').evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      const style = window.getComputedStyle(node);
+      return { opacity: Number(style.opacity), width: rect.width, height: rect.height };
+    });
+    expect(overlayState.opacity, 'route transition overlay should cover the old screen immediately').toBeGreaterThanOrEqual(0.99);
+    expect(overlayState.width).toBeGreaterThanOrEqual(320);
+    expect(overlayState.height).toBeGreaterThanOrEqual(600);
+
+    await expect(page.getByRole('heading', { name: /Tin tức Sổ Đỏ Vạn Phúc/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('route-transition-overlay')).toHaveCSS('opacity', '0', { timeout: 5_000 });
+  });
+
   test('login routes to the active role dashboard', async ({ page }, testInfo) => {
     await installMocks(page, 'chuyen_gia', false);
     await page.goto('/', { waitUntil: 'networkidle' });

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -174,11 +175,101 @@ function AppRoutes() {
   );
 }
 
+function RouteTransitionOverlay() {
+  const location = useLocation();
+  const [visible, setVisible] = useState(false);
+  const hideTimerRef = useRef<number | null>(null);
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const currentUrlKey = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const clearHideTimer = () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+      hideTimerRef.current = null;
+      frameRef.current = null;
+    };
+
+    const shouldShowForUrl = (target?: string | URL | null) => {
+      if (!target) return true;
+      try {
+        const next = new URL(String(target), window.location.href);
+        if (next.origin !== window.location.origin) return false;
+        return `${next.pathname}${next.search}${next.hash}` !== currentUrlKey();
+      } catch {
+        return true;
+      }
+    };
+
+    const show = (target?: string | URL | null) => {
+      if (!shouldShowForUrl(target)) return;
+      clearHideTimer();
+      flushSync(() => setVisible(true));
+    };
+
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = function patchedPushState(...args) {
+      show(args[2] as string | URL | null | undefined);
+      return originalPushState.apply(this, args);
+    };
+
+    window.history.replaceState = function patchedReplaceState(...args) {
+      show(args[2] as string | URL | null | undefined);
+      return originalReplaceState.apply(this, args);
+    };
+
+    const onPopState = () => show();
+    window.addEventListener('popstate', onPopState, true);
+
+    return () => {
+      clearHideTimer();
+      window.removeEventListener('popstate', onPopState, true);
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      hideTimerRef.current = window.setTimeout(() => setVisible(false), 180);
+    });
+
+    return () => {
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      frameRef.current = null;
+      hideTimerRef.current = null;
+    };
+  }, [location.pathname, location.search, location.hash, visible]);
+
+  return (
+    <div
+      data-testid="route-transition-overlay"
+      aria-hidden="true"
+      className={`pointer-events-none fixed inset-0 z-[9999] bg-[#fff8f2] transition-opacity ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
+      style={{ transitionDuration: visible ? '0ms' : '120ms' }}
+    >
+      <div className="absolute left-0 top-0 h-1 w-full overflow-hidden bg-red-50">
+        <div className="h-full w-1/2 animate-[svp-route-progress_0.7s_ease-in-out_infinite] rounded-r-full bg-[#c40012]" />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <RouteTransitionOverlay />
       </AuthProvider>
     </BrowserRouter>
   );
