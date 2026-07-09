@@ -46,12 +46,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
-a {
+a:not([class]) {
   color: #D32F2F;
   text-decoration: none;
 }
 
-a:hover {
+a:not([class]):hover {
   color: #B71C1C;
 }
 
