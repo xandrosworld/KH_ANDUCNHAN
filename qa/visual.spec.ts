@@ -929,7 +929,7 @@ test.describe('V1 core workflows', () => {
     expect(overlayState.width).toBeGreaterThanOrEqual(320);
     expect(overlayState.height).toBeGreaterThanOrEqual(600);
 
-    await expect(page.getByRole('heading', { name: /Tin tức Sổ Đỏ Vạn Phúc/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Kiến thức bất động sản thổ cư|Tin tức Sổ Đỏ Vạn Phúc/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('route-transition-overlay')).toHaveCSS('opacity', '0', { timeout: 5_000 });
   });
 
