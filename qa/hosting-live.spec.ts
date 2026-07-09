@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const PUBLIC_ROUTES = [
   { path: '/gioi-thieu', heading: /V.*n Ph.*c|Gi.*i thi.*u/i },
-  { path: '/tin-tuc', heading: /C.*p nh.*t|Tin t.*c/i },
+  { path: '/tin-tuc', heading: /Kiến thức bất động sản thổ cư|Tin t.*c/i },
   { path: '/', heading: /Sổ Đỏ Vạn Phúc|Đăng nhập/i },
   { path: '/sign-in', heading: /Đăng nhập/i },
   { path: '/register', heading: /Đăng ký tài khoản/i },
