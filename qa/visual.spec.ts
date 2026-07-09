@@ -437,7 +437,15 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     }
     if (/^\/admin\/notifications\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true });
     if (path === '/admin/role-applications') {
-      return ok(route, { items: [{ id: 'app_1', userName: 'Nhan su moi', userEmail: 'new@sodovanphuc.vn', roleSlug: 'chuyen_gia', reason: 'Dang ky dau chu' }] });
+      return ok(route, {
+        items: [{
+          id: 'app_1',
+          userName: 'UI Expert ui-20260707t141701',
+          userEmail: 'ui-expert.ui-20260707t141701@sodovanphuc.vn',
+          roleSlug: 'chuyen_gia',
+          reason: 'Dang ky dau chu tai khu vuc Ha Dong, can duyet de quan ly kho nha rieng va kho nha tong.',
+        }],
+      });
     }
     if (path.startsWith('/admin/role-applications/') && method === 'PATCH') return ok(route, { item: { id: path.split('/').pop(), status: 'approved' } });
     if (path === '/admin/role-approval-settings') return ok(route, { items: roleApprovalSettings, total: roleApprovalSettings.length });

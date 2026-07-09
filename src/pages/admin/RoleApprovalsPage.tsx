@@ -52,7 +52,7 @@ export default function RoleApprovalsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-24 pt-3 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-5xl overflow-hidden px-4 pb-24 pt-3 sm:px-6 lg:px-8">
       <section className="mb-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -100,10 +100,10 @@ export default function RoleApprovalsPage() {
           <p className="mt-1 text-sm font-medium text-[#747b88]">Khi người dùng xin vai trò cần duyệt, yêu cầu sẽ xuất hiện tại đây.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {items.map((application) => (
-            <div key={application.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-              <div className="flex items-start gap-3">
+            <div key={application.id} className="min-w-0 max-w-full overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
+              <div className="flex min-w-0 items-start gap-3">
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-[#c40012]">
                   <UserCheck className="h-5 w-5" />
                 </div>
@@ -111,14 +111,14 @@ export default function RoleApprovalsPage() {
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="truncate font-black text-[#25202a]">{application.userName || application.userEmail || 'Người dùng mới'}</p>
-                      <p className="mt-1 text-sm font-semibold text-[#747b88]">{application.userEmail || application.userPhone || 'Chưa có liên hệ'}</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-[#747b88]">{application.userEmail || application.userPhone || 'Chưa có liên hệ'}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-[#faf7f5] px-2.5 py-1 text-xs font-black text-[#747b88]">
+                    <span className="max-w-full shrink-0 truncate rounded-full bg-[#faf7f5] px-2.5 py-1 text-xs font-black text-[#747b88]">
                       {getRoleDisplayName(application.roleSlug)}
                     </span>
                   </div>
 
-                  {application.reason && <p className="mt-3 rounded-2xl bg-[#faf7f5] px-3 py-2 text-sm font-medium leading-6 text-[#747b88]">Lý do: {application.reason}</p>}
+                  {application.reason && <p className="mt-3 overflow-hidden break-words rounded-2xl bg-[#faf7f5] px-3 py-2 text-sm font-medium leading-6 text-[#747b88]">Lý do: {application.reason}</p>}
 
                   {tab.status === 'pending' && (
                     <div className="mt-4">
