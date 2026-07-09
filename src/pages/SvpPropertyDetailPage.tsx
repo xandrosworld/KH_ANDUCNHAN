@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, CheckCircle2, Clock3, History, ImagePlus, Loader2, Phone, ShieldCheck, Tag, UserRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock3, History, Home, ImagePlus, Loader2, Phone, PlusCircle, Search, ShieldCheck, Tag, UserRound } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import PageShell from '../components/PageShell';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -146,10 +146,26 @@ const SvpPropertyDetailPage = () => {
             Đang tải hồ sơ nhà...
           </div>
         ) : !property ? (
-          <div className="rounded-lg border border-white/10 bg-[#08090C] px-5 py-16 text-center">
-            <div className="text-xl font-bold text-[#F5F0E6]">Không tìm thấy nhà</div>
-            <p className="mt-2 text-[14px] text-[#A7ABB6]">Mã nhà không tồn tại hoặc đã bị xóa.</p>
-          </div>
+          <section className="mx-auto flex min-h-[520px] max-w-2xl flex-col items-center justify-center rounded-lg border border-white/10 bg-[#08090C] px-5 py-16 text-center shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+            <div className="grid h-16 w-16 place-items-center rounded-2xl border border-[#F6D37A]/25 bg-[#F6D37A]/10 text-[#F6D37A]">
+              <Home className="h-8 w-8" />
+            </div>
+            <p className="mt-5 text-[12px] font-black uppercase tracking-[0.18em] text-[#F6D37A]">Nguồn nhà</p>
+            <h1 className="mt-2 text-2xl font-black text-[#F5F0E6] sm:text-3xl">Không tìm thấy nguồn nhà</h1>
+            <p className="mt-3 max-w-md text-[14px] font-medium leading-6 text-[#A7ABB6]">
+              Nguồn nhà này có thể đã được ẩn, đã đổi trạng thái hoặc không còn trong hệ thống. Anh/chị có thể quay lại danh sách để tiếp tục xử lý dữ liệu phù hợp.
+            </p>
+            <div className="mt-6 grid w-full max-w-md gap-3 sm:grid-cols-2">
+              <Link to="/nha" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-4 text-[13px] font-black text-[#D7DAE3] hover:border-[#F6D37A]/50 hover:text-[#F6D37A]">
+                <Search className="h-4 w-4" />
+                Danh sách nhà
+              </Link>
+              <Link to="/post-property" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#F6D37A] px-4 text-[13px] font-black text-[#101114] hover:bg-[#FFE8A3]">
+                <PlusCircle className="h-4 w-4" />
+                Thêm nhà
+              </Link>
+            </div>
+          </section>
         ) : (
           <>
             <section className="rounded-lg border border-white/10 bg-white/[0.035] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">

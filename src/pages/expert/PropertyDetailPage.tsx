@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Bath, BedDouble, Compass, FileText, Home, MapPin, Ruler } from 'lucide-react';
+import { ArrowLeft, Bath, BedDouble, Compass, FileText, Home, MapPin, PlusCircle, Ruler, Warehouse } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { areaText, formatVndShort } from '../../utils/svpFormat';
 
@@ -23,14 +23,32 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function ExpertPropertyDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [prop, setProp] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) api.get(`/properties/${id}`).then((response) => setProp(response.data?.item)).catch(() => {});
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    api.get(`/properties/${id}`)
+      .then((response) => setProp(response.data?.item || null))
+      .catch(() => setProp(null))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (!prop) return <div className="p-4"><p className="text-[#757575]">Đang tải...</p></div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#c40012] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!prop) return <ExpertPropertyNotFound onBack={() => navigate(-1)} />;
 
   const isAdmin = user?.roles?.some((role) => role.slug === 'admin' && role.status === 'approved');
   const isOwn = prop.createdBy === user?.id || prop.expertId === user?.id;
@@ -109,6 +127,50 @@ export default function ExpertPropertyDetailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function ExpertPropertyNotFound({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 py-10 text-center">
+      <section className="w-full rounded-[28px] border border-red-100 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-red-50 text-[#c40012]">
+          <Warehouse className="h-8 w-8" />
+        </div>
+        <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Chuyên gia</p>
+        <h1 className="mt-2 text-2xl font-black text-[#25202a]">Không tìm thấy nguồn nhà</h1>
+        <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">
+          Nguồn nhà này có thể đã bị ẩn, đã đổi trạng thái hoặc tài khoản hiện tại chưa có quyền xem chi tiết. Anh/chị có thể quay lại kho nhà để kiểm tra lại.
+        </p>
+        <div className="mt-6 grid gap-2 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white px-4 text-sm font-black text-[#c40012]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/chuyen-gia/kho-nha-rieng')}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#25202a] px-4 text-sm font-black text-white"
+          >
+            <Warehouse className="h-4 w-4" />
+            Kho riêng
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/chuyen-gia/dang-nha')}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Đăng nhà
+          </button>
+        </div>
+      </section>
+    </main>
   );
 }
 

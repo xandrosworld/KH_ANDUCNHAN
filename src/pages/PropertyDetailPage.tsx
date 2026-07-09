@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Home, MapPin, Ruler, BedDouble, Bath, Compass, Phone, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Bath, BedDouble, Compass, Home, MapPin, MessageCircle, Phone, Ruler, Search, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { svpAxios as api } from '../services/svpAxios';
 import { areaText, formatVndShort } from '../utils/svpFormat';
@@ -17,6 +17,7 @@ interface PropertyComment {
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const [prop, setProp] = useState<any>(null);
   const [comments, setComments] = useState<PropertyComment[]>([]);
@@ -65,7 +66,7 @@ export default function PropertyDetailPage() {
   };
 
   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-[#D32F2F] border-t-transparent" /></div>;
-  if (!prop) return <div className="p-4 text-center"><p className="text-[#757575]">Không tìm thấy nhà</p></div>;
+  if (!prop) return <PublicPropertyNotFound onBack={() => navigate(-1)} />;
 
   const extra = prop.extra || {};
   const contactPhoneRaw = String(prop.ownerPhone || prop.owner_phone || prop.contactPhone || prop.contact_phone || '0912886794');
@@ -192,6 +193,40 @@ export default function PropertyDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PublicPropertyNotFound({ onBack }: { onBack: () => void }) {
+  return (
+    <main className="min-h-screen bg-[#fff8f2] px-4 py-10">
+      <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center rounded-[28px] border border-red-100 bg-white p-6 text-center shadow-sm sm:p-8">
+        <div className="grid h-16 w-16 place-items-center rounded-3xl bg-red-50 text-[#c40012]">
+          <Home className="h-8 w-8" />
+        </div>
+        <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Nguồn nhà</p>
+        <h1 className="mt-2 text-2xl font-black text-[#25202a]">Không tìm thấy nguồn nhà</h1>
+        <p className="mt-3 max-w-md text-sm font-medium leading-6 text-[#667085]">
+          Nguồn nhà này có thể đã được ẩn, đã đổi trạng thái hoặc không còn trong hệ thống công khai. Anh/chị có thể quay lại trang trước hoặc mở danh sách tìm nhà phù hợp.
+        </p>
+        <div className="mt-6 grid w-full gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white px-4 text-sm font-black text-[#c40012]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </button>
+          <Link
+            to="/khach-mua/tim-nha"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white"
+          >
+            <Search className="h-4 w-4" />
+            Tìm nhà phù hợp
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }
 

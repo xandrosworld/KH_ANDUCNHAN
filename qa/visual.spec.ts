@@ -477,6 +477,7 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     if (/^\/properties\/[^/]+\/comments\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true });
     if (/^\/properties\/[^/]+$/.test(path) && method === 'GET') {
       const id = path.split('/').pop();
+      if (id === 'prop_missing') return ok(route, { item: null });
       return ok(route, { item: properties.find((item) => item.id === id) || properties[0] });
     }
 
@@ -911,6 +912,24 @@ test.describe('V1 core workflows', () => {
     await expect(page.locator('a[href^="https://zalo.me/"]').first()).toHaveAttribute('href', /https:\/\/zalo\.me\/0909000001\?text=/);
 
     await expectUsablePage(page, testInfo, 'workflow-property-contact-cta');
+  });
+
+  test('missing property detail renders a polished empty state', async ({ page }, testInfo) => {
+    await installMocks(page, 'khach_mua', false);
+    await page.goto('/nha/prop_missing', { waitUntil: 'networkidle' });
+
+    await expect(page.getByRole('heading', { name: /Không tìm thấy nguồn nhà/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Quay lại/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Tìm nhà phù hợp/i })).toBeVisible();
+    await expectUsablePage(page, testInfo, 'workflow-property-missing-public');
+
+    await installMocks(page, 'chuyen_gia', true);
+    await page.goto('/chuyen-gia/nha/prop_missing', { waitUntil: 'networkidle' });
+
+    await expect(page.getByRole('heading', { name: /Không tìm thấy nguồn nhà/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Kho riêng/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Đăng nhà/i })).toBeVisible();
+    await expectUsablePage(page, testInfo, 'workflow-property-missing-expert');
   });
 
   test('public navigation masks the previous screen immediately', async ({ page }) => {
