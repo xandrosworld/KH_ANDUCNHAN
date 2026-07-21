@@ -490,35 +490,34 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         <div className="absolute inset-x-0 top-[250px] h-36 bg-gradient-to-b from-transparent to-[#fff8f2] sm:top-[330px] sm:h-48" />
 
         <div className="relative mx-auto w-full max-w-[1180px] px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 lg:px-8">
-          <div className="mb-1 flex items-center justify-between gap-2 sm:mb-2">
-            <div className="h-10 w-10" />
-            <div className="flex items-center gap-2">
+          <div className="relative mb-1 flex min-h-10 items-center justify-center sm:mb-2">
+            <div className="grid w-[160px] grid-cols-2 gap-1.5 min-[380px]:w-[188px] sm:w-[204px] sm:gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/gioi-thieu')}
-                className="inline-flex h-9 items-center rounded-full bg-white/95 px-3 text-xs font-black text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:px-4 sm:text-sm"
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
               >
                 Giới thiệu
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/tin-tuc')}
-                className="inline-flex h-9 items-center rounded-full bg-white/95 px-3 text-xs font-black text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:px-4 sm:text-sm"
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
               >
                 Tin tức
               </button>
             </div>
-            <div className="relative">
+            <div className="absolute right-0 top-0">
               <button
                 type="button"
                 data-testid="auth-support-toggle"
                 aria-expanded={supportOpen}
                 aria-controls="auth-support-menu"
                 onClick={() => setSupportOpen((open) => !open)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/95 px-3 text-sm font-semibold text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:gap-2 sm:px-4"
+                className="inline-flex h-9 w-9 items-center justify-center gap-0 overflow-hidden rounded-full bg-white/95 px-0 text-sm font-semibold text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 max-[430px]:text-transparent min-[431px]:w-auto min-[431px]:gap-1.5 min-[431px]:px-3 sm:h-10 sm:gap-2 sm:px-4"
               >
-                <span className="grid h-5 w-5 place-items-center rounded-full border border-[#d7d0c8] text-xs">?</span>
-                Hỗ trợ
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-[#d7d0c8] text-xs text-[#4f4a55]">?</span>
+                <span className="sr-only min-[431px]:not-sr-only">Hỗ trợ</span>
               </button>
               {supportOpen ? (
                 <div
