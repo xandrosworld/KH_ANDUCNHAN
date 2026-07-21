@@ -394,7 +394,20 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
         totalReferrals: referrals.length,
       });
     }
-    if (path === '/admin/users') return ok(route, {
+    if (path === '/admin/users' && method === 'POST') {
+      const body = request.postDataJSON?.() as { fullName?: string; email?: string; phone?: string; roleSlugs?: string[] } | undefined;
+      return ok(route, {
+        tempPassword: 'SVP@TEMP123',
+        item: {
+          id: 'user_created_admin',
+          fullName: body?.fullName || 'Tai khoan moi',
+          email: body?.email || 'created@sodovanphuc.vn',
+          phone: body?.phone || '0909000000',
+          roles: (body?.roleSlugs || ['khach_mua']).map((slug) => ({ slug, status: 'approved' })),
+        },
+      });
+    }
+    if (path === '/admin/users' && method === 'GET') return ok(route, {
       items: [
         userFor('admin'),
         {
@@ -1094,6 +1107,13 @@ test.describe('V1 core workflows', () => {
     await installMocks(page, 'admin');
 
     await page.goto('/quan-tri/nguoi-dung', { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /^Tạo tài khoản$/ }).click();
+    await page.getByLabel(/Họ tên/i).fill('Admin moi QA');
+    await page.getByLabel(/Email/i).fill('admin-moi-qa@sodovanphuc.vn');
+    await page.getByLabel(/Số điện thoại/i).fill('0909000888');
+    await page.getByLabel(/Vai trò/i).selectOption('admin');
+    await page.getByTestId('admin-create-user-submit').click();
+    await expect(page.locator('body')).toContainText(/Mật khẩu tạm|SVP@TEMP123/i);
     await page.getByTestId('admin-user-reset-password').first().click();
     await expect(page.locator('body')).toContainText('SVP@TEMP123');
     await page.getByTestId('admin-user-lock').first().click();

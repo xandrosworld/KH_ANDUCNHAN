@@ -47,6 +47,14 @@ export default function AdminUsersPage() {
   const [referrerLookup, setReferrerLookup] = useState('');
   const [selectedRoleSlug, setSelectedRoleSlug] = useState('');
   const [roleSettings, setRoleSettings] = useState<any[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    roleSlug: 'khach_mua',
+  });
   const currentIsOwnerAdmin = hasApprovedRoleInList(currentUser?.roles, SUPER_ADMIN_ROLE);
   const currentUserId = currentUser?.id || '';
 
@@ -181,6 +189,38 @@ export default function AdminUsersPage() {
     }
   };
 
+  const createUser = async () => {
+    if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.phone.trim() || !createForm.roleSlug) {
+      setMessage('Nhập đủ họ tên, email, số điện thoại và vai trò cần tạo.');
+      return;
+    }
+    if (isAdminControlledRole(createForm.roleSlug) && !currentIsOwnerAdmin) {
+      setMessage('Chỉ Admin tổng mới có quyền tạo tài khoản quản trị.');
+      return;
+    }
+
+    setBusyId('create-user');
+    setMessage('');
+    try {
+      const response = await api.post('/admin/users', {
+        fullName: createForm.fullName.trim(),
+        email: createForm.email.trim(),
+        phone: createForm.phone.trim(),
+        password: createForm.password.trim() || undefined,
+        roleSlugs: [createForm.roleSlug],
+      });
+      const tempPassword = response.data?.tempPassword ? ` Mật khẩu tạm: ${response.data.tempPassword}` : '';
+      setMessage(`Đã tạo tài khoản ${createForm.email.trim()}.${tempPassword}`);
+      setCreateOpen(false);
+      setCreateForm({ fullName: '', email: '', phone: '', password: '', roleSlug: 'khach_mua' });
+      load();
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa tạo được tài khoản.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
   const removeRole = async (roleSlug: string) => {
     if (!selectedUser || !roleSlug) return;
     if (isAdminControlledRole(roleSlug) && !currentIsOwnerAdmin) {
@@ -215,10 +255,16 @@ export default function AdminUsersPage() {
             <h1 className="mt-1 text-2xl font-black text-[#25202a]">Người dùng</h1>
             <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">Theo dõi tài khoản, SVP ID, vai trò và trạng thái sử dụng.</p>
           </div>
-          <button onClick={exportUsers} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white shadow-sm">
-            <Download className="h-4 w-4" />
-            Xuất Excel
-          </button>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            <button onClick={() => setCreateOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#25202a] px-4 text-sm font-black text-white shadow-sm">
+              <PlusCircle className="h-4 w-4" />
+              Tạo tài khoản
+            </button>
+            <button onClick={exportUsers} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white shadow-sm">
+              <Download className="h-4 w-4" />
+              Xuất Excel
+            </button>
+          </div>
         </div>
 
         <div className="relative mt-4">
@@ -298,6 +344,17 @@ export default function AdminUsersPage() {
           onClose={() => setSelectedUser(null)}
         />
       ) : null}
+      {createOpen ? (
+        <CreateUserPanel
+          form={createForm}
+          setForm={setCreateForm}
+          roleSettings={roleSettings}
+          canManageAdminRoles={currentIsOwnerAdmin}
+          busy={busyId === 'create-user'}
+          onCreate={createUser}
+          onClose={() => setCreateOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -372,6 +429,114 @@ function UserCard({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CreateUserPanel({
+  form,
+  setForm,
+  roleSettings,
+  canManageAdminRoles,
+  busy,
+  onCreate,
+  onClose,
+}: {
+  form: { fullName: string; email: string; phone: string; password: string; roleSlug: string };
+  setForm: (value: { fullName: string; email: string; phone: string; password: string; roleSlug: string }) => void;
+  roleSettings: any[];
+  canManageAdminRoles: boolean;
+  busy: boolean;
+  onCreate: () => void;
+  onClose: () => void;
+}) {
+  const roleOptions = roleSettings.filter((role) =>
+    role.slug &&
+    role.slug !== SUPER_ADMIN_ROLE &&
+    (!isAdminControlledRole(role.slug) || canManageAdminRoles),
+  );
+  const update = (key: keyof typeof form, value: string) => setForm({ ...form, [key]: value });
+
+  return (
+    <div className="fixed inset-0 z-[95] bg-black/35 px-4 py-6">
+      <section className="mx-auto flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Tạo tài khoản</p>
+            <h2 className="mt-1 text-xl font-black text-[#25202a]">Thêm người dùng mới</h2>
+            <p className="mt-1 text-sm font-semibold text-[#7b8190]">Vai trò được cấp ở trạng thái đã duyệt.</p>
+          </div>
+          <button onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gray-50 text-[#667085]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="space-y-3 overflow-y-auto px-5 py-4">
+          <label className="block">
+            <span className="text-xs font-black text-[#667085]">Họ tên</span>
+            <input
+              value={form.fullName}
+              onChange={(event) => update('fullName', event.target.value)}
+              className="mt-1 min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+              placeholder="Nhập họ tên"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-black text-[#667085]">Email</span>
+            <input
+              value={form.email}
+              onChange={(event) => update('email', event.target.value)}
+              className="mt-1 min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+              placeholder="email@sodovanphuc.vn"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-black text-[#667085]">Số điện thoại</span>
+            <input
+              value={form.phone}
+              onChange={(event) => update('phone', event.target.value)}
+              className="mt-1 min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+              placeholder="09..."
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-black text-[#667085]">Vai trò</span>
+            <select
+              value={form.roleSlug}
+              onChange={(event) => update('roleSlug', event.target.value)}
+              className="mt-1 min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+            >
+              {roleOptions.map((role) => (
+                <option key={role.slug} value={role.slug}>
+                  {role.label || getRoleDisplayName(role.slug)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-black text-[#667085]">Mật khẩu tạm</span>
+            <input
+              value={form.password}
+              onChange={(event) => update('password', event.target.value)}
+              className="mt-1 min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+              placeholder="Để trống để hệ thống tự sinh"
+            />
+          </label>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-gray-100 px-5 py-4 sm:flex-row sm:justify-end">
+          <button onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-gray-200 px-4 text-sm font-black text-[#25202a]">
+            Hủy
+          </button>
+          <button
+            data-testid="admin-create-user-submit"
+            onClick={onCreate}
+            disabled={busy || !form.fullName.trim() || !form.email.trim() || !form.phone.trim() || !form.roleSlug}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white disabled:opacity-60"
+          >
+            {busy ? <ShieldCheck className="h-4 w-4 animate-pulse" /> : <PlusCircle className="h-4 w-4" />}
+            Tạo tài khoản
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

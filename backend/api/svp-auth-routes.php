@@ -1031,6 +1031,124 @@ $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params
     Response::json(['message' => $status === 'approved' ? 'Đã duyệt' : 'Đã từ chối']);
 });
 
+$router->add('POST', '/api/svp/admin/users', function () {
+    $payload = svp_require_role('admin_tong', 'admin');
+    $db = Database::getInstance();
+    svp_v1_ensure_account_status_column($db);
+    if (function_exists('svp_v1_ensure_profile_columns')) {
+        svp_v1_ensure_profile_columns($db);
+    }
+    if (function_exists('svp_ensure_role_approval_config')) {
+        svp_ensure_role_approval_config($db);
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $fullName = trim((string) ($input['fullName'] ?? $input['full_name'] ?? ''));
+    $email = strtolower(trim((string) ($input['email'] ?? '')));
+    $phone = trim((string) ($input['phone'] ?? ''));
+    $password = trim((string) ($input['password'] ?? $input['temporaryPassword'] ?? ''));
+    $roleSlugs = svp_normalize_role_slugs($input);
+    if (empty($roleSlugs)) $roleSlugs = ['khach_mua'];
+
+    if ($fullName === '' || $email === '' || $phone === '') {
+        Response::error('Vui lòng nhập đủ họ tên, email và số điện thoại.', 400);
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        Response::error('Email chưa đúng định dạng.', 400);
+    }
+    if ($password === '') {
+        $password = svp_admin_random_password(18);
+    }
+    if (strlen($password) < 6) {
+        Response::error('Mật khẩu cần tối thiểu 6 ký tự.', 400);
+    }
+
+    foreach ($roleSlugs as $roleSlug) {
+        if (svp_is_admin_controlled_role($roleSlug)) {
+            if ($roleSlug === 'admin_tong' && svp_owner_admin_exists($db)) {
+                Response::error('Hệ thống chỉ dùng một tài khoản Admin tổng cho chủ sở hữu.', 403);
+            }
+            if (!svp_is_owner_admin_payload($payload) && !svp_can_bootstrap_owner_admin($db, $payload, $roleSlug)) {
+                Response::error('Chỉ Admin tổng mới có quyền tạo tài khoản quản trị.', 403);
+            }
+        }
+    }
+
+    $roleStmt = $db->prepare("SELECT value FROM svp_config_options WHERE group_id = 'account_role_approval' AND value = :role LIMIT 1");
+    foreach ($roleSlugs as $roleSlug) {
+        $roleStmt->execute(['role' => $roleSlug]);
+        if (!$roleStmt->fetch(PDO::FETCH_ASSOC)) {
+            Response::error('Vai trò không tồn tại trong cấu hình: ' . $roleSlug, 404);
+        }
+    }
+
+    $check = $db->prepare("SELECT id FROM users WHERE email = :email OR phone = :phone LIMIT 1");
+    $check->execute(['email' => $email, 'phone' => $phone]);
+    if ($check->fetch(PDO::FETCH_ASSOC)) {
+        Response::error('Email hoặc số điện thoại đã được sử dụng.', 409);
+    }
+
+    $userId = bin2hex(random_bytes(16));
+    $svpId = svp_generate_svp_id($db);
+    $refCode = svp_generate_referral_code($svpId);
+    $db->prepare("
+        INSERT INTO users (id, full_name, email, phone, password_hash, svp_id, referral_code, account_status, created_at)
+        VALUES (:id, :full_name, :email, :phone, :password_hash, :svp_id, :referral_code, 'active', NOW())
+    ")->execute([
+        'id' => $userId,
+        'full_name' => $fullName,
+        'email' => $email,
+        'phone' => $phone,
+        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        'svp_id' => $svpId,
+        'referral_code' => $refCode,
+    ]);
+
+    $insertRole = $db->prepare("
+        INSERT INTO svp_user_roles (user_id, role_slug, status, applied_at, approved_by, approved_at)
+        VALUES (:uid, :role, 'approved', NOW(), :by, NOW())
+        ON DUPLICATE KEY UPDATE status = 'approved', approved_by = VALUES(approved_by), approved_at = NOW()
+    ");
+    foreach ($roleSlugs as $roleSlug) {
+        $insertRole->execute(['uid' => $userId, 'role' => $roleSlug, 'by' => $payload['sub'] ?? null]);
+    }
+
+    $userStmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+    $userStmt->execute(['id' => $userId]);
+    $createdUser = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $roles = svp_get_user_roles($db, $userId);
+    $item = svp_build_user_payload($createdUser, $roles);
+
+    svp_insert_audit($db, $payload['sub'] ?? null, 'create', 'user', $userId, null, [
+        'user' => $item,
+        'createdRoles' => $roleSlugs,
+        'createdByAdmin' => true,
+    ]);
+
+    if (!empty($email) && function_exists('svp_v1_mail_send')) {
+        $safeName = htmlspecialchars($fullName ?: 'anh/chị', ENT_QUOTES, 'UTF-8');
+        $safeEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+        $safePassword = htmlspecialchars($password, ENT_QUOTES, 'UTF-8');
+        $loginUrl = htmlspecialchars((defined('FRONTEND_URL') ? rtrim(FRONTEND_URL, '/') : 'https://sodovanphuc.vn') . '/login', ENT_QUOTES, 'UTF-8');
+        $body = "
+            <h2>Tài khoản Sổ Đỏ Vạn Phúc đã được tạo</h2>
+            <p>Chào {$safeName},</p>
+            <p>Quản trị viên đã tạo tài khoản cho anh/chị.</p>
+            <p><strong>Email:</strong> {$safeEmail}</p>
+            <p><strong>Mật khẩu tạm:</strong> <code>{$safePassword}</code></p>
+            <p>Anh/chị vui lòng đăng nhập và đổi lại mật khẩu để bảo mật tài khoản.</p>
+            <p><a href=\"{$loginUrl}\">Đăng nhập Sổ Đỏ Vạn Phúc</a></p>
+        ";
+        svp_v1_mail_send($email, 'Tài khoản Sổ Đỏ Vạn Phúc đã được tạo', $body);
+    }
+
+    Response::json([
+        'message' => 'Đã tạo tài khoản',
+        'tempPassword' => $password,
+        'item' => $item,
+    ], 201);
+});
+
 $router->add('GET', '/api/svp/admin/users', function () {
     svp_require_management_role();
     $db = Database::getInstance();
