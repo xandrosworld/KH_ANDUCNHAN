@@ -89,6 +89,13 @@ function svp_can_bootstrap_owner_admin(PDO $db, array $payload, string $roleSlug
 }
 
 function svp_assert_can_assign_role(PDO $db, array $payload, string $targetUserId, string $roleSlug): void {
+    $targetIsAdminControlled = svp_user_has_any_approved_role($db, $targetUserId, svp_admin_controlled_role_slugs());
+    if ($targetIsAdminControlled
+        && !svp_is_owner_admin_payload($payload)
+        && !svp_can_bootstrap_owner_admin($db, $payload, $roleSlug)) {
+        Response::error('Chỉ Admin tổng mới có quyền chỉnh tài khoản quản trị.', 403);
+    }
+
     if (!svp_is_admin_controlled_role($roleSlug)) return;
 
     if ($roleSlug === 'admin_tong') {
@@ -106,6 +113,11 @@ function svp_assert_can_assign_role(PDO $db, array $payload, string $targetUserI
 }
 
 function svp_assert_can_remove_role(PDO $db, array $payload, string $targetUserId, string $roleSlug): void {
+    if (svp_user_has_any_approved_role($db, $targetUserId, svp_admin_controlled_role_slugs())
+        && !svp_is_owner_admin_payload($payload)) {
+        Response::error('Chỉ Admin tổng mới có quyền chỉnh tài khoản quản trị.', 403);
+    }
+
     if (svp_is_admin_controlled_role($roleSlug)) {
         if (!svp_is_owner_admin_payload($payload)) {
             Response::error('Chỉ Admin tổng mới có quyền gỡ quyền quản trị.', 403);
@@ -732,6 +744,10 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
     $old = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$old) Response::notFound('Không tìm thấy loại tài khoản');
 
+    if (svp_is_admin_controlled_role($slug) && !svp_is_owner_admin_payload($payload)) {
+        Response::error('Chỉ Admin tổng mới có quyền chỉnh cấu hình vai trò quản trị.', 403);
+    }
+
     $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
     if (array_key_exists('requiresApproval', $input)) {
         $metadata['requiresApproval'] = (bool) $input['requiresApproval'];
@@ -1109,6 +1125,7 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
     $currentStmt->execute(['id' => $id]);
     $oldUser = $currentStmt->fetch(PDO::FETCH_ASSOC);
     if (!$oldUser) Response::notFound('Khong tim thay tai khoan');
+    $targetIsAdminControlled = svp_user_has_any_approved_role($db, $id, svp_admin_controlled_role_slugs());
 
     $fields = [];
     $data = ['id' => $id];
@@ -1120,11 +1137,17 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
     }
 
     if (!empty($fields)) {
+        if ($targetIsAdminControlled && !svp_is_owner_admin_payload($payload)) {
+            Response::error('Chỉ Admin tổng mới có quyền chỉnh tài khoản quản trị.', 403);
+        }
         $db->prepare("UPDATE users SET " . implode(', ', $fields) . " WHERE id = :id")->execute($data);
     }
 
     $referrerLookup = trim((string) ($input['referrerLookup'] ?? $input['referrer'] ?? $input['referralCode'] ?? ''));
     if ($referrerLookup !== '') {
+        if ($targetIsAdminControlled && !svp_is_owner_admin_payload($payload)) {
+            Response::error('Chỉ Admin tổng mới có quyền chỉnh tài khoản quản trị.', 403);
+        }
         $stmt = $db->prepare("
             SELECT id, full_name, phone, email, svp_id, referral_code
             FROM users
