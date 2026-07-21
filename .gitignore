@@ -32,6 +32,7 @@ hosting-complete-reports/
 domain-cutover-reports/
 playwright-report/
 test-results/
+qa-artifacts/
 outputs/
 
 # Backend sensitive config and uploaded files
