@@ -353,7 +353,8 @@ function gfz_auth_identity(PDO $db, array $payload): array
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user) {
                 $email = strtolower(trim((string) ($user['email'] ?? $email)));
-                $role = trim((string) ($user['role'] ?? $role));
+                $dbRole = trim((string) ($user['role'] ?? ''));
+                if ($dbRole !== '') $role = $dbRole;
             }
         } catch (Throwable $e) {
             // Keep JWT payload values if the users table is not available.
@@ -365,7 +366,7 @@ function gfz_auth_identity(PDO $db, array $payload): array
 
 function gfz_owner_can_edit_property(array $property, array $identity): bool
 {
-    if (($identity['role'] ?? '') === 'admin') {
+    if (in_array(($identity['role'] ?? ''), ['admin_tong', 'admin'], true)) {
         return true;
     }
 
@@ -631,7 +632,7 @@ $router->add('POST', '/api/auth/login', function () use ($input) {
                 SELECT u.password_hash
                 FROM users u
                 INNER JOIN svp_user_roles r ON r.user_id = u.id
-                WHERE r.role_slug = 'admin'
+                WHERE r.role_slug IN ('admin_tong', 'admin')
                   AND r.status = 'approved'
                   AND COALESCE(u.account_status, 'active') <> 'locked'
                 ORDER BY u.created_at ASC
@@ -1438,7 +1439,7 @@ $router->add('PUT', '/api/properties/{id}', function ($params) use ($input) {
     gfz_ensure_property_owner_column($db);
     $id = $params['id'];
     $identity = gfz_auth_identity($db, $payload);
-    $isAdmin = ($identity['role'] ?? '') === 'admin';
+    $isAdmin = in_array(($identity['role'] ?? ''), ['admin_tong', 'admin'], true);
 
     // Check property exists
     $check = $db->prepare('SELECT * FROM properties WHERE id = :id');
@@ -2832,7 +2833,8 @@ $router->add('POST', '/api/admin/reset-card-verified', function () use ($input) 
     $stmt = $db->prepare('SELECT role FROM users WHERE id = :id');
     $stmt->execute(['id' => $payload['sub']]);
     $admin = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$admin || $admin['role'] !== 'admin') {
+    $payloadIsAdmin = in_array((string) ($payload['role'] ?? ''), ['admin_tong', 'admin'], true);
+    if (!$admin || (!$payloadIsAdmin && !in_array((string) ($admin['role'] ?? ''), ['admin_tong', 'admin'], true))) {
         Response::forbidden('Admin access required');
     }
 

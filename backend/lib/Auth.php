@@ -52,8 +52,16 @@ class Auth
         $token = self::extractToken();
         if ($token) {
             $payload = JwtAuth::verifyToken($token);
-            if ($payload && isset($payload['role']) && $payload['role'] === 'admin') {
+            if ($payload && in_array((string) ($payload['role'] ?? ''), ['admin_tong', 'admin'], true)) {
                 return true;
+            }
+            if ($payload && !empty($payload['roles']) && is_array($payload['roles'])) {
+                foreach ($payload['roles'] as $role) {
+                    if (in_array((string) ($role['slug'] ?? ''), ['admin_tong', 'admin'], true)
+                        && ($role['status'] ?? '') === 'approved') {
+                        return true;
+                    }
+                }
             }
         }
 
@@ -103,4 +111,3 @@ class Auth
         return $payload;
     }
 }
-

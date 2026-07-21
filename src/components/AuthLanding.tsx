@@ -76,7 +76,7 @@ function rolesFromConfig(groups: SvpConfigGroup[]): RegistrationRole[] {
   if (!roleGroup?.options?.length) return PUBLIC_REGISTRATION_ROLES;
 
   const mapped = roleGroup.options
-    .filter((option) => option.value !== 'admin' && option.isActive !== false)
+    .filter((option) => !['admin_tong', 'admin'].includes(option.value) && option.isActive !== false)
     .sort((first, second) => first.sortOrder - second.sortOrder)
     .map((option) => {
       const fallback = ROLE_MAP[option.value] as RoleDefinition | undefined;

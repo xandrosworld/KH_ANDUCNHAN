@@ -50,7 +50,7 @@ export default function ExpertPropertyDetailPage() {
 
   if (!prop) return <ExpertPropertyNotFound onBack={() => navigate(-1)} />;
 
-  const isAdmin = user?.roles?.some((role) => role.slug === 'admin' && role.status === 'approved');
+  const isAdmin = user?.roles?.some((role) => ['admin_tong', 'admin'].includes(role.slug) && role.status === 'approved');
   const isOwn = prop.createdBy === user?.id || prop.expertId === user?.id;
   const canSeeInternal = Boolean(isOwn || isAdmin);
   const extra = prop.extra || {};

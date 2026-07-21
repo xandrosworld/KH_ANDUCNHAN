@@ -22,7 +22,7 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
         description: role.description,
       },
       sortOrder: (index + 1) * 10,
-      isActive: role.slug === 'admin' || defaultRegistrationRoleSet.has(role.slug),
+      isActive: role.slug === 'admin_tong' || role.slug === 'admin' || defaultRegistrationRoleSet.has(role.slug),
     })),
   },
   {

@@ -74,7 +74,7 @@ export default function PropertyDetailPage() {
   const zaloMessage = encodeURIComponent(`Chào Sổ Đỏ Vạn Phúc, tôi cần tư vấn nguồn nhà ${prop.code || prop.title || id || ''}.`);
   const canManageComment = (comment: PropertyComment) => {
     if (!user) return false;
-    const isAdmin = user.roles?.some((role) => role.slug === 'admin' && role.status === 'approved');
+    const isAdmin = user.roles?.some((role) => ['admin_tong', 'admin'].includes(role.slug) && role.status === 'approved');
     return Boolean(isAdmin || comment.createdBy === user.id || prop.createdBy === user.id || prop.expertId === user.id);
   };
 

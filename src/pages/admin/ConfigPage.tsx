@@ -793,7 +793,7 @@ export default function AdminConfigPage() {
                         </button>
                         <button
                           type="button"
-                          disabled={savingSlug === setting.slug || setting.slug === 'admin'}
+                          disabled={savingSlug === setting.slug || ['admin_tong', 'admin'].includes(setting.slug)}
                           onClick={() => updateRoleSetting(setting, { registrationEnabled: setting.registrationEnabled === false })}
                           className={`rounded-xl px-3 py-2 text-xs font-black transition ${
                             setting.registrationEnabled === false

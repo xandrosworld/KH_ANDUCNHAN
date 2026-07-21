@@ -176,6 +176,15 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
     dashboardPath: '/quan-tri',
   },
   {
+    slug: 'admin_tong',
+    label: 'Admin tổng',
+    shortLabel: 'Admin tổng',
+    description: 'Quyền cao nhất dành cho chủ sở hữu hệ thống',
+    group: 'management',
+    requiresApproval: true,
+    dashboardPath: '/quan-tri',
+  },
+  {
     slug: 'admin',
     label: 'Quản trị hệ thống',
     shortLabel: 'Quản trị',

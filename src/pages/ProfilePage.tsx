@@ -178,7 +178,7 @@ export default function ProfilePage() {
   };
 
   const availableRoles = ROLE_DEFINITIONS.filter((role) =>
-    role.slug !== 'admin' && !user.roles?.some((item) => item.slug === role.slug),
+    !['admin_tong', 'admin'].includes(role.slug) && !user.roles?.some((item) => item.slug === role.slug),
   );
 
   return (

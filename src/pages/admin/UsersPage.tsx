@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Download, KeyRound, Lock, PlusCircle, Search, ShieldCheck, Unlock, UserRoundCheck, Users, X } from 'lucide-react';
+import { Download, KeyRound, Lock, PlusCircle, Search, ShieldCheck, ShieldOff, Unlock, UserRoundCheck, Users, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 import { getRoleDisplayName } from '../../data/roles';
 import { downloadAdminExport } from '../../utils/adminExport';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ROLE_STATUS: Record<string, string> = {
   approved: 'Đã duyệt',
@@ -18,7 +19,24 @@ const FILTERS = [
   { label: 'Chờ duyệt', value: 'pending' },
 ];
 
+const SUPER_ADMIN_ROLE = 'admin_tong';
+const ADMIN_ROLE = 'admin';
+const ADMIN_CONTROLLED_ROLES = new Set([SUPER_ADMIN_ROLE, ADMIN_ROLE]);
+
+function isAdminControlledRole(roleSlug: string) {
+  return ADMIN_CONTROLLED_ROLES.has(roleSlug);
+}
+
+function hasApprovedRoleInList(roles: any[] | undefined, roleSlug: string) {
+  return (roles || []).some((role) => role.slug === roleSlug && role.status === 'approved');
+}
+
+function userHasAdminControlledRole(user: any) {
+  return (user.roles || []).some((role: any) => isAdminControlledRole(role.slug) && role.status === 'approved');
+}
+
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
@@ -29,6 +47,8 @@ export default function AdminUsersPage() {
   const [referrerLookup, setReferrerLookup] = useState('');
   const [selectedRoleSlug, setSelectedRoleSlug] = useState('');
   const [roleSettings, setRoleSettings] = useState<any[]>([]);
+  const currentIsOwnerAdmin = hasApprovedRoleInList(currentUser?.roles, SUPER_ADMIN_ROLE);
+  const currentUserId = currentUser?.id || '';
 
   const load = () => {
     setLoading(true);
@@ -73,6 +93,10 @@ export default function AdminUsersPage() {
   }, [items, query, filter]);
 
   const updateAccountStatus = async (user: any, accountStatus: 'active' | 'locked') => {
+    if (userHasAdminControlledRole(user) && !currentIsOwnerAdmin) {
+      setMessage('Chỉ Admin tổng mới có quyền khóa hoặc mở khóa tài khoản quản trị.');
+      return;
+    }
     setBusyId(`${user.id}-${accountStatus}`);
     setMessage('');
     try {
@@ -87,6 +111,10 @@ export default function AdminUsersPage() {
   };
 
   const resetPassword = async (user: any) => {
+    if (userHasAdminControlledRole(user) && !currentIsOwnerAdmin) {
+      setMessage('Chỉ Admin tổng mới có quyền tạo mật khẩu tạm cho tài khoản quản trị.');
+      return;
+    }
     const confirmed = window.confirm(`Tạo mật khẩu tạm cho ${user.fullName || user.email || 'tài khoản này'}?`);
     if (!confirmed) return;
     setBusyId(`${user.id}-reset`);
@@ -134,6 +162,10 @@ export default function AdminUsersPage() {
       setMessage('Chọn vai trò cần cấp thêm cho tài khoản.');
       return;
     }
+    if (isAdminControlledRole(selectedRoleSlug) && !currentIsOwnerAdmin) {
+      setMessage('Chỉ Admin tổng mới có quyền cấp vai trò quản trị.');
+      return;
+    }
     setBusyId(`${selectedUser.id}-role`);
     setMessage('');
     try {
@@ -144,6 +176,31 @@ export default function AdminUsersPage() {
       load();
     } catch (error: any) {
       setMessage(error?.response?.data?.message || 'Chưa cấp được vai trò cho tài khoản.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const removeRole = async (roleSlug: string) => {
+    if (!selectedUser || !roleSlug) return;
+    if (isAdminControlledRole(roleSlug) && !currentIsOwnerAdmin) {
+      setMessage('Chỉ Admin tổng mới có quyền gỡ vai trò quản trị.');
+      return;
+    }
+
+    const roleName = roleSettings.find((role) => role.slug === roleSlug)?.label || getRoleDisplayName(roleSlug);
+    const confirmed = window.confirm(`Gỡ vai trò ${roleName} khỏi ${selectedUser.fullName || selectedUser.email || 'tài khoản này'}?`);
+    if (!confirmed) return;
+
+    setBusyId(`${selectedUser.id}-remove-${roleSlug}`);
+    setMessage('');
+    try {
+      await api.patch(`/admin/users/${encodeURIComponent(selectedUser.id)}`, { removeRole: roleSlug });
+      setMessage(`Đã gỡ vai trò ${roleName} khỏi ${selectedUser.fullName || selectedUser.email}.`);
+      setSelectedRoleSlug('');
+      load();
+    } catch (error: any) {
+      setMessage(error?.response?.data?.message || 'Chưa gỡ được vai trò khỏi tài khoản.');
     } finally {
       setBusyId('');
     }
@@ -210,6 +267,7 @@ export default function AdminUsersPage() {
               key={user.id}
               user={user}
               busyId={busyId}
+              canManageSensitiveTarget={!userHasAdminControlledRole(user) || currentIsOwnerAdmin}
               onLock={() => updateAccountStatus(user, 'locked')}
               onUnlock={() => updateAccountStatus(user, 'active')}
               onReset={() => resetPassword(user)}
@@ -231,9 +289,12 @@ export default function AdminUsersPage() {
           setSelectedRoleSlug={setSelectedRoleSlug}
           roleSettings={roleSettings}
           busy={busyId === `${selectedUser.id}-referrer`}
-          roleBusy={busyId === `${selectedUser.id}-role`}
+          roleBusy={busyId === `${selectedUser.id}-role` || busyId.startsWith(`${selectedUser.id}-remove-`)}
+          currentUserId={currentUserId}
+          canManageAdminRoles={currentIsOwnerAdmin}
           onSaveReferrer={updateReferrer}
           onAssignRole={assignRole}
+          onRemoveRole={removeRole}
           onClose={() => setSelectedUser(null)}
         />
       ) : null}
@@ -241,7 +302,23 @@ export default function AdminUsersPage() {
   );
 }
 
-function UserCard({ user, busyId, onLock, onUnlock, onReset, onOpen }: { user: any; busyId: string; onLock: () => void; onUnlock: () => void; onReset: () => void; onOpen: () => void }) {
+function UserCard({
+  user,
+  busyId,
+  canManageSensitiveTarget,
+  onLock,
+  onUnlock,
+  onReset,
+  onOpen,
+}: {
+  user: any;
+  busyId: string;
+  canManageSensitiveTarget: boolean;
+  onLock: () => void;
+  onUnlock: () => void;
+  onReset: () => void;
+  onOpen: () => void;
+}) {
   const initials = String(user.fullName || user.email || '?').trim().slice(0, 1).toUpperCase();
   const isLocked = user.accountStatus === 'locked';
   return (
@@ -278,17 +355,17 @@ function UserCard({ user, busyId, onLock, onUnlock, onReset, onOpen }: { user: a
           </div>
           <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
             {isLocked ? (
-              <button data-testid="admin-user-unlock" disabled={busyId === `${user.id}-active`} onClick={onUnlock} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white disabled:opacity-60">
+              <button data-testid="admin-user-unlock" disabled={busyId === `${user.id}-active` || !canManageSensitiveTarget} onClick={onUnlock} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white disabled:opacity-60">
                 <Unlock className="h-4 w-4" />
                 <span className="truncate">Mở khóa</span>
               </button>
             ) : (
-              <button data-testid="admin-user-lock" disabled={busyId === `${user.id}-locked`} onClick={onLock} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-[#c40012] disabled:opacity-60">
+              <button data-testid="admin-user-lock" disabled={busyId === `${user.id}-locked` || !canManageSensitiveTarget} onClick={onLock} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-[#c40012] disabled:opacity-60">
                 <Lock className="h-4 w-4" />
                 <span className="truncate">Tạm khóa</span>
               </button>
             )}
-            <button data-testid="admin-user-reset-password" disabled={busyId === `${user.id}-reset`} onClick={onReset} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a] disabled:opacity-60 sm:col-span-2">
+            <button data-testid="admin-user-reset-password" disabled={busyId === `${user.id}-reset` || !canManageSensitiveTarget} onClick={onReset} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#25202a] disabled:opacity-60 sm:col-span-2">
               <KeyRound className="h-4 w-4" />
               <span className="truncate">Tạo mật khẩu tạm</span>
             </button>
@@ -308,8 +385,11 @@ function UserDetailPanel({
   roleSettings,
   busy,
   roleBusy,
+  currentUserId,
+  canManageAdminRoles,
   onSaveReferrer,
   onAssignRole,
+  onRemoveRole,
   onClose,
 }: {
   user: any;
@@ -320,8 +400,11 @@ function UserDetailPanel({
   roleSettings: any[];
   busy: boolean;
   roleBusy: boolean;
+  currentUserId: string;
+  canManageAdminRoles: boolean;
   onSaveReferrer: () => void;
   onAssignRole: () => void;
+  onRemoveRole: (roleSlug: string) => void;
   onClose: () => void;
 }) {
   const profile = user.profile || {};
@@ -331,7 +414,14 @@ function UserDetailPanel({
   const certificateUrl = profile.certificateUrl || '';
   const directReferrals = Array.isArray(user.directReferrals) ? user.directReferrals : [];
   const existingRoles = new Set((user.roles || []).map((role: any) => role.slug));
-  const assignableRoles = roleSettings.filter((role) => role.slug && !existingRoles.has(role.slug));
+  const canRemoveRole = (roleSlug: string) =>
+    (!isAdminControlledRole(roleSlug) || canManageAdminRoles) && !(roleSlug === SUPER_ADMIN_ROLE && user.id === currentUserId);
+  const assignableRoles = roleSettings.filter((role) =>
+    role.slug &&
+    role.slug !== SUPER_ADMIN_ROLE &&
+    !existingRoles.has(role.slug) &&
+    (!isAdminControlledRole(role.slug) || canManageAdminRoles),
+  );
 
   return (
     <div className="fixed inset-0 z-[90] bg-black/35">
@@ -425,11 +515,26 @@ function UserDetailPanel({
           <DetailSection title="Cấp thêm vai trò">
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
-                {(user.roles || []).length ? (user.roles || []).map((role: any) => (
-                  <span key={role.slug} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">
-                    {getRoleDisplayName(role.slug)} · {ROLE_STATUS[role.status] || role.status}
-                  </span>
-                )) : (
+                {(user.roles || []).length ? (user.roles || []).map((role: any) => {
+                  const removable = canRemoveRole(role.slug);
+                  return (
+                    <span key={role.slug} className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">
+                      <span className="truncate">{getRoleDisplayName(role.slug)} · {ROLE_STATUS[role.status] || role.status}</span>
+                      {removable ? (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveRole(role.slug)}
+                          disabled={roleBusy}
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/80 text-[#c40012] ring-1 ring-emerald-100 transition hover:bg-red-50 disabled:opacity-50"
+                          aria-label={`Gỡ vai trò ${getRoleDisplayName(role.slug)}`}
+                          title="Gỡ vai trò"
+                        >
+                          <ShieldOff className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                    </span>
+                  );
+                }) : (
                   <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-black text-gray-500">Chưa có vai trò</span>
                 )}
               </div>

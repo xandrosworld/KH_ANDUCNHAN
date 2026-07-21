@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Route, type TestInfo } from '@playwright/test';
 
 const ROLE_SLUGS = [
+  'admin_tong',
   'admin',
   'giam_doc',
   'truong_phong',
@@ -39,6 +40,7 @@ const ADMIN_IMPERSONATION_ROLE_SLUGS = [
 ];
 
 const ROLE_DASHBOARD_PATHS: Record<string, string> = {
+  admin_tong: '/quan-tri',
   admin: '/quan-tri',
   giam_doc: '/quan-tri',
   truong_phong: '/quan-tri',
@@ -62,6 +64,7 @@ const ROLE_DASHBOARD_PATHS: Record<string, string> = {
 };
 
 const ROLE_NAMES: Record<string, string> = {
+  admin_tong: 'Admin tong',
   admin: 'Quan tri vien',
   giam_doc: 'Giam doc khu vuc',
   truong_phong: 'Truong phong',
@@ -248,6 +251,8 @@ const roleApprovalSettings = [
   { id: 'role_approval_nguoi_gioi_thieu', slug: 'nguoi_gioi_thieu', label: 'CTV gioi thieu nhan su', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 30 },
   { id: 'role_approval_ctv_khach', slug: 'ctv_khach', label: 'CTV gioi thieu khach', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 40 },
   { id: 'role_approval_ctv_nguon', slug: 'ctv_nguon', label: 'CTV gioi thieu nguon', roleGroup: 'Co ban', requiresApproval: false, sortOrder: 50 },
+  { id: 'role_approval_admin_tong', slug: 'admin_tong', label: 'Admin tong', roleGroup: 'Quan ly', requiresApproval: true, registrationEnabled: false, sortOrder: 890 },
+  { id: 'role_approval_admin', slug: 'admin', label: 'Quan tri he thong', roleGroup: 'Quan ly', requiresApproval: true, registrationEnabled: false, sortOrder: 900 },
   { id: 'role_approval_chuyen_vien', slug: 'chuyen_vien', label: 'Cong tac vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 110 },
   { id: 'role_approval_chuyen_gia', slug: 'chuyen_gia', label: 'Chuyen gia', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 120 },
   { id: 'role_approval_hoc_vien', slug: 'hoc_vien', label: 'Hoc vien', roleGroup: 'Nhan su', requiresApproval: true, sortOrder: 125 },
@@ -267,6 +272,7 @@ const publicRoutes = [
 ];
 
 const roleRoutes = [
+  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
@@ -973,9 +979,10 @@ test.describe('V1 core workflows', () => {
     await expectUsablePage(page, testInfo, 'workflow-login');
   });
 
-  test('admin-only account can select every role for QA', async ({ page }, testInfo) => {
+  test('admin-only account can select operational roles for QA', async ({ page }, testInfo) => {
     await installMocks(page, 'admin', true, ['admin']);
     await page.goto('/select-role', { waitUntil: 'networkidle' });
+    await expect(page.getByTestId('select-role-card-admin_tong')).toHaveCount(0);
 
     for (const slug of ADMIN_IMPERSONATION_ROLE_SLUGS) {
       await expect(page.getByTestId(`select-role-card-${slug}`), `Missing admin QA role card: ${slug}`).toBeVisible();

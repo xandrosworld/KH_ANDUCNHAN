@@ -31,6 +31,7 @@ interface MenuItem {
 }
 
 const MANAGEMENT_ROLES = new Set([
+  'admin_tong',
   'admin',
   'giam_doc',
   'truong_phong',

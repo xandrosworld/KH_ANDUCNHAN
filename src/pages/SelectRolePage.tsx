@@ -5,6 +5,7 @@ import { getRoleDashboardPath, getRoleDisplayName, ROLE_MAP } from '../data/role
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const ROLE_ICONS: Record<string, any> = {
+  admin_tong: Shield,
   admin: Settings,
   giam_doc: Building2,
   giam_doc_khoi: Building2,
@@ -35,6 +36,7 @@ const ROLE_PRIORITY = [
   'pho_phong',
   'tro_ly',
   'thu_ky',
+  'admin_tong',
   'admin',
   'ctv_nguon',
   'ctv_khach',

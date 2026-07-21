@@ -82,6 +82,7 @@ function svp_role_approval_definitions(): array
         ['slug' => 'pho_giam_doc_khu_vuc', 'label' => 'Phó Giám đốc Khu vực', 'group' => 'Quản lý', 'description' => 'Hỗ trợ quản lý cấp Khu vực', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 260],
         ['slug' => 'giam_doc_dieu_hanh', 'label' => 'Giám đốc Điều hành', 'group' => 'Quản lý', 'description' => 'Điều hành hệ thống', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 270],
         ['slug' => 'pho_giam_doc_dieu_hanh', 'label' => 'Phó Giám đốc Điều hành', 'group' => 'Quản lý', 'description' => 'Hỗ trợ điều hành hệ thống', 'requiresApproval' => true, 'isActive' => false, 'sortOrder' => 280],
+        ['slug' => 'admin_tong', 'label' => 'Admin tổng', 'group' => 'Quản lý', 'description' => 'Quyền cao nhất dành cho chủ sở hữu hệ thống', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 890],
         ['slug' => 'admin', 'label' => 'Quản trị hệ thống', 'group' => 'Quản lý', 'description' => 'Quản trị toàn bộ hệ thống', 'requiresApproval' => true, 'isActive' => true, 'sortOrder' => 900],
     ];
 }
@@ -120,7 +121,7 @@ function svp_role_setting_from_option(array $row): array
         'description' => (string) ($metadata['description'] ?? $definition['description'] ?? ''),
         'roleGroup' => (string) ($metadata['roleGroup'] ?? $definition['group'] ?? 'Khác'),
         'requiresApproval' => (bool) ($metadata['requiresApproval'] ?? $definition['requiresApproval'] ?? true),
-        'registrationEnabled' => $slug !== 'admin' && $option['isActive'] !== false,
+        'registrationEnabled' => !in_array($slug, ['admin_tong', 'admin'], true) && $option['isActive'] !== false,
         'systemRole' => (bool) ($metadata['systemRole'] ?? (bool) $definition),
         'customRole' => (bool) ($metadata['customRole'] ?? !$definition),
         'sortOrder' => $option['sortOrder'],
@@ -130,7 +131,7 @@ function svp_role_setting_from_option(array $row): array
 function svp_role_registration_enabled_from_config(PDO $db, string $roleSlug): bool
 {
     $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim($roleSlug)));
-    if ($roleSlug === '' || $roleSlug === 'admin') return false;
+    if ($roleSlug === '' || in_array($roleSlug, ['admin_tong', 'admin'], true)) return false;
 
     try {
         svp_ensure_role_approval_config($db);
@@ -960,7 +961,7 @@ $router->add('PUT', '/api/svp/config/options/{id}', function ($params) use ($inp
     }
 
     if (($old['group_id'] ?? '') === 'account_role_approval'
-        && (string) ($old['value'] ?? '') === 'admin'
+        && in_array((string) ($old['value'] ?? ''), ['admin_tong', 'admin'], true)
         && (int) $next['is_active'] === 0) {
         Response::error('Vai trò quản trị hệ thống không thể ẩn.', 400);
     }
@@ -1017,7 +1018,7 @@ $router->add('DELETE', '/api/svp/config/options/{id}', function ($params) {
     $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
     $isLocked = !empty($metadata['locked'])
         || (($old['group_id'] ?? '') === 'property_field_labels' && in_array((string) ($old['value'] ?? ''), svp_property_field_locked_keys(), true))
-        || (($old['group_id'] ?? '') === 'account_role_approval' && (string) ($old['value'] ?? '') === 'admin');
+        || (($old['group_id'] ?? '') === 'account_role_approval' && in_array((string) ($old['value'] ?? ''), ['admin_tong', 'admin'], true));
     if ($isLocked) {
         Response::error('Mục hệ thống không thể xóa, chỉ có thể sửa hoặc ẩn khi được phép.', 400);
     }
@@ -1284,7 +1285,7 @@ $router->add('DELETE', '/api/svp/properties/{id}/comments/{commentId}', function
     $roles = $payload['roles'] ?? [];
     $isAdmin = false;
     foreach ($roles as $role) {
-        if (($role['slug'] ?? '') === 'admin' && ($role['status'] ?? '') === 'approved') {
+        if (in_array(($role['slug'] ?? ''), ['admin_tong', 'admin'], true) && ($role['status'] ?? '') === 'approved') {
             $isAdmin = true;
             break;
         }

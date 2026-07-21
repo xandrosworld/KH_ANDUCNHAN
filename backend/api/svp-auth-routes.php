@@ -20,18 +20,121 @@ function svp_auth_require(): array {
 
 function svp_require_role(string ...$slugs): array {
     $payload = svp_auth_require();
-    $roles = $payload['roles'] ?? [];
-    foreach ($roles as $r) {
-        if (in_array($r['slug'] ?? '', $slugs) && ($r['status'] ?? '') === 'approved') {
-            return $payload;
-        }
+    foreach ($slugs as $slug) {
+        if (svp_payload_has_approved_role($payload, $slug)) return $payload;
     }
     Response::error('Bạn không có quyền truy cập', 403);
     return $payload; // unreachable
 }
 
+function svp_payload_has_approved_role(array $payload, string $slug): bool {
+    $roles = $payload['roles'] ?? [];
+    if (!is_array($roles)) return false;
+    foreach ($roles as $role) {
+        if (($role['slug'] ?? '') === $slug && ($role['status'] ?? '') === 'approved') {
+            return true;
+        }
+    }
+    return false;
+}
+
+function svp_is_owner_admin_payload(array $payload): bool {
+    return svp_payload_has_approved_role($payload, 'admin_tong');
+}
+
+function svp_admin_controlled_role_slugs(): array {
+    return ['admin_tong', 'admin'];
+}
+
+function svp_is_admin_controlled_role(string $roleSlug): bool {
+    return in_array($roleSlug, svp_admin_controlled_role_slugs(), true);
+}
+
+function svp_user_has_approved_role(PDO $db, string $userId, string $roleSlug): bool {
+    $stmt = $db->prepare(
+        "SELECT 1
+         FROM svp_user_roles
+         WHERE user_id = :uid AND role_slug = :role AND status = 'approved'
+         LIMIT 1"
+    );
+    $stmt->execute(['uid' => $userId, 'role' => $roleSlug]);
+    return (bool) $stmt->fetchColumn();
+}
+
+function svp_user_has_any_approved_role(PDO $db, string $userId, array $roleSlugs): bool {
+    foreach ($roleSlugs as $roleSlug) {
+        if (svp_user_has_approved_role($db, $userId, (string) $roleSlug)) return true;
+    }
+    return false;
+}
+
+function svp_owner_admin_count(PDO $db): int {
+    $stmt = $db->prepare(
+        "SELECT COUNT(DISTINCT user_id)
+         FROM svp_user_roles
+         WHERE role_slug = 'admin_tong' AND status = 'approved'"
+    );
+    $stmt->execute();
+    return (int) $stmt->fetchColumn();
+}
+
+function svp_owner_admin_exists(PDO $db): bool {
+    return svp_owner_admin_count($db) > 0;
+}
+
+function svp_can_bootstrap_owner_admin(PDO $db, array $payload, string $roleSlug): bool {
+    return $roleSlug === 'admin_tong'
+        && !svp_owner_admin_exists($db)
+        && svp_payload_has_approved_role($payload, 'admin');
+}
+
+function svp_assert_can_assign_role(PDO $db, array $payload, string $targetUserId, string $roleSlug): void {
+    if (!svp_is_admin_controlled_role($roleSlug)) return;
+
+    if ($roleSlug === 'admin_tong') {
+        $targetAlreadyOwner = svp_user_has_approved_role($db, $targetUserId, 'admin_tong');
+        if (!$targetAlreadyOwner && svp_owner_admin_exists($db)) {
+            Response::error('Hệ thống chỉ dùng một tài khoản Admin tổng cho chủ sở hữu.', 403);
+        }
+    }
+
+    if (svp_is_owner_admin_payload($payload) || svp_can_bootstrap_owner_admin($db, $payload, $roleSlug)) {
+        return;
+    }
+
+    Response::error('Chỉ Admin tổng mới có quyền cấp hoặc chỉnh quyền quản trị.', 403);
+}
+
+function svp_assert_can_remove_role(PDO $db, array $payload, string $targetUserId, string $roleSlug): void {
+    if (svp_is_admin_controlled_role($roleSlug)) {
+        if (!svp_is_owner_admin_payload($payload)) {
+            Response::error('Chỉ Admin tổng mới có quyền gỡ quyền quản trị.', 403);
+        }
+        if ($roleSlug === 'admin_tong') {
+            if ($targetUserId === (string) ($payload['sub'] ?? '')) {
+                Response::error('Không thể tự gỡ quyền Admin tổng của tài khoản đang dùng.', 400);
+            }
+            if (svp_user_has_approved_role($db, $targetUserId, 'admin_tong') && svp_owner_admin_count($db) <= 1) {
+                Response::error('Không thể gỡ Admin tổng cuối cùng của hệ thống.', 400);
+            }
+        }
+        return;
+    }
+
+    if (!svp_payload_has_approved_role($payload, 'admin') && !svp_is_owner_admin_payload($payload)) {
+        Response::error('Bạn không có quyền gỡ vai trò của tài khoản này.', 403);
+    }
+}
+
+function svp_assert_can_manage_admin_target(PDO $db, array $payload, string $targetUserId): void {
+    if (!svp_user_has_any_approved_role($db, $targetUserId, svp_admin_controlled_role_slugs())) return;
+    if (svp_is_owner_admin_payload($payload)) return;
+    Response::error('Chỉ Admin tổng mới có quyền thao tác với tài khoản quản trị.', 403);
+}
+
 function svp_management_role_slugs(): array {
     return [
+        'admin_tong',
         'admin',
         'giam_doc_dieu_hanh',
         'pho_giam_doc_dieu_hanh',
@@ -82,6 +185,7 @@ function svp_role_name(string $roleSlug): string {
     }
 
     $names = [
+        'admin_tong' => 'Admin tổng',
         'admin' => 'Quản trị',
         'giam_doc' => 'Giám đốc Khu vực',
         'truong_phong' => 'Trưởng phòng',
@@ -246,6 +350,7 @@ function svp_visibility_keys_for_role(?string $activeRole): array {
         'ctv_khach' => ['vl_lop4', 'specialist_collaborator'],
         'ctv_nguon' => ['vl_lop8', 'source_collaborator'],
         'chuyen_gia' => ['vl_tot_nghiep', 'assigned_expert', 'vl_chuyen_gia', 'expert_network'],
+        'admin_tong' => ['vl_vinh_danh', 'management_admin'],
         'admin' => ['vl_vinh_danh', 'management_admin'],
         'giam_doc' => ['vl_vinh_danh', 'management_admin'],
         'truong_phong' => ['vl_vinh_danh', 'management_admin'],
@@ -329,7 +434,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
     $phone = trim($input['phone'] ?? '');
     $password = trim($input['password'] ?? '');
     $roleSlug = trim($input['roleSlug'] ?? $input['role_slug'] ?? '');
-    if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
+    if (in_array($roleSlug, svp_admin_controlled_role_slugs(), true)) Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
     $referralCode = trim($input['referralCode'] ?? $input['referral_code'] ?? '');
 
     if (!$fullName || !$email || !$password || !$roleSlug) {
@@ -508,7 +613,7 @@ $router->add('POST', '/api/svp/auth/register-role', function () {
     $reason = trim($input['reason'] ?? '');
 
     if (!$roleSlug) Response::error('Vui lòng chọn vai trò', 400);
-    if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
+    if (in_array($roleSlug, svp_admin_controlled_role_slugs(), true)) Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
 
     // Check if already has this role
     $stmt = $db->prepare("SELECT id FROM svp_user_roles WHERE user_id = :uid AND role_slug = :role LIMIT 1");
@@ -643,10 +748,7 @@ $router->add('PATCH', '/api/svp/admin/role-approval-settings/{slug}', function (
     $sortOrder = array_key_exists('sortOrder', $input) ? (int) $input['sortOrder'] : (int) $old['sort_order'];
     $isActive = (int) ($old['is_active'] ?? 1);
     if (array_key_exists('registrationEnabled', $input)) {
-        if ($slug === 'admin' && !(bool) $input['registrationEnabled']) {
-            Response::error('Vai trò quản trị hệ thống không thể ẩn.', 400);
-        }
-        $isActive = $slug === 'admin' ? 1 : (int) (bool) $input['registrationEnabled'];
+        $isActive = svp_is_admin_controlled_role($slug) ? 1 : (int) (bool) $input['registrationEnabled'];
     }
 
     $update = $db->prepare(
@@ -685,7 +787,7 @@ $router->add('POST', '/api/svp/admin/role-approval-settings', function () {
         $slug = preg_replace('/[^a-z0-9_]+/', '_', strtolower(trim($base)));
         $slug = trim($slug, '_');
     }
-    if ($label === '' || $slug === '' || $slug === 'admin') {
+    if ($label === '' || $slug === '' || svp_is_admin_controlled_role($slug)) {
         Response::error('Tên hoặc mã vai trò không hợp lệ', 400);
     }
 
@@ -847,6 +949,12 @@ $router->add('PATCH', '/api/svp/admin/role-applications/{id}', function ($params
 
     if (!in_array($status, ['approved', 'rejected'])) Response::error('Trạng thái không hợp lệ', 400);
 
+    $permissionStmt = $db->prepare("SELECT user_id, role_slug FROM svp_role_applications WHERE id = :id LIMIT 1");
+    $permissionStmt->execute(['id' => $id]);
+    $pendingApp = $permissionStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$pendingApp) Response::notFound('Không tìm thấy yêu cầu vai trò');
+    svp_assert_can_assign_role($db, $payload, (string) $pendingApp['user_id'], (string) $pendingApp['role_slug']);
+
     // Update application
     $db->prepare("UPDATE svp_role_applications SET status = :s, admin_notes = :n, reviewed_by = :by, reviewed_at = NOW() WHERE id = :id")
        ->execute(['s' => $status, 'n' => $notes, 'by' => $payload['sub'], 'id' => $id]);
@@ -989,7 +1097,7 @@ $router->add('GET', '/api/svp/admin/users', function () {
 });
 
 $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
-    $payload = svp_require_role('admin');
+    $payload = svp_require_role('admin_tong', 'admin');
     $db = Database::getInstance();
     if (function_exists('svp_v1_ensure_profile_columns')) {
         svp_v1_ensure_profile_columns($db);
@@ -1073,6 +1181,7 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
     if (isset($input['addRole'])) {
         $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) $input['addRole'])));
         if ($roleSlug === '') Response::error('Vai tro khong hop le', 400);
+        svp_assert_can_assign_role($db, $payload, $id, $roleSlug);
         if (function_exists('svp_ensure_role_approval_config')) {
             svp_ensure_role_approval_config($db);
         }
@@ -1100,6 +1209,29 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
         ]);
     }
 
+    if (isset($input['removeRole'])) {
+        $roleSlug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) $input['removeRole'])));
+        if ($roleSlug === '') Response::error('Vai tro khong hop le', 400);
+        svp_assert_can_remove_role($db, $payload, $id, $roleSlug);
+
+        $beforeRolesStmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid ORDER BY id ASC");
+        $beforeRolesStmt->execute(['uid' => $id]);
+        $beforeRoles = $beforeRolesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $deleteRole = $db->prepare("DELETE FROM svp_user_roles WHERE user_id = :uid AND role_slug = :role");
+        $deleteRole->execute(['uid' => $id, 'role' => $roleSlug]);
+
+        $db->prepare("UPDATE svp_role_applications SET status = 'rejected', reviewed_by = :by, reviewed_at = NOW() WHERE user_id = :uid AND role_slug = :role AND status = 'pending'")
+           ->execute(['by' => $payload['sub'], 'uid' => $id, 'role' => $roleSlug]);
+
+        $afterRolesStmt = $db->prepare("SELECT role_slug, status FROM svp_user_roles WHERE user_id = :uid ORDER BY id ASC");
+        $afterRolesStmt->execute(['uid' => $id]);
+        svp_insert_audit($db, $payload['sub'], 'remove_role', 'user', $id, ['roles' => $beforeRoles], [
+            'roles' => $afterRolesStmt->fetchAll(PDO::FETCH_ASSOC),
+            'removedRole' => $roleSlug,
+        ]);
+    }
+
     if (!empty($fields)) {
         $currentStmt->execute(['id' => $id]);
         svp_insert_audit($db, $payload['sub'], 'update', 'user', $id, $oldUser, $currentStmt->fetch(PDO::FETCH_ASSOC));
@@ -1111,7 +1243,7 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
 // ─── Property Enhancements ──────────────────────────────────────────────────
 
 $router->add('POST', '/api/svp/admin/users/{id}/account-status', function ($params) {
-    $payload = svp_require_role('admin');
+    $payload = svp_require_role('admin_tong', 'admin');
     $db = Database::getInstance();
     svp_v1_ensure_account_status_column($db);
     $id = (string) ($params['id'] ?? '');
@@ -1120,6 +1252,7 @@ $router->add('POST', '/api/svp/admin/users/{id}/account-status', function ($para
 
     if (!in_array($status, ['active', 'locked'], true)) Response::error('Trang thai tai khoan khong hop le', 400);
     if ($id === ($payload['sub'] ?? '') && $status === 'locked') Response::error('Khong the tu khoa tai khoan quan tri dang dung', 400);
+    svp_assert_can_manage_admin_target($db, $payload, $id);
 
     $stmt = $db->prepare("SELECT id, full_name, email, account_status FROM users WHERE id = :id LIMIT 1");
     $stmt->execute(['id' => $id]);
@@ -1136,9 +1269,10 @@ $router->add('POST', '/api/svp/admin/users/{id}/account-status', function ($para
 });
 
 $router->add('POST', '/api/svp/admin/users/{id}/reset-password', function ($params) {
-    $payload = svp_require_role('admin');
+    $payload = svp_require_role('admin_tong', 'admin');
     $db = Database::getInstance();
     $id = (string) ($params['id'] ?? '');
+    svp_assert_can_manage_admin_target($db, $payload, $id);
 
     $stmt = $db->prepare("SELECT id, full_name, email, phone FROM users WHERE id = :id LIMIT 1");
     $stmt->execute(['id' => $id]);
@@ -1298,7 +1432,7 @@ $router->add('GET', '/api/svp/admin/notifications', function () {
 });
 
 $router->add('POST', '/api/svp/admin/notifications', function () {
-    $payload = svp_require_role('admin');
+    $payload = svp_require_role('admin_tong', 'admin');
     $db = Database::getInstance();
     svp_admin_ensure_notifications_table($db);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -1335,7 +1469,7 @@ $router->add('POST', '/api/svp/admin/notifications', function () {
 });
 
 $router->add('DELETE', '/api/svp/admin/notifications/{id}', function ($params) {
-    $payload = svp_require_role('admin');
+    $payload = svp_require_role('admin_tong', 'admin');
     $db = Database::getInstance();
     svp_admin_ensure_notifications_table($db);
     $id = (string) ($params['id'] ?? '');

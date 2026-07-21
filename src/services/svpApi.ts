@@ -120,7 +120,7 @@ function migrateLocalConfigGroups(groups: SvpConfigGroup[]): SvpConfigGroup[] {
 
         return {
           ...migrateConfigOption(option, defaultOption),
-          isActive: option.value === 'admin' || defaultRegistrationRoleSet.has(option.value),
+          isActive: option.value === 'admin_tong' || option.value === 'admin' || defaultRegistrationRoleSet.has(option.value),
         };
       });
 

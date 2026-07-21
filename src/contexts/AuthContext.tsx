@@ -49,6 +49,7 @@ export interface AuthContextType {
 const TOKEN_KEY = 'svp_token';
 const ACTIVE_ROLE_KEY = 'svp_active_role';
 const OLD_TOKEN_KEYS = ['gf_token', 'gf_admin_token'];
+const SUPER_ADMIN_ROLE_SLUG = 'admin_tong';
 const ADMIN_ROLE_SLUG = 'admin';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,11 +77,15 @@ function actualApprovedOf(userData: AuthUser | null): UserRole[] {
 
 function approvedOf(userData: AuthUser | null): UserRole[] {
   const actualApproved = actualApprovedOf(userData);
-  const canImpersonateRoles = actualApproved.some((role) => role.slug === ADMIN_ROLE_SLUG);
+  const isOwnerAdmin = actualApproved.some((role) => role.slug === SUPER_ADMIN_ROLE_SLUG);
+  const canImpersonateRoles = isOwnerAdmin || actualApproved.some((role) => role.slug === ADMIN_ROLE_SLUG);
   if (!canImpersonateRoles) return actualApproved;
 
   const actualBySlug = new Map(actualApproved.map((role) => [role.slug, role]));
-  return ROLE_DEFINITIONS.map((definition) => {
+  const definitions = isOwnerAdmin
+    ? ROLE_DEFINITIONS
+    : ROLE_DEFINITIONS.filter((definition) => definition.slug !== SUPER_ADMIN_ROLE_SLUG);
+  return definitions.map((definition) => {
     const actualRole = actualBySlug.get(definition.slug);
     return actualRole
       ? { ...actualRole, name: actualRole.name || definition.shortLabel }

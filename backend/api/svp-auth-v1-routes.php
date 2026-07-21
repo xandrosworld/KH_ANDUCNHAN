@@ -209,6 +209,7 @@ function svp_v1_role_name(string $roleSlug): string {
     }
 
     $names = [
+        'admin_tong' => 'Admin tổng',
         'admin' => 'Quản trị',
         'giam_doc' => 'Giám đốc Khu vực',
         'truong_phong' => 'Trưởng phòng',
@@ -1028,7 +1029,7 @@ $router->add('POST', '/api/svp/auth/register', function () {
     $phone = trim($input['phone'] ?? '');
     $password = trim($input['password'] ?? '');
     $roleSlugs = svp_v1_normalize_role_slugs($input);
-    $roleSlugs = array_values(array_filter($roleSlugs, fn($role) => $role !== 'admin'));
+    $roleSlugs = array_values(array_filter($roleSlugs, fn($role) => !in_array($role, ['admin_tong', 'admin'], true)));
     $referralCode = trim($input['referralCode'] ?? $input['referral_code'] ?? '');
 
     if (!$fullName || !$email || !$phone || !$password || empty($roleSlugs)) {
@@ -1155,9 +1156,9 @@ $router->add('POST', '/api/svp/auth/login', function () {
         $stmt = $db->query(
             "SELECT u.*
              FROM users u
-             LEFT JOIN svp_user_roles r ON r.user_id = u.id AND r.role_slug = 'admin'
-             WHERE u.email = 'admin@sodovanphuc.vn' OR r.role_slug = 'admin'
-             ORDER BY CASE WHEN u.email = 'admin@sodovanphuc.vn' THEN 0 ELSE 1 END, u.created_at ASC
+             LEFT JOIN svp_user_roles r ON r.user_id = u.id AND r.role_slug IN ('admin_tong', 'admin')
+             WHERE u.email = 'admin@sodovanphuc.vn' OR r.role_slug IN ('admin_tong', 'admin')
+             ORDER BY CASE WHEN r.role_slug = 'admin_tong' THEN 0 WHEN u.email = 'admin@sodovanphuc.vn' THEN 1 ELSE 2 END, u.created_at ASC
              LIMIT 1"
         );
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1308,7 +1309,7 @@ $router->add('POST', '/api/svp/auth/register-role', function () {
     $reason = trim($input['reason'] ?? '');
 
     if (!$roleSlug) Response::error('Vui lòng chọn vai trò', 400);
-    if ($roleSlug === 'admin') Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
+    if (in_array($roleSlug, ['admin_tong', 'admin'], true)) Response::error('Vai trò quản trị cần được cấp bởi quản trị viên hiện hữu', 403);
     if (!svp_role_registration_enabled_from_config($db, $roleSlug)) {
         Response::error('Vai trò "' . svp_role_display_name_from_config($db, $roleSlug) . '" đang tạm ẩn khỏi đăng ký.', 400);
     }
