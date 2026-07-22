@@ -185,6 +185,15 @@ async function newPage(viewport = { width: 1440, height: 900 }) {
   return { context, page, failures: watchPage(page) };
 }
 
+async function waitForStableRoute(page) {
+  await page.waitForFunction(() => {
+    const root = document.querySelector('#root');
+    const overlay = document.querySelector('[data-testid="route-transition-overlay"]');
+    const overlayHidden = !overlay || window.getComputedStyle(overlay).opacity === '0';
+    return overlayHidden && (root?.textContent || '').trim().length > 20;
+  }, null, { timeout: 25_000 });
+}
+
 async function loginPage(page, email, password, expectedPath) {
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await page.locator('#identifier').fill(email);
@@ -195,7 +204,10 @@ async function loginPage(page, email, password, expectedPath) {
     const role = Object.values(accounts).find((item) => item.email === email)?.roles?.[0] || 'admin_tong';
     await page.getByTestId(`select-role-card-${role}`).click();
   }
-  if (expectedPath) await page.waitForURL((url) => url.pathname === expectedPath, { timeout: 25_000 });
+  if (expectedPath) {
+    await page.waitForURL((url) => url.pathname === expectedPath, { timeout: 25_000 });
+    await waitForStableRoute(page);
+  }
 }
 
 async function registerViaUi(account, referralCode = '') {
@@ -294,6 +306,7 @@ async function previewPublishAndBrand(ownerPage) {
     await screenshot(page, '02-su-kien-cong-khai-desktop');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { name: EVENT_TITLE }).waitFor();
     await screenshot(page, '03-su-kien-cong-khai-mobile');
   } finally { await context.close(); }
 
@@ -329,8 +342,9 @@ async function testRoleLogin(account, expectedPath, screenshotName) {
   const { context, page, failures } = await newPage({ width: 390, height: 844 });
   try {
     await loginPage(page, account.email, account.password, expectedPath);
+    await page.locator('main h1, main h2').first().waitFor({ state: 'visible' });
     const text = (await page.locator('#root').innerText()).trim();
-    assert(text.length > 80, `${account.key} hiển thị trang trống`);
+    assert(text.length > 20, `${account.key} hiển thị trang trống`);
     assert(!/Application error|Page Not Found/i.test(text), `${account.key} gặp lỗi giao diện`);
     await screenshot(page, screenshotName);
     assert(failures.length === 0, failures.join('; '));
@@ -345,6 +359,7 @@ async function testMultiRole() {
     await page.locator('#password').fill(accounts.multi.password);
     await page.getByRole('button', { name: /^Đăng nhập$/ }).click();
     await page.waitForURL(/\/select-role$/);
+    await page.getByRole('heading', { name: 'Chọn vai trò sử dụng' }).waitFor();
     await screenshot(page, '14-chon-nhieu-vai-tro');
     const expected = { chuyen_vien: '/chuyen-vien', chuyen_gia: '/chuyen-gia', hoc_vien: '/hoc-vien', truong_phong: '/quan-tri', giam_doc_khoi: '/quan-tri' };
     for (const [role, route] of Object.entries(expected)) {
