@@ -359,7 +359,7 @@ async function reassignReferrerViaUi(ownerPage) {
   await candidate.waitFor();
   await candidate.click();
   await ownerPage.getByRole('button', { name: /^Lưu$/ }).click();
-  await ownerPage.getByText('Đã cập nhật người giới thiệu.').waitFor();
+  await ownerPage.getByText(/Đã cập nhật người giới thiệu cho/).waitFor();
   await screenshot(ownerPage, '15-gan-lai-nguoi-gioi-thieu');
 }
 
@@ -595,7 +595,7 @@ try {
   await step('Đăng nhập và dùng dashboard Giám đốc khối', async () => testRoleLogin(accounts.director, '/quan-tri', '13-dashboard-giam-doc-khoi'));
   await step('Chọn và chuyển đổi tài khoản nhiều vai trò', testMultiRole);
 
-  await step('Người đã có tài khoản đăng ký và chống đăng ký trùng', async () => registerExistingAndCheckDuplicate(accounts.expert, '/chuyen-gia'));
+  await step('Người đã có tài khoản đăng ký và chống đăng ký trùng', async () => registerExistingAndCheckDuplicate(accounts.director, '/quan-tri'));
   await step('Gán lại người giới thiệu bằng tìm kiếm chính xác', async () => reassignReferrerViaUi(ownerPage));
   await step('Lọc, cập nhật, xuất CSV, đóng/mở và tạo sự kiện QA', async () => testEventAdmin(ownerPage));
   await step('Admin thường bị chặn quyền của Admin tổng', testRegularAdminRestrictions);

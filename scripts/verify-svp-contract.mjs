@@ -124,6 +124,7 @@ const sqlVerify = read('backend', 'sql', 'sodovanphuc_verify.sql');
 const databaseVerify = read('backend', 'sql', 'database_verify.sql');
 const routes = read('backend', 'api', 'svp-routes.php');
 const authRoutes = read('backend', 'api', 'svp-auth-routes.php');
+const eventRoutes = read('backend', 'api', 'svp-event-routes.php');
 const routerIndex = read('backend', 'api', 'index.php');
 const uploadLib = read('backend', 'lib', 'Upload.php');
 const databaseLib = read('backend', 'lib', 'Database.php');
@@ -168,6 +169,8 @@ const reportService = read('src', 'services', 'reportService.ts');
 const scheduleService = read('src', 'services', 'scheduleService.ts');
 const svpApi = read('src', 'services', 'svpApi.ts');
 const svpTypes = read('src', 'types', 'svp.ts');
+const eventApi = read('src', 'services', 'eventApi.ts');
+const adminEventsPage = read('src', 'pages', 'admin', 'EventsPage.tsx');
 const envExample = read('.env.example');
 const gitignore = read('.gitignore');
 const packageJson = read('package.json');
@@ -1171,6 +1174,10 @@ assertIncludes(hostingSmoke, '/api/svp/customer-needs/$([uri]::EscapeDataString(
 assertIncludes(hostingSmoke, '/api/svp/customers/$([uri]::EscapeDataString($customerId))', 'write workflow cleans customer');
 assertIncludes(hostingSmoke, 'finally {', 'write workflow cleanup runs in finally');
 assertIncludes(routes, 'function svp_delete_row_by_id', 'SVP API has audited cleanup delete helper');
+assert(countMatches(eventRoutes, /u\.full_name LIKE :q_name OR u\.email LIKE :q_email OR u\.phone LIKE :q_phone/g) === 2, 'event registration list and CSV use unique PDO search placeholders');
+assert(countMatches(eventRoutes, /u\.full_name LIKE :q OR u\.email LIKE :q OR u\.phone LIKE :q/g) === 0, 'event registration search does not reuse named PDO placeholders');
+assertIncludes(adminEventsPage, 'setRegistrations([]); setMessage(e.message)', 'event registration UI clears stale rows when filtering fails');
+assertIncludes(eventApi, 'window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)', 'event CSV keeps its object URL alive until browser download starts');
 assertIncludes(hostingSmoke, 'AUTO-SMOKE', 'write workflow marks generated records');
 
 console.log('');

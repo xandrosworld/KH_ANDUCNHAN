@@ -20,7 +20,7 @@ export default function AdminEventsPage() {
   const [filters, setFilters] = useState({ q: '', eventId: '', status: '', utmSource: '' });
 
   const loadEvents = async () => { setLoading(true); try { const data = await eventApi.listAdmin(); setEvents(data.items); } catch (e: any) { setMessage(e.message); } finally { setLoading(false); } };
-  const loadRegistrations = useCallback(async () => { setLoading(true); try { const data = await eventApi.listRegistrations(filters); setRegistrations(data.items); } catch (e: any) { setMessage(e.message); } finally { setLoading(false); } }, [filters]);
+  const loadRegistrations = useCallback(async () => { setLoading(true); try { const data = await eventApi.listRegistrations(filters); setRegistrations(data.items); } catch (e: any) { setRegistrations([]); setMessage(e.message); } finally { setLoading(false); } }, [filters]);
   useEffect(() => { void loadEvents(); }, []);
   useEffect(() => {
     if (tab !== 'registrations') return;

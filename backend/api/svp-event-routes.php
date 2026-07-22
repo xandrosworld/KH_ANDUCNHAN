@@ -399,7 +399,11 @@ $router->add('GET', '/api/svp/admin/event-registrations', function () {
     if (!empty($_GET['eventId'])) { $where[] = 'r.event_id = :event_id'; $params['event_id'] = $_GET['eventId']; }
     if (!empty($_GET['status'])) { $where[] = 'r.care_status = :status'; $params['status'] = $_GET['status']; }
     if (!empty($_GET['utmSource'])) { $where[] = 'r.utm_source = :utm_source'; $params['utm_source'] = $_GET['utmSource']; }
-    if (!empty($_GET['q'])) { $where[] = '(u.full_name LIKE :q OR u.email LIKE :q OR u.phone LIKE :q)'; $params['q'] = '%' . $_GET['q'] . '%'; }
+    if (!empty($_GET['q'])) {
+        $where[] = '(u.full_name LIKE :q_name OR u.email LIKE :q_email OR u.phone LIKE :q_phone)';
+        $query = '%' . $_GET['q'] . '%';
+        $params['q_name'] = $query; $params['q_email'] = $query; $params['q_phone'] = $query;
+    }
     $stmt = $db->prepare('SELECT r.*, e.title event_title, e.slug event_slug, u.full_name, u.email, u.phone, u.svp_id FROM svp_event_registrations r JOIN svp_events e ON e.id=r.event_id JOIN users u ON u.id=r.user_id WHERE ' . implode(' AND ', $where) . ' ORDER BY r.created_at DESC');
     $stmt->execute($params);
     $items = array_map(function ($row) { return [
@@ -441,7 +445,11 @@ $router->add('GET', '/api/svp/admin/event-registrations/export', function () {
     if (!empty($_GET['eventId'])) { $where[] = 'r.event_id = :event_id'; $params['event_id'] = $_GET['eventId']; }
     if (!empty($_GET['status'])) { $where[] = 'r.care_status = :status'; $params['status'] = $_GET['status']; }
     if (!empty($_GET['utmSource'])) { $where[] = 'r.utm_source = :utm_source'; $params['utm_source'] = $_GET['utmSource']; }
-    if (!empty($_GET['q'])) { $where[] = '(u.full_name LIKE :q OR u.email LIKE :q OR u.phone LIKE :q)'; $params['q'] = '%' . $_GET['q'] . '%'; }
+    if (!empty($_GET['q'])) {
+        $where[] = '(u.full_name LIKE :q_name OR u.email LIKE :q_email OR u.phone LIKE :q_phone)';
+        $query = '%' . $_GET['q'] . '%';
+        $params['q_name'] = $query; $params['q_email'] = $query; $params['q_phone'] = $query;
+    }
     $stmt = $db->prepare('SELECT e.title,u.svp_id,u.full_name,u.phone,u.email,r.care_status,r.utm_source,r.utm_medium,r.utm_campaign,r.referrer_url,r.created_at FROM svp_event_registrations r JOIN svp_events e ON e.id=r.event_id JOIN users u ON u.id=r.user_id WHERE ' . implode(' AND ', $where) . ' ORDER BY r.created_at DESC');
     $stmt->execute($params);
     svp_admin_csv_download('svp-event-registrations-' . date('Y-m-d') . '.csv', ['Sự kiện','SVP ID','Họ tên','Điện thoại','Email','Trạng thái','UTM source','UTM medium','UTM campaign','URL giới thiệu','Ngày đăng ký'], $stmt->fetchAll(PDO::FETCH_NUM));

@@ -66,7 +66,7 @@ export const eventApi = {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(objectUrl);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
   },
   async uploadBranding(kind: 'logo' | 'banner', file: File) {
     const body = new FormData();
