@@ -495,28 +495,35 @@ export default function AuthLanding({ initialPanel = 'login', registrationOnly =
         <div className="absolute inset-x-0 top-[250px] h-36 bg-gradient-to-b from-transparent to-[#fff8f2] sm:top-[330px] sm:h-48" />
 
         <div className="relative mx-auto w-full max-w-[1180px] px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 lg:px-8">
-          <div className="relative mb-1 flex min-h-10 items-center justify-center sm:mb-2">
-            <div data-testid="auth-public-nav" className="grid w-[216px] grid-cols-3 gap-1.5 min-[360px]:w-[248px] min-[400px]:w-[278px] sm:w-[306px] sm:gap-2">
+          <div className="relative mb-1 flex min-h-10 items-center justify-start sm:mb-2 sm:justify-center">
+            <div data-testid="auth-public-nav" className="grid w-[244px] grid-cols-4 gap-1 min-[360px]:w-[278px] min-[400px]:w-[310px] sm:w-[410px] sm:gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/gioi-thieu')}
-                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-[10px] font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 min-[400px]:text-xs sm:h-10 sm:text-sm"
               >
                 Giới thiệu
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/tin-tuc')}
-                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-[10px] font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 min-[400px]:text-xs sm:h-10 sm:text-sm"
               >
                 Tin tức
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/su-kien')}
-                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-[10px] font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 min-[400px]:text-xs sm:h-10 sm:text-sm"
               >
                 Sự kiện
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/tuyen-dung')}
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-[10px] font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 min-[400px]:text-xs sm:h-10 sm:text-sm"
+              >
+                Tuyển dụng
               </button>
             </div>
             <div className="absolute right-0 top-0">
@@ -889,6 +896,10 @@ export default function AuthLanding({ initialPanel = 'login', registrationOnly =
             •{' '}
             <button type="button" onClick={() => navigate('/su-kien')} className="font-bold text-[#c40012] hover:underline">
               Sự kiện
+            </button>{' '}
+            •{' '}
+            <button type="button" onClick={() => navigate('/tuyen-dung')} className="font-bold text-[#c40012] hover:underline">
+              Tuyển dụng
             </button>{' '}
             • Liên hệ
           </footer>

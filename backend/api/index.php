@@ -513,6 +513,7 @@ function svp_health_payload(): array
         'svp_transactions',
         'svp_finance_entries',
         'svp_recruitment_candidates',
+        'svp_recruitment_posts',
         'svp_training_contents',
         'svp_reputation_scores',
         'svp_notifications',
@@ -536,6 +537,9 @@ function svp_health_payload(): array
         $payload['database']['connected'] = true;
         if (function_exists('svp_ensure_events_schema')) {
             svp_ensure_events_schema($db);
+        }
+        if (function_exists('svp_ensure_recruitment_schema')) {
+            svp_ensure_recruitment_schema($db);
         }
 
         $missing = [];
@@ -3918,6 +3922,7 @@ require_once __DIR__ . '/svp-routes.php';
 require_once __DIR__ . '/svp-auth-v1-routes.php';
 require_once __DIR__ . '/svp-auth-routes.php';
 require_once __DIR__ . '/svp-event-routes.php';
+require_once __DIR__ . '/svp-recruitment-routes.php';
 
 $router->add('GET', '/api/music', function () {
     $musicDir = __DIR__ . '/../uploads/music';

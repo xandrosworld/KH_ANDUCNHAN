@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Calendar, CalendarDays, Clock, Home, Settings2, Share2, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, Calendar, CalendarDays, Clock, Home, Settings2, Share2, ShieldCheck, UserCheck, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { svpAxios as api } from '../../services/svpAxios';
 
@@ -49,6 +49,7 @@ export default function AdminDashboardPage() {
       <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AdminShortcut icon={ShieldCheck} title="Duyệt thành viên/vai trò" desc="Mở quyền cho tài khoản cần phê duyệt" onClick={() => navigate('/quan-tri/duyet-vai-tro')} primary />
         {['admin_tong', 'admin'].includes(user?.activeRole || '') ? <AdminShortcut icon={CalendarDays} title="Quản lý sự kiện" desc="Sửa nội dung và xem người đăng ký" onClick={() => navigate('/quan-tri/su-kien')} /> : null}
+        {['admin_tong', 'admin'].includes(user?.activeRole || '') ? <AdminShortcut icon={BriefcaseBusiness} title="Quản lý tuyển dụng" desc="Sửa bài, chăm sóc và xuất ứng viên" onClick={() => navigate('/quan-tri/tuyen-dung')} /> : null}
         <AdminShortcut icon={Settings2} title="Cấu hình vận hành" desc="Tài khoản cần duyệt, tên trường, danh mục" onClick={() => navigate('/quan-tri/cau-hinh')} />
         <AdminShortcut icon={Clock} title="Nhật ký hệ thống" desc="Theo dõi thay đổi quan trọng" onClick={() => navigate('/quan-tri/nhat-ky')} />
       </section>

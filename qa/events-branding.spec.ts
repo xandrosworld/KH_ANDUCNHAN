@@ -111,11 +111,11 @@ test('event registration page is a dedicated end-user form', async ({ page }) =>
   await expect(page.locator('[data-testid^="social-login-"]')).toHaveCount(0);
 });
 
-test('three public navigation pills remain separate on narrow screens', async ({ page }, testInfo) => {
+test('four public navigation pills remain separate on narrow screens', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile');
   await page.setViewportSize({ width: 320, height: 760 });
   await page.goto('/');
-  const buttons = ['Giới thiệu', 'Tin tức', 'Sự kiện'];
+  const buttons = ['Giới thiệu', 'Tin tức', 'Sự kiện', 'Tuyển dụng'];
   const nav = page.getByTestId('auth-public-nav');
   const boxes = await Promise.all(buttons.map(async (name) => nav.getByRole('button', { name }).boundingBox()));
   expect(boxes.every(Boolean)).toBeTruthy();
@@ -123,5 +123,5 @@ test('three public navigation pills remain separate on narrow screens', async ({
     expect(boxes[index]!.x).toBeGreaterThanOrEqual(boxes[index - 1]!.x + boxes[index - 1]!.width - 1);
   }
   const support = await page.getByTestId('auth-support-toggle').boundingBox();
-  expect(support!.x).toBeGreaterThanOrEqual(boxes[2]!.x + boxes[2]!.width);
+  expect(support!.x).toBeGreaterThanOrEqual(boxes[3]!.x + boxes[3]!.width);
 });

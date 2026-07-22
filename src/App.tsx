@@ -26,6 +26,8 @@ const PublicNewsPage = lazy(() => import('./pages/PublicNewsPage'));
 const PublicEventsPage = lazy(() => import('./pages/PublicEventsPage'));
 const PublicEventDetailPage = lazy(() => import('./pages/PublicEventDetailPage'));
 const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
+const PublicRecruitmentPage = lazy(() => import('./pages/PublicRecruitmentPage'));
+const PublicRecruitmentDetailPage = lazy(() => import('./pages/PublicRecruitmentDetailPage'));
 
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'));
@@ -70,6 +72,7 @@ const AdminReferrals = lazy(() => import('./pages/admin/ReferralsPage'));
 const AdminConfig = lazy(() => import('./pages/admin/ConfigPage'));
 const AdminAudit = lazy(() => import('./pages/admin/AuditPage'));
 const AdminEvents = lazy(() => import('./pages/admin/EventsPage'));
+const AdminRecruitment = lazy(() => import('./pages/admin/RecruitmentPage'));
 
 const MANAGEMENT_ROLES = ['admin_tong', 'admin', 'giam_doc', 'truong_phong', 'pho_phong', 'giam_doc_khoi', 'pho_giam_doc_khoi', 'pho_giam_doc_khu_vuc', 'giam_doc_dieu_hanh', 'pho_giam_doc_dieu_hanh', 'tro_ly', 'thu_ky'] as const;
 const EVENT_ADMIN_ROLES = ['admin_tong', 'admin'] as const;
@@ -80,6 +83,7 @@ const routePrefetchers = [
   () => import('./pages/PublicAboutPage'),
   () => import('./pages/PublicNewsPage'),
   () => import('./pages/PublicEventsPage'),
+  () => import('./pages/PublicRecruitmentPage'),
   () => import('./pages/SelectRolePage'),
   () => import('./pages/ProfilePage'),
   () => import('./pages/NotificationsPage'),
@@ -131,6 +135,8 @@ function AppRoutes() {
         <Route path="/su-kien" element={<PublicEventsPage />} />
         <Route path="/su-kien/:slug" element={<PublicEventDetailPage />} />
         <Route path="/dang-ky-su-kien/:slug" element={<EventRegistrationPage />} />
+        <Route path="/tuyen-dung" element={<PublicRecruitmentPage />} />
+        <Route path="/tuyen-dung/:slug" element={<PublicRecruitmentDetailPage />} />
         <Route path="/nha/:id" element={<PropertyDetailPage />} />
 
         <Route element={<ProtectedRoute />}>
@@ -200,6 +206,7 @@ function AppRoutes() {
               <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
               <Route element={<RoleRoute roles={EVENT_ADMIN_ROLES} />}>
                 <Route path="/quan-tri/su-kien" element={<AdminEvents />} />
+                <Route path="/quan-tri/tuyen-dung" element={<AdminRecruitment />} />
               </Route>
             </Route>
           </Route>

@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, Info, Newspaper } from 'lucide-react';
+import { ArrowLeft, BriefcaseBusiness, CalendarDays, Info, Newspaper } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBranding } from '../contexts/BrandingContext';
 
@@ -19,6 +19,7 @@ export default function PublicPageHeader() {
           <NavLink to="/gioi-thieu" label="Giới thiệu" icon={Info} />
           <NavLink to="/tin-tuc" label="Tin tức" icon={Newspaper} />
           <NavLink to="/su-kien" label="Sự kiện" icon={CalendarDays} />
+          <NavLink to="/tuyen-dung" label="Tuyển dụng" icon={BriefcaseBusiness} />
         </nav>
       </div>
     </header>

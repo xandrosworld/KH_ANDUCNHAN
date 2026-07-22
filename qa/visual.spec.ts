@@ -290,8 +290,8 @@ const publicRoutes = [
 ];
 
 const roleRoutes = [
-  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
-  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/tuyen-dung', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/tuyen-dung', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha-tong', '/chuyen-gia/kho-nha-rieng', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
@@ -480,6 +480,13 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     }
     if (path === '/admin/viewing-schedules' && method === 'GET') return ok(route, { items: schedules, total: schedules.length });
     if (path === '/admin/referrals' && method === 'GET') return ok(route, { items: referrals, total: referrals.length });
+    if (path === '/admin/recruitment-posts' && method === 'GET') return ok(route, {
+      items: [{
+        id: 'recruitment_van_phuc_01', slug: 'tuyen-dung-moi-gioi-van-phuc', title: 'Tuyen dung moi gioi Van Phuc', eyebrow: 'Co hoi nghe nghiep', summary: 'Nhan su lien he truc tiep.', recruiterName: 'Mr An Duc Nhan', recruiterTitle: 'Giam doc Phat trien Nhan luc', ctaLabel: 'Ung tuyen ngay', bannerUrl: '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg', sections: [{ key: 'intro', title: 'Vi tri dang tuyen', body: 'Chuyen vien, chuyen gia va truong phong.' }], disclaimer: 'Thong tin tuyen dung.', status: 'published', applicationStatus: 'open', candidateCount: 2,
+      }],
+      total: 1,
+    });
+    if (path === '/admin/recruitment-candidates' && method === 'GET') return ok(route, { items: [], total: 0 });
     if (path === '/admin/notifications' && method === 'GET') {
       return ok(route, {
         items: [{ id: 'notice_1', title: 'Thong bao noi bo', body: 'Noi dung kiem thu thong bao.', createdAt: '2026-06-30 09:00:00' }],
@@ -1088,6 +1095,9 @@ test.describe('V1 core workflows', () => {
   test('role routes reject dashboards outside the active role', async ({ page }) => {
     await installMocks(page, 'chuyen_gia', true, ['chuyen_gia']);
     await page.goto('/quan-tri/su-kien');
+    await expect(page).toHaveURL('/chuyen-gia');
+
+    await page.goto('/quan-tri/tuyen-dung');
     await expect(page).toHaveURL('/chuyen-gia');
 
     await page.goto('/chuyen-vien');
