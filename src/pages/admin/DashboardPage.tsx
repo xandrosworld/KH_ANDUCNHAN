@@ -47,7 +47,7 @@ export default function AdminDashboardPage() {
       </section>
 
       <section className="mt-5 grid gap-3 sm:grid-cols-3">
-        <AdminShortcut icon={ShieldCheck} title="Duyệt vai trò" desc="Mở quyền cho tài khoản cần phê duyệt" onClick={() => navigate('/quan-tri/duyet-vai-tro')} primary />
+        <AdminShortcut icon={ShieldCheck} title="Duyệt thành viên/vai trò" desc="Mở quyền cho tài khoản cần phê duyệt" onClick={() => navigate('/quan-tri/duyet-vai-tro')} primary />
         <AdminShortcut icon={Settings2} title="Cấu hình vận hành" desc="Tài khoản cần duyệt, tên trường, danh mục" onClick={() => navigate('/quan-tri/cau-hinh')} />
         <AdminShortcut icon={Clock} title="Nhật ký hệ thống" desc="Theo dõi thay đổi quan trọng" onClick={() => navigate('/quan-tri/nhat-ky')} />
       </section>

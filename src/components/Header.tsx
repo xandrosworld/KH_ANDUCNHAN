@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, ChevronDown, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { useAuth, ROLE_NAMES } from '../contexts/AuthContext';
+import { useBranding } from '../contexts/BrandingContext';
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const { logoUrl, siteName } = useBranding();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,8 +30,8 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center bg-[#c40012] px-4 shadow-md lg:px-6">
       <Link to="/" className="flex min-w-0 items-center gap-2.5">
-        <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="h-8 w-8 shrink-0 rounded-full object-contain bg-white/10" />
-        <span className="hidden whitespace-nowrap text-[15px] font-black text-white sm:block">Sổ Đỏ Vạn Phúc</span>
+        <img src={logoUrl} alt={siteName} className="h-8 w-8 shrink-0 rounded-full object-contain bg-white/10" />
+        <span className="hidden whitespace-nowrap text-[15px] font-black text-white sm:block">{siteName}</span>
       </Link>
 
       <div className="flex-1" />

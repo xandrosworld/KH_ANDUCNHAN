@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { BrandingProvider } from './contexts/BrandingContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 
@@ -21,6 +22,9 @@ const SelectRolePage = lazy(() => import('./pages/SelectRolePage'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
 const PublicAboutPage = lazy(() => import('./pages/PublicAboutPage'));
 const PublicNewsPage = lazy(() => import('./pages/PublicNewsPage'));
+const PublicEventsPage = lazy(() => import('./pages/PublicEventsPage'));
+const PublicEventDetailPage = lazy(() => import('./pages/PublicEventDetailPage'));
+const EventRegistrationPage = lazy(() => import('./pages/EventRegistrationPage'));
 
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'));
@@ -62,12 +66,14 @@ const AdminProperties = lazy(() => import('./pages/admin/PropertiesPage'));
 const AdminCustomers = lazy(() => import('./pages/admin/CustomersPage'));
 const AdminConfig = lazy(() => import('./pages/admin/ConfigPage'));
 const AdminAudit = lazy(() => import('./pages/admin/AuditPage'));
+const AdminEvents = lazy(() => import('./pages/admin/EventsPage'));
 
 const routePrefetchers = [
   () => import('./pages/RegisterPage'),
   () => import('./pages/ForgotPasswordPage'),
   () => import('./pages/PublicAboutPage'),
   () => import('./pages/PublicNewsPage'),
+  () => import('./pages/PublicEventsPage'),
   () => import('./pages/SelectRolePage'),
   () => import('./pages/ProfilePage'),
   () => import('./pages/NotificationsPage'),
@@ -116,6 +122,9 @@ function AppRoutes() {
         <Route path="/gioi-thieu" element={<PublicAboutPage />} />
         <Route path="/gioi-thieu-cong-ty" element={<PublicAboutPage />} />
         <Route path="/tin-tuc" element={<PublicNewsPage />} />
+        <Route path="/su-kien" element={<PublicEventsPage />} />
+        <Route path="/su-kien/:slug" element={<PublicEventDetailPage />} />
+        <Route path="/dang-ky-su-kien/:slug" element={<EventRegistrationPage />} />
         <Route path="/nha/:id" element={<PropertyDetailPage />} />
 
         <Route element={<ProtectedRoute />}>
@@ -166,6 +175,7 @@ function AppRoutes() {
             <Route path="/quan-tri/khach-hang" element={<AdminCustomers />} />
             <Route path="/quan-tri/cau-hinh" element={<AdminConfig />} />
             <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
+            <Route path="/quan-tri/su-kien" element={<AdminEvents />} />
           </Route>
         </Route>
 
@@ -267,10 +277,12 @@ function RouteTransitionOverlay() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-        <RouteTransitionOverlay />
-      </AuthProvider>
+      <BrandingProvider>
+        <AuthProvider>
+          <AppRoutes />
+          <RouteTransitionOverlay />
+        </AuthProvider>
+      </BrandingProvider>
     </BrowserRouter>
   );
 }

@@ -82,6 +82,7 @@ export const svpDefaultConfigGroups: SvpConfigGroup[] = [
     isSystem: true,
     options: [
       ['site_logo_url', 'Logo', '/logo11.png'],
+      ['site_banner_url', 'Banner trang chủ', '/assets/svp-auth-hero.png'],
       ['site_name', 'Tên website', 'Sổ Đỏ Vạn Phúc'],
       ['site_slogan_line_1', 'Khẩu hiệu dòng 1', 'Hệ điều hành nghề Môi giới'],
       ['site_slogan_line_2', 'Khẩu hiệu dòng 2', 'Thổ cư Việt Nam'],

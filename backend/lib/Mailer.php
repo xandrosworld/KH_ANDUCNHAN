@@ -18,6 +18,21 @@ class Mailer
     /** @var string Sender email */
     private static string $from = '';
 
+    private static function getBrandConfig(string $id, string $fallback): string
+    {
+        try {
+            if (class_exists('Database')) {
+                $stmt = Database::getInstance()->prepare("SELECT value FROM svp_config_options WHERE id = :id AND group_id = 'site_display' AND is_active = 1 LIMIT 1");
+                $stmt->execute(['id' => $id]);
+                $value = trim((string) ($stmt->fetchColumn() ?: ''));
+                if ($value !== '') return $value;
+            }
+        } catch (Throwable $e) {
+            error_log('Mailer: brand config unavailable: ' . $e->getMessage());
+        }
+        return $fallback;
+    }
+
     /**
      * Get the "From" email address.
      */
@@ -34,7 +49,7 @@ class Mailer
         if (defined('MAIL_FROM_NAME') && MAIL_FROM_NAME) {
             return MAIL_FROM_NAME;
         }
-        return defined('APP_NAME') ? APP_NAME : 'Sổ Đỏ Vạn Phúc';
+        return self::getBrandConfig('site_name', defined('APP_NAME') ? APP_NAME : 'Sổ Đỏ Vạn Phúc');
     }
 
     private static function getFrontendUrl(): string
@@ -69,6 +84,12 @@ class Mailer
 
     private static function attachBrandLogo(PHPMailer $mail): string
     {
+        $configured = self::getBrandConfig('site_logo_url', '/logo11.png');
+        if ($configured !== '/logo11.png') {
+            return preg_match('#^https?://#i', $configured)
+                ? $configured
+                : self::getFrontendUrl() . '/' . ltrim($configured, '/');
+        }
         $logoPath = self::getLogoPath();
         if ($logoPath) {
             try {

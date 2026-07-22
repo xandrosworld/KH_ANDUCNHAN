@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { authApi } from '../services/authApi';
+import { useBranding } from '../contexts/BrandingContext';
 
 export default function ForgotPasswordPage() {
+  const { logoUrl, siteName } = useBranding();
   usePageTitle('Quên mật khẩu | Sổ Đỏ Vạn Phúc');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -41,7 +43,7 @@ export default function ForgotPasswordPage() {
 
         <section className="rounded-[28px] border border-[#E8DCC8] bg-white p-6 shadow-[0_18px_60px_rgba(66,33,11,0.12)] sm:p-8">
           <div className="mb-7 text-center">
-            <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto mb-4 h-20 w-20 rounded-full object-contain" />
+            <img src={logoUrl} alt={siteName} className="mx-auto mb-4 h-20 w-20 rounded-full object-contain" />
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#B71C1C]">Sổ Đỏ Vạn Phúc</p>
             <h1 className="mt-2 text-2xl font-bold text-[#2A1A14]">Quên mật khẩu</h1>
             <p className="mt-2 text-sm leading-6 text-[#75655C]">

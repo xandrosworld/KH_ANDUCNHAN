@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getRoleDisplayName } from '../data/roles';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useBranding } from '../contexts/BrandingContext';
 
 export default function PendingApprovalPage() {
+  const { logoUrl, siteName } = useBranding();
   usePageTitle('Chờ phê duyệt | Sổ Đỏ Vạn Phúc');
   const { logout, pendingRoles, approvedRoles } = useAuth();
   const navigate = useNavigate();
@@ -12,7 +14,7 @@ export default function PendingApprovalPage() {
   return (
     <main className="min-h-screen bg-[#fff8f2] px-4 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md flex-col items-center justify-center text-center">
-        <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mb-7 h-20 w-20 rounded-full object-contain drop-shadow-lg" />
+        <img src={logoUrl} alt={siteName} className="mb-7 h-20 w-20 rounded-full object-contain drop-shadow-lg" />
         <div className="mb-5 grid h-20 w-20 place-items-center rounded-full bg-amber-100 text-amber-600">
           <Clock className="h-10 w-10" />
         </div>

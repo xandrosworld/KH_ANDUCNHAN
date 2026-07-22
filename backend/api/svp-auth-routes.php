@@ -1230,6 +1230,30 @@ $router->add('GET', '/api/svp/admin/users', function () {
     Response::json(['items' => $result, 'total' => count($result)]);
 });
 
+$router->add('GET', '/api/svp/admin/referrer-candidates', function () {
+    svp_require_role('admin_tong', 'admin');
+    $db = Database::getInstance();
+    $query = trim((string) ($_GET['q'] ?? ''));
+    $excludeId = trim((string) ($_GET['excludeId'] ?? ''));
+    if (mb_strlen($query) < 2) Response::json(['items' => [], 'total' => 0]);
+    $stmt = $db->prepare("SELECT id, full_name, phone, email, svp_id, referral_code
+      FROM users
+      WHERE id <> :exclude_id
+        AND (full_name LIKE :query OR email LIKE :query OR phone LIKE :query OR svp_id LIKE :query OR referral_code LIKE :query)
+      ORDER BY CASE WHEN email = :exact OR phone = :exact OR svp_id = :exact OR referral_code = :exact THEN 0 ELSE 1 END, full_name ASC
+      LIMIT 12");
+    $stmt->execute(['exclude_id' => $excludeId, 'query' => '%' . $query . '%', 'exact' => $query]);
+    $items = array_map(fn($row) => [
+        'id' => (string) $row['id'],
+        'fullName' => (string) ($row['full_name'] ?? ''),
+        'phone' => (string) ($row['phone'] ?? ''),
+        'email' => (string) ($row['email'] ?? ''),
+        'svpId' => (string) ($row['svp_id'] ?? ''),
+        'referralCode' => (string) ($row['referral_code'] ?? ''),
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    Response::json(['items' => $items, 'total' => count($items)]);
+});
+
 $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
     $payload = svp_require_role('admin_tong', 'admin');
     $db = Database::getInstance();
@@ -1261,59 +1285,47 @@ $router->add('PATCH', '/api/svp/admin/users/{id}', function ($params) {
         $db->prepare("UPDATE users SET " . implode(', ', $fields) . " WHERE id = :id")->execute($data);
     }
 
-    $referrerLookup = trim((string) ($input['referrerLookup'] ?? $input['referrer'] ?? $input['referralCode'] ?? ''));
-    if ($referrerLookup !== '') {
+    $referrerUserId = trim((string) ($input['referrerUserId'] ?? ''));
+    if ($referrerUserId !== '') {
         if ($targetIsAdminControlled && !svp_is_owner_admin_payload($payload)) {
             Response::error('Chỉ Admin tổng mới có quyền chỉnh tài khoản quản trị.', 403);
         }
-        $stmt = $db->prepare("
-            SELECT id, full_name, phone, email, svp_id, referral_code
-            FROM users
-            WHERE id <> :id
-              AND (
-                referral_code = :exact
-                OR svp_id = :exact
-                OR phone = :exact
-                OR email = :exact
-                OR full_name LIKE :like_name
-              )
-            ORDER BY
-              CASE
-                WHEN referral_code = :exact THEN 1
-                WHEN svp_id = :exact THEN 2
-                WHEN phone = :exact THEN 3
-                WHEN email = :exact THEN 4
-                ELSE 5
-              END,
-              created_at DESC
-            LIMIT 1
-        ");
-        $stmt->execute([
-            'id' => $id,
-            'exact' => $referrerLookup,
-            'like_name' => '%' . $referrerLookup . '%',
-        ]);
+        if ($referrerUserId === $id) Response::error('Không thể tự gán chính tài khoản làm người giới thiệu.', 400);
+        if (($oldUser['referred_by'] ?? '') === $referrerUserId) Response::error('Tài khoản này đã được gán cho người giới thiệu đã chọn.', 409);
+        $stmt = $db->prepare('SELECT id, full_name, phone, email, svp_id, referral_code FROM users WHERE id = :referrer_id LIMIT 1');
+        $stmt->execute(['referrer_id' => $referrerUserId]);
         $referrer = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$referrer) Response::error('Khong tim thay nguoi gioi thieu phu hop', 404);
+        if (!$referrer) Response::error('Không tìm thấy tài khoản người giới thiệu đã chọn.', 404);
 
         $db->prepare("UPDATE users SET referred_by = :ref WHERE id = :id")
            ->execute(['ref' => $referrer['id'], 'id' => $id]);
 
-        $db->prepare("
+        $db->prepare("UPDATE svp_referrals SET status = 'rejected' WHERE referred_user_id = :referred_id AND status <> 'rejected'")
+           ->execute(['referred_id' => $id]);
+
+        $existingReferral = $db->prepare('SELECT id FROM svp_referrals WHERE referrer_user_id = :referrer_id AND referred_user_id = :referred_id LIMIT 1');
+        $existingReferral->execute(['referrer_id' => $referrer['id'], 'referred_id' => $id]);
+        $existingReferralId = $existingReferral->fetchColumn();
+        if ($existingReferralId) {
+            $db->prepare("UPDATE svp_referrals SET referral_code = :code, status = 'activated' WHERE id = :id")->execute([
+                'code' => $referrer['referral_code'] ?: '', 'id' => $existingReferralId,
+            ]);
+        } else {
+            $db->prepare("
             INSERT INTO svp_referrals (id, referrer_user_id, referred_user_id, referral_code, referral_type, status)
             VALUES (:id, :referrer_id, :referred_id, :code, 'other', 'activated')
-        ")->execute([
-            'id' => bin2hex(random_bytes(16)),
-            'referrer_id' => $referrer['id'],
-            'referred_id' => $id,
-            'code' => $referrer['referral_code'] ?: $referrerLookup,
-        ]);
+            ")->execute([
+                'id' => bin2hex(random_bytes(16)),
+                'referrer_id' => $referrer['id'],
+                'referred_id' => $id,
+                'code' => $referrer['referral_code'] ?: '',
+            ]);
+        }
 
         svp_insert_audit($db, $payload['sub'], 'update_referrer', 'user', $id, [
             'referredBy' => $oldUser['referred_by'] ?? null,
         ], [
             'referredBy' => $referrer['id'],
-            'lookup' => $referrerLookup,
             'referrerName' => $referrer['full_name'] ?? '',
             'referrerSvpId' => $referrer['svp_id'] ?? '',
         ]);

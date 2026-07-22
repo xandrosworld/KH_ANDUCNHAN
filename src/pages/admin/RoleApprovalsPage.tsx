@@ -57,7 +57,7 @@ export default function RoleApprovalsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c40012]">Quản trị</p>
-            <h1 className="mt-1 text-2xl font-black text-[#25202a]">Duyệt vai trò</h1>
+            <h1 className="mt-1 text-2xl font-black text-[#25202a]">Duyệt thành viên/vai trò</h1>
             <p className="mt-1 text-sm font-medium leading-6 text-[#747b88]">
               Xem xét các vai trò cần phê duyệt trước khi mở đầy đủ tính năng cho người dùng.
             </p>

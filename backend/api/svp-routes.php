@@ -357,10 +357,11 @@ function svp_ensure_site_display_config(PDO $db): void
 
     $defaults = [
         ['id' => 'site_logo_url', 'label' => 'Logo', 'value' => '/logo11.png', 'sortOrder' => 10],
-        ['id' => 'site_name', 'label' => 'Tên website', 'value' => 'Sổ Đỏ Vạn Phúc', 'sortOrder' => 20],
-        ['id' => 'site_slogan_line_1', 'label' => 'Khẩu hiệu dòng 1', 'value' => 'Hệ điều hành nghề Môi giới', 'sortOrder' => 30],
-        ['id' => 'site_slogan_line_2', 'label' => 'Khẩu hiệu dòng 2', 'value' => 'Thổ cư Việt Nam', 'sortOrder' => 40],
-        ['id' => 'site_footer_text', 'label' => 'Chân trang', 'value' => 'Sổ Đỏ Vạn Phúc - hệ thống quản lý nguồn nhà và khách hàng.', 'sortOrder' => 50],
+        ['id' => 'site_banner_url', 'label' => 'Banner trang chủ', 'value' => '/assets/svp-auth-hero.png', 'sortOrder' => 20],
+        ['id' => 'site_name', 'label' => 'Tên website', 'value' => 'Sổ Đỏ Vạn Phúc', 'sortOrder' => 30],
+        ['id' => 'site_slogan_line_1', 'label' => 'Khẩu hiệu dòng 1', 'value' => 'Hệ điều hành nghề Môi giới', 'sortOrder' => 40],
+        ['id' => 'site_slogan_line_2', 'label' => 'Khẩu hiệu dòng 2', 'value' => 'Thổ cư Việt Nam', 'sortOrder' => 50],
+        ['id' => 'site_footer_text', 'label' => 'Chân trang', 'value' => 'Sổ Đỏ Vạn Phúc - hệ thống quản lý nguồn nhà và khách hàng.', 'sortOrder' => 60],
     ];
 
     $stmt = $db->prepare(
@@ -912,6 +913,12 @@ $router->add('POST', '/api/svp/config/options', function () use ($input) {
     if ($groupId === '' || $label === '') {
         Response::error('groupId and label are required', 400);
     }
+    if ($groupId === 'site_display' && function_exists('svp_auth_require')) {
+        $brandingPayload = svp_auth_require();
+        if (!function_exists('svp_is_owner_admin_payload') || !svp_is_owner_admin_payload($brandingPayload)) {
+            Response::error('Chỉ Admin tổng mới có quyền thay đổi thương hiệu website.', 403);
+        }
+    }
 
     $item = [
         'id' => svp_uid('opt'),
@@ -943,6 +950,12 @@ $router->add('PUT', '/api/svp/config/options/{id}', function ($params) use ($inp
     $stmt->execute(['id' => $id]);
     $old = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$old) Response::notFound('Config option not found');
+    if (($old['group_id'] ?? '') === 'site_display' && function_exists('svp_auth_require')) {
+        $brandingPayload = svp_auth_require();
+        if (!function_exists('svp_is_owner_admin_payload') || !svp_is_owner_admin_payload($brandingPayload)) {
+            Response::error('Chỉ Admin tổng mới có quyền thay đổi thương hiệu website.', 403);
+        }
+    }
 
     $next = [
         'label' => trim((string) ($input['label'] ?? $old['label'])),
@@ -1014,6 +1027,12 @@ $router->add('DELETE', '/api/svp/config/options/{id}', function ($params) {
     $stmt->execute(['id' => $id]);
     $old = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$old) Response::notFound('Config option not found');
+    if (($old['group_id'] ?? '') === 'site_display' && function_exists('svp_auth_require')) {
+        $brandingPayload = svp_auth_require();
+        if (!function_exists('svp_is_owner_admin_payload') || !svp_is_owner_admin_payload($brandingPayload)) {
+            Response::error('Chỉ Admin tổng mới có quyền thay đổi thương hiệu website.', 403);
+        }
+    }
 
     $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
     $isLocked = !empty($metadata['locked'])

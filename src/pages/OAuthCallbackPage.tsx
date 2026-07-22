@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useBranding } from '../contexts/BrandingContext';
 
 function readCallbackParams(): URLSearchParams {
   const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
@@ -8,6 +9,7 @@ function readCallbackParams(): URLSearchParams {
 }
 
 export default function OAuthCallbackPage() {
+  const { logoUrl, siteName } = useBranding();
   const params = useMemo(() => readCallbackParams(), []);
   const [error, setError] = useState('');
 
@@ -34,7 +36,7 @@ export default function OAuthCallbackPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#fff8f2] px-4 py-8 text-[#25202a]">
       <section className="w-full max-w-md rounded-2xl border border-red-100 bg-white p-6 text-center shadow-[0_18px_60px_rgba(88,40,20,0.12)]">
-        <img src="/logo11.png" alt="So Do Van Phuc" className="mx-auto mb-4 h-14 w-14 rounded-full object-contain" />
+        <img src={logoUrl} alt={siteName} className="mx-auto mb-4 h-14 w-14 rounded-full object-contain" />
         {error ? (
           <>
             <h1 className="text-xl font-black text-[#c40012]">Chua dang nhap duoc</h1>

@@ -25,6 +25,7 @@ Thumbs.db
 qa/*
 !qa/
 !qa/visual.spec.ts
+!qa/events-branding.spec.ts
 release/
 docs/
 hosting-wait-reports/

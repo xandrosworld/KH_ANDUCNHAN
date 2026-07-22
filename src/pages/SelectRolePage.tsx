@@ -3,6 +3,7 @@ import { Briefcase, Building2, GraduationCap, Home, Search, Settings, Share2, Sh
 import { useAuth } from '../contexts/AuthContext';
 import { getRoleDashboardPath, getRoleDisplayName, ROLE_MAP } from '../data/roles';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useBranding } from '../contexts/BrandingContext';
 
 const ROLE_ICONS: Record<string, any> = {
   admin_tong: Shield,
@@ -57,6 +58,7 @@ function sortRoles<T extends { slug: string }>(roles: T[]): T[] {
 }
 
 export default function SelectRolePage() {
+  const { logoUrl, siteName } = useBranding();
   usePageTitle('Chọn vai trò | Sổ Đỏ Vạn Phúc');
   const { approvedRoles, pendingRoles, setActiveRole } = useAuth();
   const navigate = useNavigate();
@@ -71,7 +73,7 @@ export default function SelectRolePage() {
     <main className="min-h-screen bg-[#fff8f2] px-4 py-8">
       <div className="mx-auto w-full max-w-3xl">
         <div className="mb-7 text-center">
-          <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="mx-auto mb-4 h-16 w-16 rounded-full object-contain" />
+          <img src={logoUrl} alt={siteName} className="mx-auto mb-4 h-16 w-16 rounded-full object-contain" />
           <h1 className="text-2xl font-black text-[#25202a]">Chọn vai trò sử dụng</h1>
           <p className="mt-2 text-sm font-medium text-[#667085]">
             Tài khoản của bạn có nhiều vai trò. Hãy chọn vai trò muốn dùng trong phiên làm việc này.

@@ -38,6 +38,7 @@ type AuthPanel = 'login' | 'register';
 
 interface AuthLandingProps {
   initialPanel?: AuthPanel;
+  registrationOnly?: boolean;
 }
 
 interface RegistrationRole {
@@ -52,6 +53,7 @@ interface RegistrationRole {
 
 interface SiteDisplay {
   logoUrl: string;
+  bannerUrl: string;
   siteName: string;
   sloganLine1: string;
   sloganLine2: string;
@@ -60,6 +62,7 @@ interface SiteDisplay {
 
 const defaultSiteDisplay: SiteDisplay = {
   logoUrl: '/logo11.png',
+  bannerUrl: '/assets/svp-auth-hero.png',
   siteName: 'Sổ Đỏ Vạn Phúc',
   sloganLine1: 'Hệ điều hành nghề Môi giới',
   sloganLine2: 'Thổ cư Việt Nam',
@@ -177,7 +180,7 @@ function socialLoginUrl(provider: string): string {
   return `${getApiBase()}/api/svp/auth/oauth/${provider}/start`;
 }
 
-export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps) {
+export default function AuthLanding({ initialPanel = 'login', registrationOnly = false }: AuthLandingProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register, isAuthenticated, approvedRoles, user } = useAuth();
@@ -227,6 +230,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
         setRegistrationRoles(rolesFromConfig(groups));
         setSiteDisplay({
           logoUrl: optionValue(groups, 'site_display', 'site_logo_url', defaultSiteDisplay.logoUrl),
+          bannerUrl: optionValue(groups, 'site_display', 'site_banner_url', defaultSiteDisplay.bannerUrl),
           siteName: optionValue(groups, 'site_display', 'site_name', defaultSiteDisplay.siteName),
           sloganLine1: optionValue(groups, 'site_display', 'site_slogan_line_1', defaultSiteDisplay.sloganLine1),
           sloganLine2: optionValue(groups, 'site_display', 'site_slogan_line_2', defaultSiteDisplay.sloganLine2),
@@ -246,6 +250,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
 
   useEffect(() => {
     let cancelled = false;
+    if (registrationOnly) return;
     fetch(`${getApiBase()}/api/svp/auth/oauth/providers`, { headers: { Accept: 'application/json' } })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('oauth providers unavailable')))
       .then((json) => {
@@ -265,7 +270,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [registrationOnly]);
 
   useEffect(() => {
     if (initialPanel !== 'register') return;
@@ -477,21 +482,21 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
   };
 
   const loginColumnClass = 'order-1';
-  const registerColumnClass = 'order-2 lg:order-2';
+  const registerColumnClass = registrationOnly ? 'mx-auto w-full max-w-xl' : 'order-2 lg:order-2';
 
   return (
     <main className="svp-auth-page min-h-screen overflow-x-hidden bg-[#fff8f2] text-[#25202a]">
       <div className="relative min-h-screen overflow-x-hidden">
         <div
           className="absolute inset-x-0 top-0 h-[330px] bg-cover bg-center sm:h-[460px]"
-          style={{ backgroundImage: "url('/assets/svp-auth-hero.png')" }}
+          style={{ backgroundImage: `url('${siteDisplay.bannerUrl}')` }}
         />
         <div className="absolute inset-x-0 top-0 h-[330px] bg-gradient-to-b from-white/20 via-white/65 to-[#fff8f2] sm:h-[460px]" />
         <div className="absolute inset-x-0 top-[250px] h-36 bg-gradient-to-b from-transparent to-[#fff8f2] sm:top-[330px] sm:h-48" />
 
         <div className="relative mx-auto w-full max-w-[1180px] px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 lg:px-8">
           <div className="relative mb-1 flex min-h-10 items-center justify-center sm:mb-2">
-            <div className="grid w-[160px] grid-cols-2 gap-1.5 min-[380px]:w-[188px] sm:w-[204px] sm:gap-2">
+            <div data-testid="auth-public-nav" className="grid w-[216px] grid-cols-3 gap-1.5 min-[360px]:w-[248px] min-[400px]:w-[278px] sm:w-[306px] sm:gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/gioi-thieu')}
@@ -505,6 +510,13 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
               >
                 Tin tức
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/su-kien')}
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-full bg-white/95 px-0 text-center text-xs font-black leading-none text-[#4f4a55] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:text-[#c40012] hover:ring-[#c40012]/25 sm:h-10 sm:text-sm"
+              >
+                Sự kiện
               </button>
             </div>
             <div className="absolute right-0 top-0">
@@ -569,8 +581,8 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             </p>
           </section>
 
-          <section className="mt-5 grid min-w-0 items-start gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
-            <div className={loginColumnClass}>
+          <section className={`mt-5 min-w-0 items-start gap-3 sm:mt-8 sm:gap-4 ${registrationOnly ? 'block' : 'grid lg:grid-cols-[0.95fr_1.05fr] lg:gap-6'}`}>
+            {!registrationOnly ? <div className={loginColumnClass}>
             <AuthCard testId="auth-login-card">
               <div className="mb-4 text-center sm:mb-5">
                 <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-[#c40012] lg:hidden">
@@ -662,7 +674,7 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
                 </div>
               </div>
             </AuthCard>
-            </div>
+            </div> : null}
 
             <div className={registerColumnClass}>
             <AuthCard innerRef={registerRef} testId="auth-register-card">
@@ -873,6 +885,10 @@ export default function AuthLanding({ initialPanel = 'login' }: AuthLandingProps
             •{' '}
             <button type="button" onClick={() => navigate('/tin-tuc')} className="font-bold text-[#c40012] hover:underline">
               Tin tức
+            </button>{' '}
+            •{' '}
+            <button type="button" onClick={() => navigate('/su-kien')} className="font-bold text-[#c40012] hover:underline">
+              Sự kiện
             </button>{' '}
             • Liên hệ
           </footer>

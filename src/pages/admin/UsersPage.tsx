@@ -35,6 +35,15 @@ function userHasAdminControlledRole(user: any) {
   return (user.roles || []).some((role: any) => isAdminControlledRole(role.slug) && role.status === 'approved');
 }
 
+interface ReferrerCandidate {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  svpId: string;
+  referralCode: string;
+}
+
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
   const [items, setItems] = useState<any[]>([]);
@@ -45,6 +54,8 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [referrerLookup, setReferrerLookup] = useState('');
+  const [referrerCandidates, setReferrerCandidates] = useState<ReferrerCandidate[]>([]);
+  const [selectedReferrer, setSelectedReferrer] = useState<ReferrerCandidate | null>(null);
   const [selectedRoleSlug, setSelectedRoleSlug] = useState('');
   const [roleSettings, setRoleSettings] = useState<any[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -83,6 +94,20 @@ export default function AdminUsersPage() {
       return items.find((item) => item.id === current.id) || current;
     });
   }, [items]);
+
+  useEffect(() => {
+    const lookup = referrerLookup.trim();
+    if (!selectedUser || lookup.length < 2 || selectedReferrer) {
+      setReferrerCandidates([]);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      api.get('/admin/referrer-candidates', { params: { q: lookup, excludeId: selectedUser.id } })
+        .then((response) => setReferrerCandidates(response.data?.items || []))
+        .catch(() => setReferrerCandidates([]));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [referrerLookup, selectedReferrer, selectedUser]);
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -147,16 +172,18 @@ export default function AdminUsersPage() {
   };
 
   const updateReferrer = async () => {
-    if (!selectedUser || !referrerLookup.trim()) {
-      setMessage('Nhập mã giới thiệu, SVP ID, số điện thoại, email hoặc tên người giới thiệu.');
+    if (!selectedUser || !selectedReferrer) {
+      setMessage('Vui lòng tìm kiếm và chọn đúng một tài khoản người giới thiệu trước khi lưu.');
       return;
     }
     setBusyId(`${selectedUser.id}-referrer`);
     setMessage('');
     try {
-      await api.patch(`/admin/users/${encodeURIComponent(selectedUser.id)}`, { referrerLookup: referrerLookup.trim() });
+      await api.patch(`/admin/users/${encodeURIComponent(selectedUser.id)}`, { referrerUserId: selectedReferrer.id });
       setMessage(`Đã cập nhật người giới thiệu cho ${selectedUser.fullName || selectedUser.email}.`);
       setReferrerLookup('');
+      setSelectedReferrer(null);
+      setReferrerCandidates([]);
       load();
     } catch (error: any) {
       setMessage(error?.response?.data?.message || 'Chưa cập nhật được người giới thiệu.');
@@ -288,6 +315,7 @@ export default function AdminUsersPage() {
             </button>
           ))}
         </div>
+        {!currentIsOwnerAdmin ? <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">Chỉ Admin tổng mới có quyền tạo, cấp, gỡ vai trò Admin hoặc chỉnh tài khoản quản trị khác.</div> : null}
       </section>
 
       {message && (
@@ -320,6 +348,8 @@ export default function AdminUsersPage() {
               onOpen={() => {
                 setSelectedUser(user);
                 setReferrerLookup('');
+                setSelectedReferrer(null);
+                setReferrerCandidates([]);
                 setSelectedRoleSlug('');
               }}
             />
@@ -330,7 +360,10 @@ export default function AdminUsersPage() {
         <UserDetailPanel
           user={selectedUser}
           referrerLookup={referrerLookup}
-          setReferrerLookup={setReferrerLookup}
+          setReferrerLookup={(value) => { setReferrerLookup(value); setSelectedReferrer(null); }}
+          referrerCandidates={referrerCandidates}
+          selectedReferrer={selectedReferrer}
+          onSelectReferrer={(candidate) => { setSelectedReferrer(candidate); setReferrerLookup(candidate.fullName); setReferrerCandidates([]); }}
           selectedRoleSlug={selectedRoleSlug}
           setSelectedRoleSlug={setSelectedRoleSlug}
           roleSettings={roleSettings}
@@ -545,6 +578,9 @@ function UserDetailPanel({
   user,
   referrerLookup,
   setReferrerLookup,
+  referrerCandidates,
+  selectedReferrer,
+  onSelectReferrer,
   selectedRoleSlug,
   setSelectedRoleSlug,
   roleSettings,
@@ -560,6 +596,9 @@ function UserDetailPanel({
   user: any;
   referrerLookup: string;
   setReferrerLookup: (value: string) => void;
+  referrerCandidates: ReferrerCandidate[];
+  selectedReferrer: ReferrerCandidate | null;
+  onSelectReferrer: (candidate: ReferrerCandidate) => void;
   selectedRoleSlug: string;
   setSelectedRoleSlug: (value: string) => void;
   roleSettings: any[];
@@ -639,21 +678,25 @@ function UserDetailPanel({
               <p className="text-sm font-semibold text-[#7b8190]">Chưa gán người giới thiệu.</p>
             )}
             <div className="mt-3 flex gap-2">
-              <input
-                value={referrerLookup}
-                onChange={(event) => setReferrerLookup(event.target.value)}
-                placeholder="Mã/SVP ID/SĐT/email/tên"
-                className="min-h-11 flex-1 rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
-              />
+              <div className="relative min-w-0 flex-1">
+                <input
+                  value={referrerLookup}
+                  onChange={(event) => setReferrerLookup(event.target.value)}
+                  placeholder="Tìm theo tên, SVP ID, SĐT hoặc email"
+                  className="min-h-11 w-full rounded-2xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-[#c40012]"
+                />
+                {referrerCandidates.length ? <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 shadow-xl">{referrerCandidates.map((candidate) => <button key={candidate.id} type="button" onClick={() => onSelectReferrer(candidate)} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-red-50"><span className="block text-sm font-black text-[#25202a]">{candidate.fullName}</span><span className="block truncate text-xs font-semibold text-[#7b8190]">{[candidate.svpId, candidate.phone, candidate.email].filter(Boolean).join(' · ')}</span></button>)}</div> : null}
+              </div>
               <button
                 onClick={onSaveReferrer}
-                disabled={busy}
+                disabled={busy || !selectedReferrer}
                 className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-[#c40012] px-4 text-sm font-black text-white disabled:opacity-60"
               >
                 <UserRoundCheck className="h-4 w-4" />
                 Lưu
               </button>
             </div>
+            {selectedReferrer ? <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900"><UserRoundCheck className="h-4 w-4 shrink-0" />Đã chọn: {selectedReferrer.fullName} · {selectedReferrer.svpId || selectedReferrer.phone}</div> : <p className="mt-2 text-xs font-semibold text-[#7b8190]">Kết quả chỉ được lưu sau khi bạn chọn đúng một tài khoản trong danh sách.</p>}
           </DetailSection>
 
           <DetailSection title="Tuyến F1 đã giới thiệu">

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCircle2, ChevronDown, ChevronUp, Globe2, GripVertical, Loader2, Pencil, Plus, Save, Send, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronDown, ChevronUp, Globe2, GripVertical, ImageUp, Loader2, Pencil, Plus, RotateCcw, Save, Send, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
+import { eventApi } from '../../services/eventApi';
+import { useAuth } from '../../contexts/AuthContext';
+import { useBranding } from '../../contexts/BrandingContext';
 
 interface ConfigOption {
   id: string;
@@ -85,6 +88,9 @@ function isLockedOption(groupId: string, option: ConfigOption) {
 }
 
 export default function AdminConfigPage() {
+  const { hasApprovedRole } = useAuth();
+  const { refreshBranding } = useBranding();
+  const isOwnerAdmin = hasApprovedRole('admin_tong');
   const [groups, setGroups] = useState<ConfigGroup[]>([]);
   const [roleSettings, setRoleSettings] = useState<RoleApprovalSetting[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -108,6 +114,7 @@ export default function AdminConfigPage() {
   const [noticeSaving, setNoticeSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [brandingBusy, setBrandingBusy] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -149,6 +156,32 @@ export default function AdminConfigPage() {
     setExpanded((current) =>
       current.includes(groupId) ? current.filter((item) => item !== groupId) : [...current, groupId],
     );
+  };
+
+  const uploadBranding = async (kind: 'logo' | 'banner', file?: File) => {
+    if (!file || !isOwnerAdmin) return;
+    setBrandingBusy(kind); setMessage('');
+    try {
+      const result = await eventApi.uploadBranding(kind, file);
+      const id = kind === 'logo' ? 'site_logo_url' : 'site_banner_url';
+      setGroups((current) => current.map((group) => group.id !== 'site_display' ? group : { ...group, options: group.options?.map((item) => item.id === id ? { ...item, value: result.url } : item) }));
+      await refreshBranding();
+      setMessage('Đã áp dụng ảnh thương hiệu trên toàn website.');
+    } catch (error: any) { setMessage(error.message || 'Chưa tải được ảnh thương hiệu.'); }
+    finally { setBrandingBusy(''); }
+  };
+
+  const resetBranding = async (kind: 'logo' | 'banner') => {
+    if (!isOwnerAdmin) return;
+    setBrandingBusy(kind); setMessage('');
+    try {
+      const result = await eventApi.resetBranding(kind);
+      const id = kind === 'logo' ? 'site_logo_url' : 'site_banner_url';
+      setGroups((current) => current.map((group) => group.id !== 'site_display' ? group : { ...group, options: group.options?.map((item) => item.id === id ? { ...item, value: result.url } : item) }));
+      await refreshBranding();
+      setMessage('Đã khôi phục ảnh thương hiệu mặc định.');
+    } catch (error: any) { setMessage(error.message || 'Chưa khôi phục được ảnh thương hiệu.'); }
+    finally { setBrandingBusy(''); }
   };
 
   const updateRoleApproval = async (setting: RoleApprovalSetting, requiresApproval: boolean) => {
@@ -842,25 +875,29 @@ export default function AdminConfigPage() {
             {[...(siteDisplayGroup.options || [])].sort((a, b) => a.sortOrder - b.sortOrder).map((option) => (
               <div key={option.id} className="min-w-0 rounded-2xl border border-red-50 bg-[#fff8f2] p-3">
                 <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#8c6b6b]">{option.label}</label>
+                {['site_logo_url', 'site_banner_url'].includes(option.id) ? <img src={option.value} alt="" className={`${option.id === 'site_logo_url' ? 'h-24 w-24 rounded-full object-contain' : 'aspect-[16/7] w-full rounded-lg object-cover'} mb-3 border border-red-100 bg-white`} /> : null}
                 <div className="flex min-w-0 flex-col gap-2 min-[360px]:flex-row">
                   <input
                     className="min-h-10 w-full min-w-0 flex-1 rounded-xl border border-red-100 bg-white px-3 text-sm font-bold outline-none focus:border-[#c40012]"
                     value={option.value}
-                    onChange={(event) => updateOptionLocal(option.id, { value: event.target.value })}
+                    readOnly={!isOwnerAdmin}
+                    onChange={(event) => isOwnerAdmin && updateOptionLocal(option.id, { value: event.target.value })}
                   />
                   <button
                     type="button"
                     onClick={() => saveWholeOption(option)}
-                    disabled={savingOptionId === option.id}
+                    disabled={!isOwnerAdmin || savingOptionId === option.id}
                     className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-[#c40012] px-3 text-xs font-black text-white disabled:opacity-60 min-[360px]:shrink-0"
                   >
                     {savingOptionId === option.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Lưu
                   </button>
                 </div>
+                {isOwnerAdmin && ['site_logo_url', 'site_banner_url'].includes(option.id) ? <div className="mt-2 flex flex-wrap gap-2"><label className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-red-100 bg-white px-3 text-xs font-black text-[#c40012]"><ImageUp className="h-3.5 w-3.5" />Tải ảnh<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={!!brandingBusy} onChange={(event) => void uploadBranding(option.id === 'site_logo_url' ? 'logo' : 'banner', event.target.files?.[0])} /></label><button type="button" disabled={!!brandingBusy} onClick={() => void resetBranding(option.id === 'site_logo_url' ? 'logo' : 'banner')} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-black text-[#667085]"><RotateCcw className="h-3.5 w-3.5" />Khôi phục</button></div> : null}
               </div>
             ))}
           </div>
+          {!isOwnerAdmin ? <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">Bạn đang xem cấu hình thương hiệu. Chỉ Admin tổng mới có quyền tải, áp dụng hoặc khôi phục logo và banner.</div> : null}
         </section>
       ) : null}
 

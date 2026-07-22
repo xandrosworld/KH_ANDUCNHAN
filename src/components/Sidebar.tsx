@@ -5,6 +5,7 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  CalendarDays,
   CheckSquare,
   GraduationCap,
   Heart,
@@ -23,6 +24,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth, ROLE_NAMES } from '../contexts/AuthContext';
+import { useBranding } from '../contexts/BrandingContext';
 
 interface MenuItem {
   path: string;
@@ -50,7 +52,8 @@ function getMenuForRole(role: string): MenuItem[] {
     return [
       { path: '/quan-tri', label: 'Trang chủ', icon: Home },
       { path: '/quan-tri/nguoi-dung', label: 'Người dùng', icon: Shield },
-      { path: '/quan-tri/duyet-vai-tro', label: 'Duyệt vai trò', icon: CheckSquare },
+      { path: '/quan-tri/duyet-vai-tro', label: 'Duyệt thành viên/vai trò', icon: CheckSquare },
+      ...(['admin_tong', 'admin'].includes(role) ? [{ path: '/quan-tri/su-kien', label: 'Sự kiện', icon: CalendarDays }] : []),
       { path: '/quan-tri/nha', label: 'Quản lý nhà', icon: Building2 },
       { path: '/quan-tri/khach-hang', label: 'Khách hàng', icon: Users },
       { path: '/quan-tri/cau-hinh', label: 'Cấu hình', icon: Settings },
@@ -125,6 +128,7 @@ function isActivePath(currentPath: string, itemPath: string) {
 const Sidebar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { logoUrl, siteName } = useBranding();
   const activeRole = user?.activeRole || '';
   const menuItems = getMenuForRole(activeRole);
   const systemItem: MenuItem = { path: '/xay-dung-he-thong', label: 'Xây dựng hệ thống', icon: Network };
@@ -140,9 +144,9 @@ const Sidebar = () => {
     <aside className="fixed bottom-0 left-0 top-14 z-40 hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex">
       <div className="border-b border-gray-100 px-5 py-4">
         <Link to="/" className="flex items-center gap-3">
-          <img src="/logo11.png" alt="Sổ Đỏ Vạn Phúc" className="h-10 w-10 rounded-full object-contain" />
+          <img src={logoUrl} alt={siteName} className="h-10 w-10 rounded-full object-contain" />
           <div>
-            <div className="text-sm font-black text-[#25202a]">Sổ Đỏ Vạn Phúc</div>
+            <div className="text-sm font-black text-[#25202a]">{siteName}</div>
             <div className="text-[11px] font-medium text-[#667085]">Nền tảng BĐS thông minh</div>
           </div>
         </Link>

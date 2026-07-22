@@ -516,6 +516,8 @@ function svp_health_payload(): array
         'svp_training_contents',
         'svp_reputation_scores',
         'svp_notifications',
+        'svp_events',
+        'svp_event_registrations',
     ];
 
     $requiredSeedGroups = [
@@ -532,6 +534,9 @@ function svp_health_payload(): array
         $db = Database::getInstance();
         $db->query('SELECT 1');
         $payload['database']['connected'] = true;
+        if (function_exists('svp_ensure_events_schema')) {
+            svp_ensure_events_schema($db);
+        }
 
         $missing = [];
         foreach ($requiredTables as $table) {
@@ -3912,6 +3917,7 @@ $router->add('PATCH', '/api/bank-transfers/{id}/status', function ($params) use 
 require_once __DIR__ . '/svp-routes.php';
 require_once __DIR__ . '/svp-auth-v1-routes.php';
 require_once __DIR__ . '/svp-auth-routes.php';
+require_once __DIR__ . '/svp-event-routes.php';
 
 $router->add('GET', '/api/music', function () {
     $musicDir = __DIR__ . '/../uploads/music';
