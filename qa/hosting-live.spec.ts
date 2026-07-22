@@ -244,6 +244,50 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await expect(page.locator('body')).toContainText(/Thêm lựa chọn|Tạo field hoàn toàn mới/i);
     await assertHealthyPage(page, '/quan-tri/cau-hinh');
 
+    const authHeaders = { Authorization: `Bearer ${token}` };
+    for (const endpoint of ['/api/svp/admin/viewing-schedules', '/api/svp/admin/referrals']) {
+      const apiResponse = await page.request.get(endpoint, { headers: authHeaders });
+      expect(apiResponse.ok(), `${endpoint} should return joined live data`).toBe(true);
+      const payload = await apiResponse.json();
+      expect(Array.isArray(payload?.data?.items), `${endpoint} should return an item list`).toBe(true);
+    }
+
+    for (const route of [
+      { path: '/quan-tri/lich-xem', heading: /Lịch xem nhà/i },
+      { path: '/quan-tri/gioi-thieu', heading: /Danh sách giới thiệu/i },
+    ]) {
+      await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+      await waitForLiveApp(page);
+      await expect(page.getByRole('heading', { name: route.heading })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole('button', { name: /Xuất Excel/i })).toBeVisible();
+      await assertHealthyPage(page, route.path);
+    }
+
+    const usersResponse = await page.request.get('/api/svp/admin/users', { headers: authHeaders });
+    expect(usersResponse.ok(), 'live admin users should be available for F1 verification').toBe(true);
+    const usersPayload = await usersResponse.json();
+    const userWithF1 = (usersPayload?.data?.items || []).find((item: any) => Number(item.directReferralCount) > 0);
+    const exportCases = ['users', 'properties', 'customers', 'role_applications', 'viewing_schedules', 'referrals'];
+    if (userWithF1?.id) exportCases.push(`user_referrals&userId=${encodeURIComponent(userWithF1.id)}`);
+
+    for (const exportCase of exportCases) {
+      const exportResponse = await page.request.get(`/api/svp/admin/export?type=${exportCase}`, { headers: authHeaders });
+      expect(exportResponse.ok(), `${exportCase} Excel export should succeed`).toBe(true);
+      expect(exportResponse.headers()['content-type'] || '').toContain('application/vnd.ms-excel');
+      expect(exportResponse.headers()['content-disposition'] || '').toMatch(/\.xls/i);
+      const workbook = (await exportResponse.body()).toString('utf8');
+      expect(workbook).toContain('<?mso-application progid="Excel.Sheet"?>');
+      expect(workbook).toContain('<Workbook');
+    }
+
+    if (userWithF1?.id) {
+      await page.goto(`/quan-tri/nguoi-dung?user=${encodeURIComponent(userWithF1.id)}`, { waitUntil: 'domcontentloaded' });
+      await waitForLiveApp(page);
+      await expect(page.getByText('Tuyến F1 đã giới thiệu')).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole('button', { name: /Xuất Excel F1/i })).toBeEnabled();
+      await assertHealthyPage(page, '/quan-tri/nguoi-dung-f1');
+    }
+
     expect(failures, 'admin login form should not throw runtime, asset, or HTTP failures').toEqual([]);
   });
 

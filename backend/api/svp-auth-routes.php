@@ -1742,13 +1742,25 @@ $router->add('GET', '/api/svp/admin/export', function () {
 
     if ($type === 'customers') {
         $stmt = $db->query("
-            SELECT full_name, phone, email, demand_type, budget_min, budget_max, district, status_id, created_at
-            FROM svp_customers
-            WHERE deleted_at IS NULL
-            ORDER BY created_at DESC
+            SELECT
+                c.full_name, c.phone, c.email, c.source,
+                n.budget_min, n.budget_max, n.districts_json, n.area_min, n.area_max,
+                COALESCE(n.status_id, c.status_id) AS status_id,
+                TRIM(CONCAT(COALESCE(assigned.svp_id, ''), ' ', COALESCE(assigned.full_name, ''))) AS assigned_user,
+                c.note, c.created_at
+            FROM svp_customers c
+            LEFT JOIN svp_customer_needs n ON n.id = (
+                SELECT latest_need.id
+                FROM svp_customer_needs latest_need
+                WHERE latest_need.customer_id = c.id
+                ORDER BY latest_need.created_at DESC, latest_need.id DESC
+                LIMIT 1
+            )
+            LEFT JOIN users assigned ON assigned.id = c.assigned_user_id
+            ORDER BY c.created_at DESC
             LIMIT 3000
         ");
-        svp_admin_excel_download("svp-customers-{$today}.xls", 'Khach hang', ['Ho ten', 'Dien thoai', 'Email', 'Nhu cau', 'Ngan sach tu', 'Ngan sach den', 'Khu vuc', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+        svp_admin_excel_download("svp-customers-{$today}.xls", 'Khach hang', ['Ho ten', 'Dien thoai', 'Email', 'Nguon khach', 'Ngan sach tu', 'Ngan sach den', 'Khu vuc', 'Dien tich tu', 'Dien tich den', 'Trang thai', 'Nguoi phu trach', 'Ghi chu', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
     }
 
     if ($type === 'role_applications') {
