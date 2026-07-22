@@ -56,6 +56,8 @@ function getMenuForRole(role: string): MenuItem[] {
       ...(['admin_tong', 'admin'].includes(role) ? [{ path: '/quan-tri/su-kien', label: 'Sự kiện', icon: CalendarDays }] : []),
       { path: '/quan-tri/nha', label: 'Quản lý nhà', icon: Building2 },
       { path: '/quan-tri/khach-hang', label: 'Khách hàng', icon: Users },
+      { path: '/quan-tri/lich-xem', label: 'Lịch xem', icon: Calendar },
+      { path: '/quan-tri/gioi-thieu', label: 'Giới thiệu', icon: Share2 },
       { path: '/quan-tri/cau-hinh', label: 'Cấu hình', icon: Settings },
     ];
   }

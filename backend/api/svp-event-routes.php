@@ -452,7 +452,7 @@ $router->add('GET', '/api/svp/admin/event-registrations/export', function () {
     }
     $stmt = $db->prepare('SELECT e.title,u.svp_id,u.full_name,u.phone,u.email,r.care_status,r.utm_source,r.utm_medium,r.utm_campaign,r.referrer_url,r.created_at FROM svp_event_registrations r JOIN svp_events e ON e.id=r.event_id JOIN users u ON u.id=r.user_id WHERE ' . implode(' AND ', $where) . ' ORDER BY r.created_at DESC');
     $stmt->execute($params);
-    svp_admin_csv_download('svp-event-registrations-' . date('Y-m-d') . '.csv', ['Sự kiện','SVP ID','Họ tên','Điện thoại','Email','Trạng thái','UTM source','UTM medium','UTM campaign','URL giới thiệu','Ngày đăng ký'], $stmt->fetchAll(PDO::FETCH_NUM));
+    svp_admin_excel_download('svp-event-registrations-' . date('Y-m-d') . '.xls', 'Dang ky su kien', ['Sự kiện','SVP ID','Họ tên','Điện thoại','Email','Trạng thái','UTM source','UTM medium','UTM campaign','URL giới thiệu','Ngày đăng ký'], $stmt->fetchAll(PDO::FETCH_NUM));
 });
 
 $router->add('POST', '/api/svp/admin/branding/upload', function () {

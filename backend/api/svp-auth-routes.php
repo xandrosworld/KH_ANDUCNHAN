@@ -865,19 +865,40 @@ function svp_admin_ensure_notifications_table(PDO $db): void {
     );
 }
 
-function svp_admin_csv_download(string $filename, array $headers, array $rows): void {
+function svp_admin_excel_cell(mixed $value, string $styleId = ''): string {
+    if (!is_scalar($value) && $value !== null) {
+        $value = svp_json_encode($value);
+    }
+    $raw = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', (string) ($value ?? '')) ?? '';
+    $text = htmlspecialchars($raw, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    $style = $styleId !== '' ? ' ss:StyleID="' . htmlspecialchars($styleId, ENT_QUOTES | ENT_XML1, 'UTF-8') . '"' : '';
+    return '<Cell' . $style . '><Data ss:Type="String">' . $text . '</Data></Cell>';
+}
+
+function svp_admin_excel_download(string $filename, string $worksheetName, array $headers, array $rows): void {
     while (ob_get_level() > 0) ob_end_clean();
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . addcslashes($filename, '"\\') . '"');
+    $safeName = preg_replace('/[^A-Za-z0-9._-]/', '-', $filename) ?: 'so-do-van-phuc.xls';
+    $sheet = preg_replace('/[\\\/?*\[\]:]/u', ' ', trim($worksheetName)) ?: 'Danh sach';
+    $sheet = mb_substr($sheet, 0, 31);
+
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . addcslashes($safeName, '"\\') . '"');
     header('Cache-Control: no-store, no-cache');
 
-    echo "\xEF\xBB\xBF";
-    $out = fopen('php://output', 'w');
-    fputcsv($out, $headers);
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+    echo '<?mso-application progid="Excel.Sheet"?>';
+    echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+    echo '<Styles><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#C40012" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style></Styles>';
+    echo '<Worksheet ss:Name="' . htmlspecialchars($sheet, ENT_QUOTES | ENT_XML1, 'UTF-8') . '"><Table>';
+    echo '<Row ss:Height="24">';
+    foreach ($headers as $header) echo svp_admin_excel_cell($header, 'Header');
+    echo '</Row>';
     foreach ($rows as $row) {
-        fputcsv($out, array_map(fn($value) => is_scalar($value) || $value === null ? (string) $value : svp_json_encode($value), $row));
+        echo '<Row>';
+        foreach ($row as $value) echo svp_admin_excel_cell($value);
+        echo '</Row>';
     }
-    fclose($out);
+    echo '</Table></Worksheet></Workbook>';
     exit;
 }
 
@@ -921,6 +942,131 @@ $router->add('GET', '/api/svp/admin/dashboard', function () {
         'totalSchedules' => $totalSchedules,
         'totalReferrals' => $totalReferrals,
     ]);
+});
+
+$router->add('GET', '/api/svp/admin/viewing-schedules', function () {
+    svp_require_management_role();
+    $db = Database::getInstance();
+    $where = ['1 = 1'];
+    $params = [];
+    $status = trim((string) ($_GET['status'] ?? ''));
+    $query = trim((string) ($_GET['q'] ?? ''));
+
+    if ($status !== '' && in_array($status, ['pending', 'confirmed', 'done', 'cancelled'], true)) {
+        $where[] = 's.status = :status';
+        $params['status'] = $status;
+    }
+    if ($query !== '') {
+        $like = '%' . $query . '%';
+        $where[] = '(c.full_name LIKE :q_customer_name OR c.phone LIKE :q_customer_phone OR c.email LIKE :q_customer_email OR p.code LIKE :q_property_code OR p.title LIKE :q_property_title OR u.full_name LIKE :q_creator_name OR s.note LIKE :q_note)';
+        $params += [
+            'q_customer_name' => $like,
+            'q_customer_phone' => $like,
+            'q_customer_email' => $like,
+            'q_property_code' => $like,
+            'q_property_title' => $like,
+            'q_creator_name' => $like,
+            'q_note' => $like,
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT
+            s.id, s.customer_id, s.property_id, s.scheduled_at, s.status, s.note, s.created_by, s.created_at,
+            c.full_name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+            p.code AS property_code, p.title AS property_title, p.owner_name AS property_owner_name, p.owner_phone AS property_owner_phone,
+            u.full_name AS creator_name, u.svp_id AS creator_svp_id
+        FROM svp_viewing_schedules s
+        LEFT JOIN svp_customers c ON c.id = s.customer_id
+        LEFT JOIN svp_properties p ON p.id = s.property_id
+        LEFT JOIN users u ON u.id = s.created_by
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY s.scheduled_at DESC, s.created_at DESC
+        LIMIT 1000");
+    $stmt->execute($params);
+    $items = array_map(fn($row) => [
+        'id' => (string) $row['id'],
+        'customerId' => (string) ($row['customer_id'] ?? ''),
+        'customerName' => (string) ($row['customer_name'] ?? ''),
+        'customerPhone' => (string) ($row['customer_phone'] ?? ''),
+        'customerEmail' => (string) ($row['customer_email'] ?? ''),
+        'propertyId' => (string) ($row['property_id'] ?? ''),
+        'propertyCode' => (string) ($row['property_code'] ?? ''),
+        'propertyTitle' => (string) ($row['property_title'] ?? ''),
+        'propertyOwnerName' => (string) ($row['property_owner_name'] ?? ''),
+        'propertyOwnerPhone' => (string) ($row['property_owner_phone'] ?? ''),
+        'scheduledAt' => (string) ($row['scheduled_at'] ?? ''),
+        'status' => (string) ($row['status'] ?? 'pending'),
+        'note' => (string) ($row['note'] ?? ''),
+        'createdBy' => (string) ($row['created_by'] ?? ''),
+        'creatorName' => (string) ($row['creator_name'] ?? ''),
+        'creatorSvpId' => (string) ($row['creator_svp_id'] ?? ''),
+        'createdAt' => (string) ($row['created_at'] ?? ''),
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    Response::json(['items' => $items, 'total' => count($items)]);
+});
+
+$router->add('GET', '/api/svp/admin/referrals', function () {
+    svp_require_management_role();
+    $db = Database::getInstance();
+    $where = ['1 = 1'];
+    $params = [];
+    $status = trim((string) ($_GET['status'] ?? ''));
+    $type = trim((string) ($_GET['type'] ?? ''));
+    $query = trim((string) ($_GET['q'] ?? ''));
+
+    if ($status !== '' && in_array($status, ['new', 'activated', 'rejected'], true)) {
+        $where[] = 'r.status = :status';
+        $params['status'] = $status;
+    }
+    if ($type !== '' && in_array($type, ['staff', 'owner', 'buyer', 'partner', 'other'], true)) {
+        $where[] = 'r.referral_type = :referral_type';
+        $params['referral_type'] = $type;
+    }
+    if ($query !== '') {
+        $like = '%' . $query . '%';
+        $where[] = '(r.referral_code LIKE :q_code OR ref.full_name LIKE :q_ref_name OR ref.phone LIKE :q_ref_phone OR ref.email LIKE :q_ref_email OR ref.svp_id LIKE :q_ref_svp OR referred.full_name LIKE :q_referred_name OR referred.phone LIKE :q_referred_phone OR referred.email LIKE :q_referred_email OR referred.svp_id LIKE :q_referred_svp)';
+        $params += [
+            'q_code' => $like,
+            'q_ref_name' => $like,
+            'q_ref_phone' => $like,
+            'q_ref_email' => $like,
+            'q_ref_svp' => $like,
+            'q_referred_name' => $like,
+            'q_referred_phone' => $like,
+            'q_referred_email' => $like,
+            'q_referred_svp' => $like,
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT
+            r.id, r.referrer_user_id, r.referred_user_id, r.referral_code, r.referral_type, r.status, r.created_at,
+            ref.full_name AS referrer_name, ref.phone AS referrer_phone, ref.email AS referrer_email, ref.svp_id AS referrer_svp_id,
+            referred.full_name AS referred_name, referred.phone AS referred_phone, referred.email AS referred_email, referred.svp_id AS referred_svp_id
+        FROM svp_referrals r
+        LEFT JOIN users ref ON ref.id = r.referrer_user_id
+        LEFT JOIN users referred ON referred.id = r.referred_user_id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY r.created_at DESC
+        LIMIT 2000");
+    $stmt->execute($params);
+    $items = array_map(fn($row) => [
+        'id' => (string) $row['id'],
+        'referrerUserId' => (string) ($row['referrer_user_id'] ?? ''),
+        'referrerName' => (string) ($row['referrer_name'] ?? ''),
+        'referrerPhone' => (string) ($row['referrer_phone'] ?? ''),
+        'referrerEmail' => (string) ($row['referrer_email'] ?? ''),
+        'referrerSvpId' => (string) ($row['referrer_svp_id'] ?? ''),
+        'referredUserId' => (string) ($row['referred_user_id'] ?? ''),
+        'referredName' => (string) ($row['referred_name'] ?? ''),
+        'referredPhone' => (string) ($row['referred_phone'] ?? ''),
+        'referredEmail' => (string) ($row['referred_email'] ?? ''),
+        'referredSvpId' => (string) ($row['referred_svp_id'] ?? ''),
+        'referralCode' => (string) ($row['referral_code'] ?? ''),
+        'referralType' => (string) ($row['referral_type'] ?? 'other'),
+        'status' => (string) ($row['status'] ?? 'new'),
+        'createdAt' => (string) ($row['created_at'] ?? ''),
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    Response::json(['items' => $items, 'total' => count($items)]);
 });
 
 $router->add('GET', '/api/svp/admin/role-applications', function () {
@@ -1180,11 +1326,15 @@ $router->add('GET', '/api/svp/admin/users', function () {
         $roles = array_map(fn($r) => ['slug' => $r['role_slug'], 'status' => $r['status']], $rStmt->fetchAll(PDO::FETCH_ASSOC));
 
         $f1Stmt = $db->prepare("
-            SELECT id, full_name, phone, email, svp_id, referral_code, account_status, created_at
-            FROM users
-            WHERE referred_by = :uid
-            ORDER BY created_at DESC
-            LIMIT 100
+            SELECT child.id, child.full_name, child.phone, child.email, child.svp_id, child.referral_code,
+                   child.account_status, child.created_at,
+                   GROUP_CONCAT(CONCAT(roles.role_slug, ':', roles.status) ORDER BY roles.id SEPARATOR ';') AS roles
+            FROM users child
+            LEFT JOIN svp_user_roles roles ON roles.user_id = child.id
+            WHERE child.referred_by = :uid
+            GROUP BY child.id, child.full_name, child.phone, child.email, child.svp_id, child.referral_code, child.account_status, child.created_at
+            ORDER BY child.created_at DESC
+            LIMIT 200
         ");
         $f1Stmt->execute(['uid' => $u['id']]);
         $directReferrals = array_map(function ($row) {
@@ -1196,6 +1346,10 @@ $router->add('GET', '/api/svp/admin/users', function () {
                 'svpId' => $row['svp_id'] ?? '',
                 'referralCode' => $row['referral_code'] ?? '',
                 'accountStatus' => $row['account_status'] ?? 'active',
+                'roles' => array_values(array_filter(array_map(function ($role) {
+                    [$slug, $status] = array_pad(explode(':', $role, 2), 2, '');
+                    return $slug !== '' ? ['slug' => $slug, 'status' => $status] : null;
+                }, explode(';', (string) ($row['roles'] ?? ''))))),
                 'createdAt' => $row['created_at'] ?? '',
             ];
         }, $f1Stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -1548,7 +1702,31 @@ $router->add('GET', '/api/svp/admin/export', function () {
                 $row['created_at'] ?? '',
             ];
         }, $stmt->fetchAll(PDO::FETCH_ASSOC));
-        svp_admin_csv_download("svp-users-{$today}.csv", ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'CCCD', 'Dia chi', 'Co chung chi', 'Anh chung chi', 'Hoc van', 'Mo ta', 'Ngan hang', 'So tai khoan', 'Chu tai khoan', 'Ma gioi thieu', 'Nguoi gioi thieu', 'Trang thai', 'Vai tro', 'Ngay tao'], $rows);
+        svp_admin_excel_download("svp-users-{$today}.xls", 'Nguoi dung', ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'CCCD', 'Dia chi', 'Co chung chi', 'Anh chung chi', 'Hoc van', 'Mo ta', 'Ngan hang', 'So tai khoan', 'Chu tai khoan', 'Ma gioi thieu', 'Nguoi gioi thieu', 'Trang thai', 'Vai tro', 'Ngay tao'], $rows);
+    }
+
+    if ($type === 'user_referrals') {
+        $userId = trim((string) ($_GET['userId'] ?? ''));
+        if ($userId === '') Response::error('Thieu tai khoan can xuat tuyen F1', 400);
+        $userStmt = $db->prepare('SELECT svp_id, full_name FROM users WHERE id = :id LIMIT 1');
+        $userStmt->execute(['id' => $userId]);
+        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) Response::notFound('Khong tim thay tai khoan');
+
+        $stmt = $db->prepare("SELECT
+                u.svp_id, u.full_name, u.phone, u.email, u.referral_code, u.account_status,
+                GROUP_CONCAT(CONCAT(r.role_slug, ':', r.status) ORDER BY r.id SEPARATOR '; ') AS roles,
+                u.created_at
+            FROM users u
+            LEFT JOIN svp_user_roles r ON r.user_id = u.id
+            WHERE u.referred_by = :user_id
+            GROUP BY u.id, u.svp_id, u.full_name, u.phone, u.email, u.referral_code, u.account_status, u.created_at
+            ORDER BY u.created_at DESC
+            LIMIT 5000");
+        $stmt->execute(['user_id' => $userId]);
+        $ownerLabel = trim((string) ($user['svp_id'] ?? '') . ' ' . (string) ($user['full_name'] ?? ''));
+        $rows = array_map(fn($row) => array_merge([$ownerLabel], array_values($row)), $stmt->fetchAll(PDO::FETCH_ASSOC));
+        svp_admin_excel_download("svp-f1-{$today}.xls", 'Tuyen F1', ['Nguoi gioi thieu', 'SVP ID F1', 'Ho ten F1', 'Dien thoai', 'Email', 'Ma gioi thieu', 'Trang thai', 'Vai tro', 'Ngay tao'], $rows);
     }
 
     if ($type === 'properties') {
@@ -1559,7 +1737,7 @@ $router->add('GET', '/api/svp/admin/export', function () {
             ORDER BY created_at DESC
             LIMIT 3000
         ");
-        svp_admin_csv_download("svp-properties-{$today}.csv", ['Ma tin', 'Tieu de', 'Chu nha', 'Dien thoai', 'Quan/Huyen', 'Phuong/Xa', 'Gia', 'Dien tich', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+        svp_admin_excel_download("svp-properties-{$today}.xls", 'Nguon nha', ['Ma tin', 'Tieu de', 'Chu nha', 'Dien thoai', 'Quan/Huyen', 'Phuong/Xa', 'Gia', 'Dien tich', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
     }
 
     if ($type === 'customers') {
@@ -1570,7 +1748,7 @@ $router->add('GET', '/api/svp/admin/export', function () {
             ORDER BY created_at DESC
             LIMIT 3000
         ");
-        svp_admin_csv_download("svp-customers-{$today}.csv", ['Ho ten', 'Dien thoai', 'Email', 'Nhu cau', 'Ngan sach tu', 'Ngan sach den', 'Khu vuc', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+        svp_admin_excel_download("svp-customers-{$today}.xls", 'Khach hang', ['Ho ten', 'Dien thoai', 'Email', 'Nhu cau', 'Ngan sach tu', 'Ngan sach den', 'Khu vuc', 'Trang thai', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
     }
 
     if ($type === 'role_applications') {
@@ -1581,7 +1759,37 @@ $router->add('GET', '/api/svp/admin/export', function () {
             ORDER BY ra.created_at DESC
             LIMIT 2000
         ");
-        svp_admin_csv_download("svp-role-applications-{$today}.csv", ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'Vai tro', 'Trang thai', 'Ly do', 'Ghi chu', 'Ngay gui', 'Ngay duyet'], $stmt->fetchAll(PDO::FETCH_NUM));
+        svp_admin_excel_download("svp-role-applications-{$today}.xls", 'Duyet vai tro', ['SVP ID', 'Ho ten', 'Dien thoai', 'Email', 'Vai tro', 'Trang thai', 'Ly do', 'Ghi chu', 'Ngay gui', 'Ngay duyet'], $stmt->fetchAll(PDO::FETCH_NUM));
+    }
+
+    if ($type === 'viewing_schedules') {
+        $stmt = $db->query("SELECT
+                s.scheduled_at, s.status,
+                c.full_name, c.phone, c.email,
+                p.code, p.title, p.owner_name, p.owner_phone,
+                u.svp_id, u.full_name AS creator_name,
+                s.note, s.created_at
+            FROM svp_viewing_schedules s
+            LEFT JOIN svp_customers c ON c.id = s.customer_id
+            LEFT JOIN svp_properties p ON p.id = s.property_id
+            LEFT JOIN users u ON u.id = s.created_by
+            ORDER BY s.scheduled_at DESC, s.created_at DESC
+            LIMIT 5000");
+        svp_admin_excel_download("svp-viewing-schedules-{$today}.xls", 'Lich xem', ['Lich hen', 'Trang thai', 'Khach hang', 'Dien thoai khach', 'Email khach', 'Ma nguon', 'Nguon nha', 'Chu nha', 'Dien thoai chu', 'SVP ID nguoi tao', 'Nguoi tao', 'Ghi chu', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
+    }
+
+    if ($type === 'referrals') {
+        $stmt = $db->query("SELECT
+                r.referral_code, r.referral_type, r.status,
+                ref.svp_id, ref.full_name, ref.phone, ref.email,
+                referred.svp_id, referred.full_name, referred.phone, referred.email,
+                r.created_at
+            FROM svp_referrals r
+            LEFT JOIN users ref ON ref.id = r.referrer_user_id
+            LEFT JOIN users referred ON referred.id = r.referred_user_id
+            ORDER BY r.created_at DESC
+            LIMIT 5000");
+        svp_admin_excel_download("svp-referrals-{$today}.xls", 'Gioi thieu', ['Ma gioi thieu', 'Loai', 'Trang thai', 'SVP ID nguoi gioi thieu', 'Nguoi gioi thieu', 'Dien thoai nguoi gioi thieu', 'Email nguoi gioi thieu', 'SVP ID nguoi duoc gioi thieu', 'Nguoi duoc gioi thieu', 'Dien thoai nguoi duoc gioi thieu', 'Email nguoi duoc gioi thieu', 'Ngay tao'], $stmt->fetchAll(PDO::FETCH_NUM));
     }
 
     Response::error('Loai du lieu xuat khong hop le', 400);

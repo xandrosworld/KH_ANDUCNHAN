@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Home, Settings2, Share2, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Home, Settings2, Share2, ShieldCheck, UserCheck, Users } from 'lucide-react';
 import { svpAxios as api } from '../../services/svpAxios';
 
 export default function AdminDashboardPage() {
@@ -16,12 +16,12 @@ export default function AdminDashboardPage() {
   }, []);
 
   const cards = [
-    { label: 'Người dùng', value: stats.totalUsers || 0, icon: Users, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Chờ duyệt', value: stats.pendingApplications || 0, icon: Clock, color: 'bg-amber-50 text-amber-700' },
-    { label: 'Nguồn nhà', value: stats.totalProperties || 0, icon: Home, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Khách hàng', value: stats.totalCustomers || 0, icon: UserCheck, color: 'bg-purple-50 text-purple-600' },
-    { label: 'Lịch xem', value: stats.totalSchedules || 0, icon: Calendar, color: 'bg-orange-50 text-orange-600' },
-    { label: 'Giới thiệu', value: stats.totalReferrals || 0, icon: Share2, color: 'bg-cyan-50 text-cyan-600' },
+    { label: 'Người dùng', value: stats.totalUsers || 0, icon: Users, color: 'bg-blue-50 text-blue-600', path: '/quan-tri/nguoi-dung' },
+    { label: 'Chờ duyệt', value: stats.pendingApplications || 0, icon: Clock, color: 'bg-amber-50 text-amber-700', path: '/quan-tri/duyet-vai-tro' },
+    { label: 'Nguồn nhà', value: stats.totalProperties || 0, icon: Home, color: 'bg-emerald-50 text-emerald-600', path: '/quan-tri/nha' },
+    { label: 'Khách hàng', value: stats.totalCustomers || 0, icon: UserCheck, color: 'bg-purple-50 text-purple-600', path: '/quan-tri/khach-hang' },
+    { label: 'Lịch xem', value: stats.totalSchedules || 0, icon: Calendar, color: 'bg-orange-50 text-orange-600', path: '/quan-tri/lich-xem' },
+    { label: 'Giới thiệu', value: stats.totalReferrals || 0, icon: Share2, color: 'bg-cyan-50 text-cyan-600', path: '/quan-tri/gioi-thieu' },
   ];
 
   return (
@@ -36,13 +36,11 @@ export default function AdminDashboardPage() {
 
       <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-3">
         {cards.map((card) => (
-          <div key={card.label} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-            <div className={`mb-3 grid h-11 w-11 place-items-center rounded-2xl ${card.color}`}>
-              <card.icon className="h-5 w-5" />
-            </div>
+          <button key={card.label} type="button" onClick={() => navigate(card.path)} className="group min-h-36 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#c40012]" aria-label={`Mở danh sách ${card.label.toLowerCase()}`}>
+            <div className="flex items-start justify-between gap-2"><div className={`mb-3 grid h-11 w-11 place-items-center rounded-2xl ${card.color}`}><card.icon className="h-5 w-5" /></div><ArrowRight className="h-4 w-4 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-[#c40012]" /></div>
             <p className="text-2xl font-black text-[#25202a]">{loading ? '-' : card.value}</p>
             <p className="mt-1 text-xs font-bold text-[#747b88]">{card.label}</p>
-          </div>
+          </button>
         ))}
       </section>
 

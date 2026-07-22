@@ -158,11 +158,19 @@ const schedules = [
     id: 'sch_1',
     customerId: 'cus_1',
     customerName: 'Khach mua Van Phuc',
+    customerPhone: '0911000001',
+    customerEmail: 'khach@sodovanphuc.vn',
     propertyId: 'prop_1',
+    propertyCode: 'SVP000001',
     propertyTitle: 'Nha pho Van Phuc 72m2',
+    propertyOwnerName: 'Nguyen Van A',
+    propertyOwnerPhone: '0909000001',
     scheduledAt: '2026-07-01 09:30:00',
-    statusId: 'scheduled',
+    status: 'confirmed',
     note: 'Hen tai van phong truoc khi di xem nha.',
+    creatorName: 'Chuyen vien phu trach',
+    creatorSvpId: 'SVP000020',
+    createdAt: '2026-06-29 09:00:00',
   },
 ];
 
@@ -170,8 +178,18 @@ const referrals = [
   {
     id: 'ref_1',
     referralCode: 'SVP-2026-0001',
+    referralType: 'buyer',
+    referrerUserId: 'user_admin',
+    referrerName: 'Nguoi gioi thieu QA',
+    referrerPhone: '0909000999',
+    referrerEmail: 'admin@sodovanphuc.vn',
+    referrerSvpId: 'SVP000999',
+    referredUserId: 'user_chuyen_gia',
     referredName: 'Nguoi duoc gioi thieu',
-    status: 'active',
+    referredPhone: '0909000111',
+    referredEmail: 'f1@sodovanphuc.vn',
+    referredSvpId: 'SVP000111',
+    status: 'activated',
     createdAt: '2026-06-29 10:00:00',
   },
 ];
@@ -272,8 +290,8 @@ const publicRoutes = [
 ];
 
 const roleRoutes = [
-  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
-  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha-tong', '/chuyen-gia/kho-nha-rieng', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
@@ -409,7 +427,21 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     }
     if (path === '/admin/users' && method === 'GET') return ok(route, {
       items: [
-        userFor('admin'),
+        {
+          ...userFor('admin'),
+          directReferralCount: 1,
+          directReferrals: [{
+            id: 'user_long_live_like',
+            fullName: 'Nguoi duoc gioi thieu',
+            phone: '0909000111',
+            email: 'f1@sodovanphuc.vn',
+            svpId: 'SVP000111',
+            referralCode: 'SVP-2026-F101',
+            accountStatus: 'active',
+            roles: [{ slug: 'chuyen_gia', status: 'approved' }],
+            createdAt: '2026-07-05 09:00:00',
+          }],
+        },
         {
           ...userFor('chuyen_gia'),
           id: 'user_long_live_like',
@@ -441,10 +473,13 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     if (path === '/admin/export' && method === 'GET') {
       return route.fulfill({
         status: 200,
-        contentType: 'text/csv; charset=UTF-8',
-        body: 'Ho ten,Email\nTai khoan kiem thu,admin@sodovanphuc.vn\n',
+        contentType: 'application/vnd.ms-excel; charset=UTF-8',
+        headers: { 'Content-Disposition': 'attachment; filename="so-do-van-phuc.xls"' },
+        body: '<?xml version="1.0" encoding="UTF-8"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet><Table><Row><Cell><Data>So Do Van Phuc</Data></Cell></Row></Table></Worksheet></Workbook>',
       });
     }
+    if (path === '/admin/viewing-schedules' && method === 'GET') return ok(route, { items: schedules, total: schedules.length });
+    if (path === '/admin/referrals' && method === 'GET') return ok(route, { items: referrals, total: referrals.length });
     if (path === '/admin/notifications' && method === 'GET') {
       return ok(route, {
         items: [{ id: 'notice_1', title: 'Thong bao noi bo', body: 'Noi dung kiem thu thong bao.', createdAt: '2026-06-30 09:00:00' }],
@@ -929,6 +964,64 @@ test.describe('V1 core workflows', () => {
 
       expect(cardsFit, `admin user cards and actions should not overflow at ${width}px`).toBe(true);
     }
+  });
+
+  test('admin dashboard cards open every detailed list', async ({ page }) => {
+    await installMocks(page, 'admin');
+    const destinations = [
+      ['người dùng', '/quan-tri/nguoi-dung'],
+      ['chờ duyệt', '/quan-tri/duyet-vai-tro'],
+      ['nguồn nhà', '/quan-tri/nha'],
+      ['khách hàng', '/quan-tri/khach-hang'],
+      ['lịch xem', '/quan-tri/lich-xem'],
+      ['giới thiệu', '/quan-tri/gioi-thieu'],
+    ];
+
+    for (const [label, path] of destinations) {
+      await page.goto('/quan-tri', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: `Mở danh sách ${label}` }).click();
+      await expect(page).toHaveURL(path);
+      await expect(page.getByRole('heading').first()).toBeVisible();
+    }
+  });
+
+  test('admin schedule and referral lists show joined details and export Excel', async ({ page }, testInfo) => {
+    await installMocks(page, 'admin');
+
+    await page.goto('/quan-tri/lich-xem', { waitUntil: 'networkidle' });
+    await expect(page.getByRole('heading', { name: 'Lịch xem nhà' })).toBeVisible();
+    await expect(page.locator('body')).toContainText('Khach mua Van Phuc');
+    await page.getByRole('button', { name: /Khach mua Van Phuc/ }).click();
+    await expect(page.getByRole('dialog', { name: 'Chi tiết lịch xem' })).toContainText('Nha pho Van Phuc 72m2');
+    await page.getByRole('button', { name: 'Đóng' }).click();
+    const scheduleDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Xuất Excel' }).click();
+    await expect((await scheduleDownload).suggestedFilename()).toMatch(/\.xls$/);
+    await expectUsablePage(page, testInfo, 'workflow-admin-schedules');
+
+    await page.goto('/quan-tri/gioi-thieu', { waitUntil: 'networkidle' });
+    await expect(page.getByRole('heading', { name: 'Danh sách giới thiệu' })).toBeVisible();
+    await expect(page.locator('body')).toContainText('Nguoi gioi thieu QA');
+    await page.getByRole('button', { name: /SVP-2026-0001/ }).click();
+    const referralDialog = page.getByRole('dialog', { name: 'Chi tiết giới thiệu' });
+    await expect(referralDialog).toContainText('Nguoi duoc gioi thieu');
+    await expect(referralDialog.getByRole('button', { name: /Mở hồ sơ người giới thiệu/i })).toBeVisible();
+    await expectUsablePage(page, testInfo, 'workflow-admin-referrals');
+  });
+
+  test('admin user detail exposes F1 roles, navigation and Excel export', async ({ page }, testInfo) => {
+    await installMocks(page, 'admin');
+    await page.goto('/quan-tri/nguoi-dung?user=user_admin', { waitUntil: 'networkidle' });
+
+    await expect(page.getByText('Tuyến F1 đã giới thiệu')).toBeVisible();
+    await expect(page.getByText('1 tài khoản trực tiếp')).toBeVisible();
+    await expect(page.getByText('Chuyên gia', { exact: true })).toBeVisible();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Xuất Excel F1' }).click();
+    await expect((await download).suggestedFilename()).toMatch(/\.xls$/);
+    await expectUsablePage(page, testInfo, 'workflow-admin-user-f1');
+    await page.getByRole('button', { name: /Nguoi duoc gioi thieu/ }).click();
+    await expect(page.getByRole('heading', { name: /Khách mua kiêm chuyên gia demo/i })).toBeVisible();
   });
 
   test('public property detail contact CTAs are actionable', async ({ page }, testInfo) => {

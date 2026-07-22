@@ -65,6 +65,8 @@ const AdminUsers = lazy(() => import('./pages/admin/UsersPage'));
 const AdminRoleApprovals = lazy(() => import('./pages/admin/RoleApprovalsPage'));
 const AdminProperties = lazy(() => import('./pages/admin/PropertiesPage'));
 const AdminCustomers = lazy(() => import('./pages/admin/CustomersPage'));
+const AdminSchedules = lazy(() => import('./pages/admin/SchedulesPage'));
+const AdminReferrals = lazy(() => import('./pages/admin/ReferralsPage'));
 const AdminConfig = lazy(() => import('./pages/admin/ConfigPage'));
 const AdminAudit = lazy(() => import('./pages/admin/AuditPage'));
 const AdminEvents = lazy(() => import('./pages/admin/EventsPage'));
@@ -192,6 +194,8 @@ function AppRoutes() {
               <Route path="/quan-tri/duyet-vai-tro" element={<AdminRoleApprovals />} />
               <Route path="/quan-tri/nha" element={<AdminProperties />} />
               <Route path="/quan-tri/khach-hang" element={<AdminCustomers />} />
+              <Route path="/quan-tri/lich-xem" element={<AdminSchedules />} />
+              <Route path="/quan-tri/gioi-thieu" element={<AdminReferrals />} />
               <Route path="/quan-tri/cau-hinh" element={<AdminConfig />} />
               <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
               <Route element={<RoleRoute roles={EVENT_ADMIN_ROLES} />}>

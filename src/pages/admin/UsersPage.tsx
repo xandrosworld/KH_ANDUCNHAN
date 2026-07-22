@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Download, KeyRound, Lock, PlusCircle, Search, ShieldCheck, ShieldOff, Unlock, UserRoundCheck, Users, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { svpAxios as api } from '../../services/svpAxios';
 import { getRoleDisplayName } from '../../data/roles';
 import { downloadAdminExport } from '../../utils/adminExport';
@@ -46,6 +47,7 @@ interface ReferrerCandidate {
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<any[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
@@ -94,6 +96,13 @@ export default function AdminUsersPage() {
       return items.find((item) => item.id === current.id) || current;
     });
   }, [items]);
+
+  useEffect(() => {
+    const requestedId = searchParams.get('user');
+    if (!requestedId || !items.length) return;
+    const requestedUser = items.find((item) => item.id === requestedId);
+    if (requestedUser) setSelectedUser(requestedUser);
+  }, [items, searchParams]);
 
   useEffect(() => {
     const lookup = referrerLookup.trim();
@@ -168,6 +177,19 @@ export default function AdminUsersPage() {
       await downloadAdminExport('users');
     } catch {
       setMessage('Chưa xuất được danh sách người dùng.');
+    }
+  };
+
+  const exportDirectReferrals = async () => {
+    if (!selectedUser) return;
+    setBusyId(`${selectedUser.id}-export-f1`);
+    setMessage('');
+    try {
+      await downloadAdminExport('user_referrals', { userId: selectedUser.id });
+    } catch {
+      setMessage('Chưa xuất được danh sách F1 của người dùng này.');
+    } finally {
+      setBusyId('');
     }
   };
 
@@ -369,12 +391,24 @@ export default function AdminUsersPage() {
           roleSettings={roleSettings}
           busy={busyId === `${selectedUser.id}-referrer`}
           roleBusy={busyId === `${selectedUser.id}-role` || busyId.startsWith(`${selectedUser.id}-remove-`)}
+          referralExportBusy={busyId === `${selectedUser.id}-export-f1`}
           currentUserId={currentUserId}
           canManageAdminRoles={currentIsOwnerAdmin}
           onSaveReferrer={updateReferrer}
           onAssignRole={assignRole}
           onRemoveRole={removeRole}
-          onClose={() => setSelectedUser(null)}
+          onExportReferrals={exportDirectReferrals}
+          onOpenReferral={(userId) => {
+            const target = items.find((item) => item.id === userId);
+            if (target) {
+              setSelectedUser(target);
+              setSearchParams({ user: userId }, { replace: true });
+            }
+          }}
+          onClose={() => {
+            setSelectedUser(null);
+            setSearchParams({}, { replace: true });
+          }}
         />
       ) : null}
       {createOpen ? (
@@ -586,11 +620,14 @@ function UserDetailPanel({
   roleSettings,
   busy,
   roleBusy,
+  referralExportBusy,
   currentUserId,
   canManageAdminRoles,
   onSaveReferrer,
   onAssignRole,
   onRemoveRole,
+  onExportReferrals,
+  onOpenReferral,
   onClose,
 }: {
   user: any;
@@ -604,11 +641,14 @@ function UserDetailPanel({
   roleSettings: any[];
   busy: boolean;
   roleBusy: boolean;
+  referralExportBusy: boolean;
   currentUserId: string;
   canManageAdminRoles: boolean;
   onSaveReferrer: () => void;
   onAssignRole: () => void;
   onRemoveRole: (roleSlug: string) => void;
+  onExportReferrals: () => void;
+  onOpenReferral: (userId: string) => void;
   onClose: () => void;
 }) {
   const profile = user.profile || {};
@@ -700,19 +740,20 @@ function UserDetailPanel({
           </DetailSection>
 
           <DetailSection title="Tuyến F1 đã giới thiệu">
-            <div className="rounded-2xl bg-[#fff8f2] p-3">
-              <p className="text-sm font-black text-[#25202a]">{user.directReferralCount || directReferrals.length || 0} tài khoản trực tiếp</p>
-              <p className="mt-1 text-xs font-semibold text-[#7b8190]">Danh sách người đăng ký trực tiếp qua mã/link của tài khoản này.</p>
+            <div className="flex flex-col gap-3 rounded-2xl bg-[#fff8f2] p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="text-sm font-black text-[#25202a]">{user.directReferralCount || directReferrals.length || 0} tài khoản trực tiếp</p><p className="mt-1 text-xs font-semibold text-[#7b8190]">Danh sách người đăng ký trực tiếp qua mã/link của tài khoản này.</p></div>
+              <button type="button" onClick={onExportReferrals} disabled={referralExportBusy || !directReferrals.length} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#c40012] px-3 text-xs font-black text-white disabled:opacity-50"><Download className="h-4 w-4" />{referralExportBusy ? 'Đang xuất...' : 'Xuất Excel F1'}</button>
             </div>
             {directReferrals.length ? (
               <div className="space-y-2">
                 {directReferrals.map((item: any) => (
-                  <div key={item.id} className="rounded-2xl border border-gray-100 bg-white p-3">
+                  <button type="button" key={item.id} onClick={() => onOpenReferral(item.id)} className="block w-full rounded-2xl border border-gray-100 bg-white p-3 text-left transition hover:border-red-100 hover:bg-red-50/30">
                     <p className="truncate text-sm font-black text-[#25202a]">{item.fullName || 'Chưa có tên'}</p>
                     <p className="mt-1 truncate text-xs font-semibold text-[#7b8190]">
                       {[item.svpId, item.phone, item.email, item.referralCode].filter(Boolean).join(' · ') || '-'}
                     </p>
-                  </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">{(item.roles || []).map((role: any) => <span key={`${item.id}-${role.slug}`} className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-700">{getRoleDisplayName(role.slug)}</span>)}<span className={`rounded-full px-2 py-1 text-[11px] font-black ${item.accountStatus === 'locked' ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-700'}`}>{item.accountStatus === 'locked' ? 'Tạm khóa' : 'Hoạt động'}</span>{item.createdAt ? <span className="rounded-full bg-gray-50 px-2 py-1 text-[11px] font-bold text-[#7b8190]">Tham gia {formatUserDate(item.createdAt)}</span> : null}</div>
+                  </button>
                 ))}
               </div>
             ) : (
@@ -798,6 +839,11 @@ function DetailRow({ label, value }: { label: string; value?: string }) {
 
 function formatAddress(address: any) {
   return [address.houseNumber, address.street, address.ward, address.district, address.province].filter(Boolean).join(', ');
+}
+
+function formatUserDate(value: string) {
+  const date = new Date(value.replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('vi-VN').format(date);
 }
 
 function UserSkeleton() {

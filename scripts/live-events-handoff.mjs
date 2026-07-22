@@ -409,11 +409,11 @@ async function testEventAdmin(ownerPage) {
   await row.locator('select').selectOption('confirmed');
   await screenshot(ownerPage, '16-quan-ly-nguoi-dang-ky-su-kien');
   const downloadPromise = ownerPage.waitForEvent('download');
-  await ownerPage.getByTitle('Xuất CSV').click();
+  await ownerPage.getByTitle('Xuất Excel').click();
   const download = await downloadPromise;
-  const csvPath = path.join(evidenceDir, 'event-registrations.csv');
-  await download.saveAs(csvPath);
-  assert(fs.readFileSync(csvPath, 'utf8').includes(accounts.attendee.email), 'CSV không chứa đăng ký đã lọc');
+  const excelPath = path.join(evidenceDir, 'event-registrations.xls');
+  await download.saveAs(excelPath);
+  assert(fs.readFileSync(excelPath, 'utf8').includes(accounts.attendee.email), 'Excel không chứa đăng ký đã lọc');
 
   const event = (await api('/api/svp/admin/events', { token: ownerToken })).items.find((item) => item.slug === EVENT_SLUG);
   await api(`/api/svp/admin/events/${event.id}`, { token: ownerToken, method: 'PUT', body: { ...event, registrationStatus: 'closed' } });
@@ -661,7 +661,7 @@ try {
 
   await step('Người đã có tài khoản đăng ký và chống đăng ký trùng', async () => registerExistingAndCheckDuplicate(accounts.existingRegistrant, '/hoc-vien'));
   await step('Gán lại người giới thiệu bằng tìm kiếm chính xác', async () => reassignReferrerViaUi(ownerPage));
-  await step('Lọc, cập nhật, xuất CSV, đóng/mở và tạo sự kiện QA', async () => testEventAdmin(ownerPage));
+  await step('Lọc, cập nhật, xuất Excel, đóng/mở và tạo sự kiện QA', async () => testEventAdmin(ownerPage));
   await step('Admin thường bị chặn quyền của Admin tổng', testRegularAdminRestrictions);
 
   await step('Kiểm tra nguồn sự kiện, UTM và quan hệ giới thiệu', async () => {

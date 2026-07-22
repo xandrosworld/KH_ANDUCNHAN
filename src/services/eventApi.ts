@@ -62,7 +62,7 @@ export const eventApi = {
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = objectUrl;
-    anchor.download = `svp-event-registrations-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = `svp-event-registrations-${new Date().toISOString().slice(0, 10)}.xls`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
