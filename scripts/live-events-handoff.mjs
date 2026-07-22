@@ -35,6 +35,7 @@ const runId = existingSecrets?.runId || new Date().toISOString().replace(/\D/g, 
 const runTag = runId.slice(-10);
 const phoneBase = Number(runId.slice(-7));
 const phone = (offset) => `09${String((phoneBase + offset) % 100000000).padStart(8, '0')}`;
+const retryPhone = (offset = 0) => `08${String((Date.now() + offset) % 100000000).padStart(8, '0')}`;
 const qaEmail = (name) => `qa.${runTag}.${name}@sodovanphuc.vn`;
 
 const accounts = existingSecrets?.accounts || {
@@ -121,14 +122,14 @@ async function prepareResumeState() {
   const registrations = (await api('/api/svp/admin/event-registrations', { token: ownerToken })).items || [];
   const oldAttendee = users.find((item) => item.email === accounts.attendee.email);
   const attendeeRegistration = registrations.find((item) => item.email === accounts.attendee.email && item.eventSlug === EVENT_SLUG);
-  if (oldAttendee && !attendeeRegistration) {
-    staleEmails.push(accounts.attendee.email);
-    const retryTag = Date.now().toString().slice(-5);
+  if (!oldAttendee || !attendeeRegistration) {
+    if (oldAttendee) staleEmails.push(accounts.attendee.email);
+    const retryTag = Date.now().toString().slice(-7);
     accounts.attendee = {
       ...accounts.attendee,
       fullName: `QA-${runTag}-${retryTag} Học viên sự kiện`,
       email: `qa.${runTag}.event.${retryTag}@sodovanphuc.vn`,
-      phone: phone(Number(retryTag.slice(-2)) + 30),
+      phone: retryPhone(1),
       password: randomPassword(),
     };
     saveRuntime();
@@ -136,14 +137,14 @@ async function prepareResumeState() {
 
   const oldExistingRegistrant = users.find((item) => item.email === accounts.existingRegistrant.email);
   const existingRegistration = registrations.find((item) => item.email === accounts.existingRegistrant.email && item.eventSlug === EVENT_SLUG);
-  if (oldExistingRegistrant && !existingRegistration) {
-    staleEmails.push(accounts.existingRegistrant.email);
-    const retryTag = Date.now().toString().slice(-5);
+  if (!oldExistingRegistrant || !existingRegistration) {
+    if (oldExistingRegistrant) staleEmails.push(accounts.existingRegistrant.email);
+    const retryTag = Date.now().toString().slice(-7);
     accounts.existingRegistrant = {
       ...accounts.existingRegistrant,
       fullName: `QA-${runTag}-${retryTag} Người dùng hiện hữu`,
       email: `qa.${runTag}.existing.${retryTag}@sodovanphuc.vn`,
-      phone: phone(Number(retryTag.slice(-2)) + 60),
+      phone: retryPhone(2),
       password: randomPassword(),
     };
     saveRuntime();
@@ -237,7 +238,8 @@ async function registerEventViaUi(account, referralCode) {
     const responsePromise = page.waitForResponse((response) => response.url().includes(`/api/svp/events/${EVENT_SLUG}/register-new`));
     await page.getByRole('button', { name: /Đăng ký tham dự miễn phí/ }).click();
     const response = await responsePromise;
-    assert(response.status() === 201, `Đăng ký sự kiện trả HTTP ${response.status()}`);
+    const payload = await response.json().catch(() => null);
+    assert(response.status() === 201, payload?.error || payload?.message || `Đăng ký sự kiện trả HTTP ${response.status()}`);
     await page.getByTestId('event-registration-message').waitFor();
     await screenshot(page, '06-dang-ky-su-kien-nguoi-moi-mobile');
     assert(failures.length === 0, failures.join('; '));
@@ -478,8 +480,8 @@ async function readMailbox(email, password) {
     const quote = (value) => `"${String(value).replace(/([\\"])/g, '\\$1')}"`;
     await imapCommand(socket, 'a1', `LOGIN ${quote(email)} ${quote(password)}`, state);
     await imapCommand(socket, 'a2', 'SELECT INBOX', state);
-    const search = await imapCommand(socket, 'a3', 'SEARCH ALL', state);
-    const ids = (search.match(/\* SEARCH ([\d ]+)/)?.[1] || '').trim().split(/\s+/).filter(Boolean).slice(-5);
+    const search = await imapCommand(socket, 'a3', 'SEARCH BODY "reset-password"', state);
+    const ids = (search.match(/\* SEARCH ([\d ]+)/)?.[1] || '').trim().split(/\s+/).filter(Boolean).slice(-1);
     body = ids.length ? await imapCommand(socket, 'a4', `FETCH ${ids.join(',')} BODY.PEEK[]`, state, 60_000) : '';
     await imapCommand(socket, 'a5', 'LOGOUT', state).catch(() => undefined);
   } finally {
@@ -489,7 +491,7 @@ async function readMailbox(email, password) {
   const base64Parts = [...body.matchAll(/Content-Transfer-Encoding:\s*base64\s*\r?\n\r?\n([A-Za-z0-9+/=\r\n]+)/gi)].map((match) => {
     try { return Buffer.from(match[1].replace(/\s/g, ''), 'base64').toString('utf8'); } catch { return ''; }
   });
-  return `${decoded}\n${base64Parts.join('\n')}`;
+  return `${body}\n${decoded}\n${base64Parts.join('\n')}`;
 }
 
 async function requestResetViaUi(email, screenshotName) {
@@ -508,7 +510,13 @@ async function waitForResetLink(email) {
     const inbox = await readMailbox(email, passwordForMailbox(email));
     const normalized = inbox.replace(/&amp;/g, '&');
     const links = normalized.match(/https:\/\/sodovanphuc\.vn\/(?:reset-password|dat-lai-mat-khau)\?[^"'<>\s]+/g) || [];
-    if (links.length) return links.at(-1);
+    const validLink = links.find((candidate) => {
+      try {
+        const parsed = new URL(candidate);
+        return /^[a-f0-9]{64}$/i.test(parsed.searchParams.get('token') || '') && parsed.searchParams.get('email') === email;
+      } catch { return false; }
+    });
+    if (validLink) return validLink;
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }
   throw new Error(`Không nhận được link đặt lại mật khẩu tại ${email}`);
@@ -521,7 +529,11 @@ async function resetViaUi(url, newPassword, screenshotName) {
     const fields = page.getByPlaceholder('Tối thiểu 6 ký tự');
     await fields.nth(0).fill(newPassword);
     await fields.nth(1).fill(newPassword);
+    const responsePromise = page.waitForResponse((response) => response.url().includes('/api/svp/auth/reset-password') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Cập nhật mật khẩu' }).click();
+    const response = await responsePromise;
+    const payload = await response.json().catch(() => null);
+    assert(response.ok(), payload?.error || payload?.message || `Đặt lại mật khẩu trả HTTP ${response.status()}`);
     await page.getByRole('heading', { name: 'Đã đổi mật khẩu' }).waitFor();
     await screenshot(page, screenshotName);
   } finally { await context.close(); }
