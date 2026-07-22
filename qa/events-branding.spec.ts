@@ -31,6 +31,54 @@ test('standalone register contains no login or social providers', async ({ page 
   await expect(page.getByTestId('auth-public-nav').getByRole('button', { name: 'Sự kiện' })).toBeVisible();
 });
 
+test('public registration keeps the agreed roles separate from event attendance', async ({ page }) => {
+  const activeRoles = [
+    ['khach_mua', 'Khách mua', 'Tìm nguồn nhà phù hợp nhu cầu'],
+    ['chu_nha', 'Chủ nhà', 'Gửi thông tin nhà cần bán'],
+    ['nguoi_gioi_thieu', 'CTV giới thiệu nhân sự', 'Giới thiệu nhân sự'],
+    ['ctv_khach', 'CTV giới thiệu khách', 'Giới thiệu khách mua'],
+    ['ctv_nguon', 'CTV giới thiệu nguồn', 'Giới thiệu nguồn nhà'],
+    ['chuyen_vien', 'Cộng tác viên', 'Tìm khách mua nhà'],
+    ['chuyen_gia', 'Chuyên gia', 'Tìm chủ bán nhà'],
+    ['hoc_vien', 'Học viên', 'Theo dõi đào tạo nội bộ'],
+    ['truong_phong', 'Trưởng phòng', 'Quản lý đội nhóm'],
+  ];
+  const options = activeRoles.map(([value, label, description], index) => ({
+    id: `role_approval_${value}`,
+    value,
+    label,
+    isActive: true,
+    sortOrder: (index + 1) * 10,
+    metadata: { description, requiresApproval: !['khach_mua', 'chu_nha', 'nguoi_gioi_thieu', 'ctv_khach', 'ctv_nguon'].includes(value) },
+  }));
+  options.push({
+    id: 'role_approval_giam_doc_khoi',
+    value: 'giam_doc_khoi',
+    label: 'Giám đốc Khối',
+    isActive: false,
+    sortOrder: 230,
+    metadata: { description: 'Quản lý cấp Khối', requiresApproval: true },
+  });
+
+  await page.route('**/api/svp/config', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      ok: true,
+      data: { groups: [{ id: 'account_role_approval', name: 'Duyệt tài khoản', options }] },
+    }),
+  }));
+
+  await page.goto('/register');
+  const roleList = page.getByTestId('auth-role-list');
+  for (const [slug, label] of activeRoles) {
+    await expect(page.getByTestId(`auth-role-option-${slug}`)).toBeVisible();
+    await expect(roleList).toContainText(label);
+  }
+  await expect(page.getByTestId('auth-role-option-giam_doc_khoi')).toHaveCount(0);
+  await expect(roleList).not.toContainText(/Đầu khách|Đầu chủ|SỰ KIỆN|Leader/);
+});
+
 test('public event list and detail use the generated banner', async ({ page }) => {
   await page.goto('/su-kien');
   await expect(page.getByRole('heading', { name: event.title })).toBeVisible();

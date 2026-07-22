@@ -214,6 +214,92 @@ function svp_ensure_role_approval_config(PDO $db): void
             'is_active' => !empty($role['isActive']) ? 1 : 0,
         ]);
     }
+
+    svp_restore_public_registration_roles_20260722($db);
+}
+
+function svp_restore_public_registration_roles_20260722(PDO $db): void
+{
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+
+    $migrationId = 'restore_public_registration_roles_20260722';
+    try {
+        $marker = $db->prepare(
+            "SELECT 1
+             FROM svp_audit_logs
+             WHERE entity_type = 'system_migration' AND entity_id = :id
+             LIMIT 1"
+        );
+        $marker->execute(['id' => $migrationId]);
+        if ($marker->fetchColumn()) return;
+
+        $activeSlugs = [
+            'khach_mua',
+            'chu_nha',
+            'nguoi_gioi_thieu',
+            'ctv_khach',
+            'ctv_nguon',
+            'chuyen_vien',
+            'chuyen_gia',
+            'hoc_vien',
+            'truong_phong',
+        ];
+        $targetSlugs = array_merge($activeSlugs, ['giam_doc_khoi']);
+        $select = $db->prepare(
+            "SELECT *
+             FROM svp_config_options
+             WHERE group_id = 'account_role_approval' AND value = :slug
+             LIMIT 1"
+        );
+        $update = $db->prepare(
+            "UPDATE svp_config_options
+             SET label = :label,
+                 metadata_json = :metadata_json,
+                 is_active = :is_active
+             WHERE id = :id"
+        );
+
+        $db->beginTransaction();
+        foreach ($targetSlugs as $slug) {
+            $definition = svp_role_definition_by_slug($slug);
+            if (!$definition) continue;
+
+            $select->execute(['slug' => $slug]);
+            $old = $select->fetch(PDO::FETCH_ASSOC);
+            if (!$old) continue;
+
+            $metadata = svp_json_decode($old['metadata_json'] ?? null, []);
+            $metadata['description'] = (string) ($definition['description'] ?? '');
+            $metadata['requiresApproval'] = (bool) $definition['requiresApproval'];
+            $metadata['roleGroup'] = (string) $definition['group'];
+            $metadata['systemRole'] = true;
+            $metadata['customRole'] = false;
+            $isActive = in_array($slug, $activeSlugs, true) ? 1 : 0;
+
+            $update->execute([
+                'label' => (string) $definition['label'],
+                'metadata_json' => svp_json_encode($metadata),
+                'is_active' => $isActive,
+                'id' => $old['id'],
+            ]);
+
+            svp_insert_audit($db, 'system', 'restore', 'role_approval_setting', $slug, $old, [
+                'label' => (string) $definition['label'],
+                'description' => (string) ($definition['description'] ?? ''),
+                'isActive' => (bool) $isActive,
+            ]);
+        }
+        svp_insert_audit($db, 'system', 'apply', 'system_migration', $migrationId, null, [
+            'activeRoleSlugs' => $activeSlugs,
+            'disabledRoleSlugs' => ['giam_doc_khoi'],
+        ]);
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('[SVP_ROLE_REGISTRATION_RESTORE] ' . $e->getMessage());
+    }
 }
 
 function svp_property_field_locked_keys(): array

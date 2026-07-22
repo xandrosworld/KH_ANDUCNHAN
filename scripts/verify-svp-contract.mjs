@@ -302,6 +302,9 @@ assertIncludes(routes, 'id = :id OR code = :code', 'SVP property detail avoids r
 assert(!routes.includes('id = :id OR code = :id'), 'SVP property detail has no repeated :id placeholder');
 assertIncludes(authRoutes, 'full_name LIKE :query_name OR email LIKE :query_email', 'referrer candidate search avoids reused PDO placeholders');
 assert(!authRoutes.includes('full_name LIKE :query OR email LIKE :query'), 'referrer candidate search has no repeated :query placeholder');
+assertIncludes(routes, 'restore_public_registration_roles_20260722', 'role config runs the one-time public registration baseline repair');
+assertIncludes(routes, "'khach_mua',\n            'chu_nha',\n            'nguoi_gioi_thieu',\n            'ctv_khach',\n            'ctv_nguon'", 'role repair restores the five public and referral choices');
+assertIncludes(routes, "array_merge($activeSlugs, ['giam_doc_khoi'])", 'role repair removes director access from public registration');
 
 const requiredGroups = [
   'company_units',
