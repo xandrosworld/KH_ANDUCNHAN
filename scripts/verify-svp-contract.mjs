@@ -123,6 +123,7 @@ const seed = read('backend', 'sql', 'sodovanphuc_seed.sql');
 const sqlVerify = read('backend', 'sql', 'sodovanphuc_verify.sql');
 const databaseVerify = read('backend', 'sql', 'database_verify.sql');
 const routes = read('backend', 'api', 'svp-routes.php');
+const authRoutes = read('backend', 'api', 'svp-auth-routes.php');
 const routerIndex = read('backend', 'api', 'index.php');
 const uploadLib = read('backend', 'lib', 'Upload.php');
 const databaseLib = read('backend', 'lib', 'Database.php');
@@ -296,6 +297,8 @@ assertIncludes(routes, 'title LIKE :q_title', 'SVP property search avoids reused
 assert(!routes.includes('title LIKE :q OR owner_name LIKE :q'), 'SVP property search has no repeated :q placeholder');
 assertIncludes(routes, 'id = :id OR code = :code', 'SVP property detail avoids reused PDO placeholders');
 assert(!routes.includes('id = :id OR code = :id'), 'SVP property detail has no repeated :id placeholder');
+assertIncludes(authRoutes, 'full_name LIKE :query_name OR email LIKE :query_email', 'referrer candidate search avoids reused PDO placeholders');
+assert(!authRoutes.includes('full_name LIKE :query OR email LIKE :query'), 'referrer candidate search has no repeated :query placeholder');
 
 const requiredGroups = [
   'company_units',

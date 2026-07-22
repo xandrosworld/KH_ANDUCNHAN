@@ -1239,10 +1239,22 @@ $router->add('GET', '/api/svp/admin/referrer-candidates', function () {
     $stmt = $db->prepare("SELECT id, full_name, phone, email, svp_id, referral_code
       FROM users
       WHERE id <> :exclude_id
-        AND (full_name LIKE :query OR email LIKE :query OR phone LIKE :query OR svp_id LIKE :query OR referral_code LIKE :query)
-      ORDER BY CASE WHEN email = :exact OR phone = :exact OR svp_id = :exact OR referral_code = :exact THEN 0 ELSE 1 END, full_name ASC
+        AND (full_name LIKE :query_name OR email LIKE :query_email OR phone LIKE :query_phone OR svp_id LIKE :query_svp_id OR referral_code LIKE :query_referral_code)
+      ORDER BY CASE WHEN email = :exact_email OR phone = :exact_phone OR svp_id = :exact_svp_id OR referral_code = :exact_referral_code THEN 0 ELSE 1 END, full_name ASC
       LIMIT 12");
-    $stmt->execute(['exclude_id' => $excludeId, 'query' => '%' . $query . '%', 'exact' => $query]);
+    $like = '%' . $query . '%';
+    $stmt->execute([
+        'exclude_id' => $excludeId,
+        'query_name' => $like,
+        'query_email' => $like,
+        'query_phone' => $like,
+        'query_svp_id' => $like,
+        'query_referral_code' => $like,
+        'exact_email' => $query,
+        'exact_phone' => $query,
+        'exact_svp_id' => $query,
+        'exact_referral_code' => $query,
+    ]);
     $items = array_map(fn($row) => [
         'id' => (string) $row['id'],
         'fullName' => (string) ($row['full_name'] ?? ''),
