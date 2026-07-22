@@ -7,7 +7,7 @@ function svp_event_sections_default(): array
         [
             'key' => 'introduction',
             'title' => 'Làm đúng để đi xa',
-            'body' => 'Nghề môi giới bất động sản có thể mang lại thu nhập cao. Để phát triển lâu dài, người làm nghề cần kết hợp kỹ năng, bản lĩnh, hiểu đúng pháp luật, tuân thủ quy định và xây dựng phương pháp làm việc minh bạch.',
+            'body' => 'Nghề môi giới bất động sản có thể mang lại thu nhập rất cao. Tuy nhiên, để đi được đường dài, người làm nghề không chỉ cần chăm chỉ, kỹ năng và bản lĩnh mà còn phải hiểu đúng pháp luật, làm việc đúng quy định và xây dựng một con đường phát triển bền vững.',
         ],
         [
             'key' => 'audience',
@@ -22,13 +22,13 @@ function svp_event_sections_default(): array
         ],
         [
             'key' => 'speaker',
-            'title' => 'Người chia sẻ',
-            'body' => 'Với 10 năm lãnh đạo và phát triển Vạn Phúc trong nhóm đơn vị có kết quả kinh doanh bền vững, Mr Ân Đức Nhân đã trực tiếp đào tạo, định hướng và đồng hành cùng nhiều thế hệ môi giới. Nhiều thành viên từ điểm xuất phát chưa biết nghề đã từng bước xây dựng phương pháp làm việc đúng đắn, rèn luyện nghiêm túc và đạt kết quả nổi bật.',
+            'title' => 'Thành viên chia sẻ: Mr Ân Đức Nhân',
+            'body' => "Giám đốc Vạn Phúc - Sổ Đỏ\nGiám đốc Phát triển Nhân lực - Sổ Đỏ Miền Nam\n\nVới 10 năm lãnh đạo và phát triển Vạn Phúc trong nhóm đơn vị có kết quả kinh doanh bền vững, Mr Ân Đức Nhân đã trực tiếp đào tạo, định hướng và đồng hành cùng nhiều thế hệ môi giới. Nhiều thành viên ban đầu chưa biết nghề, chưa có kinh nghiệm đã từng bước xây dựng phương pháp làm việc đúng đắn, rèn luyện nghiêm túc và đạt kết quả nổi bật.",
         ],
         [
             'key' => 'company',
             'title' => 'Về Sổ Đỏ',
-            'body' => 'Sổ Đỏ hướng tới mô hình môi giới bất động sản chuyên nghiệp, minh bạch, tuân thủ pháp luật và phát triển bền vững. Hệ thống quy tụ đội ngũ giàu kinh nghiệm, cơ chế hợp tác rõ ràng cùng hoạt động đào tạo và hỗ trợ nâng cao năng lực.',
+            'body' => 'Sổ Đỏ là một trong những doanh nghiệp môi giới bất động sản tiên phong tại Việt Nam trong việc xây dựng mô hình hoạt động chuyên nghiệp, minh bạch, chú trọng tuân thủ pháp luật và phát triển bền vững. Đây là nơi quy tụ nhiều nhân sự giàu kinh nghiệm đến từ các doanh nghiệp môi giới chuyên nghiệp, quy mô lớn và có lịch sử phát triển lâu năm trên thị trường.',
         ],
         [
             'key' => 'agenda',
@@ -41,7 +41,7 @@ function svp_event_sections_default(): array
                 'Bản đồ xây dựng năng lực để nâng cao thu nhập chính đáng.',
                 'Con đường phát triển từ người chưa biết nghề đến người có kết quả tốt.',
                 'Cách tồn tại, thích nghi và phát triển trong giai đoạn thị trường khó khăn.',
-                'Tư duy xây dựng sự nghiệp môi giới bền vững trong thời đại ứng dụng dữ liệu và trí tuệ nhân tạo.',
+                'Tư duy xây dựng sự nghiệp môi giới bền vững trong thời đại mới, khi các quy định pháp luật và công cụ quản lý ứng dụng trí tuệ nhân tạo ngày càng hoàn thiện.',
             ],
         ],
         [
@@ -55,9 +55,14 @@ function svp_event_sections_default(): array
             ],
         ],
         [
+            'key' => 'registration',
+            'title' => 'Đăng ký tham dự',
+            'body' => "Sự kiện được tổ chức online và hoàn toàn miễn phí. Anh chị em vui lòng đăng ký để được mời vào nhóm Zalo của chương trình.\n\nTrong nhóm, Ban Tổ chức sẽ gửi tài liệu liên quan, những nội dung hữu ích về nghề, thông báo lịch chính thức và đường dẫn tham dự phòng Zoom.",
+        ],
+        [
             'key' => 'closing',
             'title' => 'Làm đúng để đi xa',
-            'body' => 'Có năng lực để thu nhập cao. Có đạo đức và kỷ luật để phát triển bền vững.',
+            'body' => "Làm đúng để đi xa.\nCó năng lực để thu nhập cao.\nCó đạo đức và kỷ luật để phát triển bền vững.",
         ],
     ];
 }

@@ -86,6 +86,21 @@ test('public event list and detail use the generated banner', async ({ page }) =
   await page.getByRole('link', { name: /Xem chi tiết/ }).click();
   await expect(page).toHaveURL(`/su-kien/${event.slug}`);
   await expect(page.getByRole('link', { name: event.ctaLabel }).first()).toBeVisible();
+  await expect(page.getByTestId('event-inline-cta')).toHaveCount(1);
+});
+
+test('event calls to action preserve campaign source throughout the article', async ({ page }) => {
+  await page.goto(`/su-kien/${event.slug}?utm_source=facebook&utm_campaign=launch`);
+  await expect(page.getByRole('heading', { name: event.title })).toBeVisible();
+  const registrationLinks = page.getByRole('link', { name: event.ctaLabel });
+  expect(await registrationLinks.count()).toBeGreaterThanOrEqual(3);
+  await expect(registrationLinks.first()).toHaveAttribute('href', new RegExp(`/dang-ky-su-kien/${event.slug}\\?utm_source=facebook&(?:amp;)?utm_campaign=launch`));
+});
+
+test('event keeps an application action visible on mobile', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile');
+  await page.goto(`/su-kien/${event.slug}`);
+  await expect(page.getByTestId('event-mobile-sticky-cta')).toBeVisible();
 });
 
 test('event registration page is a dedicated end-user form', async ({ page }) => {
