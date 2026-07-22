@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, apiPut, getApiBase } from './apiClient';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, getApiBase } from './apiClient';
 import type { RecruitmentCandidate, RecruitmentPost, RecruitmentPositionSlug } from '../types/recruitment';
 
 export type RecruitmentSource = {
@@ -47,6 +47,9 @@ export const recruitmentApi = {
   },
   async updateCandidate(id: string, pipelineStatus: RecruitmentCandidate['pipelineStatus'], note = '') {
     return requireData(await apiPatch<{ item: Pick<RecruitmentCandidate, 'id' | 'pipelineStatus' | 'note'> }>(`/api/svp/admin/recruitment-candidates/${encodeURIComponent(id)}`, { pipelineStatus, note }));
+  },
+  async deleteCandidate(id: string) {
+    return requireData(await apiDelete<{ deleted: boolean; id: string }>(`/api/svp/admin/recruitment-candidates/${encodeURIComponent(id)}`));
   },
   async exportCandidates(filters: Record<string, string> = {}) {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));

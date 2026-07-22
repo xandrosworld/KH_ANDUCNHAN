@@ -405,6 +405,16 @@ $router->add('PATCH', '/api/svp/admin/recruitment-candidates/{id}', function ($p
     Response::json(['item' => ['id' => $params['id'], 'pipelineStatus' => $status, 'note' => $note]]);
 });
 
+$router->add('DELETE', '/api/svp/admin/recruitment-candidates/{id}', function ($params) {
+    $payload = svp_require_role('admin_tong', 'admin'); $db = Database::getInstance(); svp_ensure_recruitment_schema($db);
+    $stmt = $db->prepare('SELECT * FROM svp_recruitment_candidates WHERE id=:id AND deleted_at IS NULL');
+    $stmt->execute(['id' => $params['id']]); $old = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$old) Response::notFound('Không tìm thấy ứng viên.');
+    $db->prepare('UPDATE svp_recruitment_candidates SET deleted_at=NOW() WHERE id=:id')->execute(['id' => $params['id']]);
+    svp_insert_audit($db, (string) $payload['sub'], 'delete', 'recruitment_candidate', (string) $params['id'], $old, ['deletedAt' => date('Y-m-d H:i:s')]);
+    Response::json(['deleted' => true, 'id' => (string) $params['id']]);
+});
+
 $router->add('GET', '/api/svp/admin/recruitment-candidates/export', function () {
     svp_require_role('admin_tong', 'admin'); $db = Database::getInstance(); svp_ensure_recruitment_schema($db);
     [$where, $params] = svp_recruitment_candidate_filters();
