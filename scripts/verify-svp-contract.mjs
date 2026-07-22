@@ -1176,6 +1176,8 @@ assertIncludes(hostingSmoke, 'finally {', 'write workflow cleanup runs in finall
 assertIncludes(routes, 'function svp_delete_row_by_id', 'SVP API has audited cleanup delete helper');
 assert(countMatches(eventRoutes, /u\.full_name LIKE :q_name OR u\.email LIKE :q_email OR u\.phone LIKE :q_phone/g) === 2, 'event registration list and CSV use unique PDO search placeholders');
 assert(countMatches(eventRoutes, /u\.full_name LIKE :q OR u\.email LIKE :q OR u\.phone LIKE :q/g) === 0, 'event registration search does not reuse named PDO placeholders');
+assertIncludes(eventRoutes, "'draft', 'open', :created_by, :updated_by", 'event creation uses unique PDO placeholders for audit actors');
+assert(!eventRoutes.includes("'draft', 'open', :actor, :actor"), 'event creation does not reuse the actor PDO placeholder');
 assertIncludes(adminEventsPage, 'setRegistrations([]); setMessage(e.message)', 'event registration UI clears stale rows when filtering fails');
 assertIncludes(eventApi, 'window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)', 'event CSV keeps its object URL alive until browser download starts');
 assertIncludes(hostingSmoke, 'AUTO-SMOKE', 'write workflow marks generated records');

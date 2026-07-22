@@ -46,6 +46,7 @@ const accounts = existingSecrets?.accounts || {
   multi: { key: 'multi', fullName: `QA-${runTag} Đa vai trò`, email: qaEmail('multi'), phone: phone(6), password: randomPassword(), roles: ['chuyen_vien', 'chuyen_gia', 'hoc_vien', 'truong_phong', 'giam_doc_khoi'], source: 'register' },
   regularAdmin: { key: 'regularAdmin', fullName: `QA-${runTag} Admin thường`, email: qaEmail('admin'), phone: phone(7), password: randomPassword(), roles: ['admin'], source: 'admin-ui' },
 };
+accounts.existingRegistrant ||= { key: 'existingRegistrant', fullName: `QA-${runTag} Người dùng hiện hữu`, email: qaEmail('existing'), phone: phone(8), password: randomPassword(), roles: ['hoc_vien'], source: 'register' };
 const staleEmails = existingSecrets?.staleEmails || [];
 
 fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
@@ -126,6 +127,21 @@ async function prepareResumeState() {
       fullName: `QA-${runTag}-${retryTag} Học viên sự kiện`,
       email: `qa.${runTag}.event.${retryTag}@sodovanphuc.vn`,
       phone: phone(Number(retryTag.slice(-2)) + 30),
+      password: randomPassword(),
+    };
+    saveRuntime();
+  }
+
+  const oldExistingRegistrant = users.find((item) => item.email === accounts.existingRegistrant.email);
+  const existingRegistration = registrations.find((item) => item.email === accounts.existingRegistrant.email && item.eventSlug === EVENT_SLUG);
+  if (oldExistingRegistrant && !existingRegistration) {
+    staleEmails.push(accounts.existingRegistrant.email);
+    const retryTag = Date.now().toString().slice(-5);
+    accounts.existingRegistrant = {
+      ...accounts.existingRegistrant,
+      fullName: `QA-${runTag}-${retryTag} Người dùng hiện hữu`,
+      email: `qa.${runTag}.existing.${retryTag}@sodovanphuc.vn`,
+      phone: phone(Number(retryTag.slice(-2)) + 60),
       password: randomPassword(),
     };
     saveRuntime();
@@ -595,7 +611,7 @@ try {
   await step('Đăng nhập và dùng dashboard Giám đốc khối', async () => testRoleLogin(accounts.director, '/quan-tri', '13-dashboard-giam-doc-khoi'));
   await step('Chọn và chuyển đổi tài khoản nhiều vai trò', testMultiRole);
 
-  await step('Người đã có tài khoản đăng ký và chống đăng ký trùng', async () => registerExistingAndCheckDuplicate(accounts.director, '/quan-tri'));
+  await step('Người đã có tài khoản đăng ký và chống đăng ký trùng', async () => registerExistingAndCheckDuplicate(accounts.existingRegistrant, '/hoc-vien'));
   await step('Gán lại người giới thiệu bằng tìm kiếm chính xác', async () => reassignReferrerViaUi(ownerPage));
   await step('Lọc, cập nhật, xuất CSV, đóng/mở và tạo sự kiện QA', async () => testEventAdmin(ownerPage));
   await step('Admin thường bị chặn quyền của Admin tổng', testRegularAdminRestrictions);

@@ -347,14 +347,14 @@ $router->add('POST', '/api/svp/admin/events', function () {
     $slug = preg_replace('/[^a-z0-9-]/', '', strtolower(trim((string) ($input['slug'] ?? ''))));
     if ($title === '' || $slug === '') Response::error('Tiêu đề và slug là bắt buộc.', 400);
     $id = svp_uid('event');
-    $stmt = $db->prepare("INSERT INTO svp_events (id, slug, title, eyebrow, summary, speaker_name, speaker_title, format_label, schedule_label, cta_label, banner_url, content_json, status, registration_status, created_by, updated_by) VALUES (:id, :slug, :title, :eyebrow, :summary, :speaker, :speaker_title, :format_label, :schedule_label, :cta, :banner, :content, 'draft', 'open', :actor, :actor)");
+    $stmt = $db->prepare("INSERT INTO svp_events (id, slug, title, eyebrow, summary, speaker_name, speaker_title, format_label, schedule_label, cta_label, banner_url, content_json, status, registration_status, created_by, updated_by) VALUES (:id, :slug, :title, :eyebrow, :summary, :speaker, :speaker_title, :format_label, :schedule_label, :cta, :banner, :content, 'draft', 'open', :created_by, :updated_by)");
     $stmt->execute([
         'id' => $id, 'slug' => $slug, 'title' => $title, 'eyebrow' => trim((string) ($input['eyebrow'] ?? '')),
         'summary' => trim((string) ($input['summary'] ?? '')), 'speaker' => trim((string) ($input['speakerName'] ?? '')),
         'speaker_title' => trim((string) ($input['speakerTitle'] ?? '')), 'format_label' => trim((string) ($input['formatLabel'] ?? '')),
         'schedule_label' => trim((string) ($input['scheduleLabel'] ?? '')), 'cta' => trim((string) ($input['ctaLabel'] ?? 'Đăng ký tham dự')),
         'banner' => trim((string) ($input['bannerUrl'] ?? '')), 'content' => svp_json_encode(['sections' => $input['sections'] ?? [], 'disclaimer' => $input['disclaimer'] ?? '']),
-        'actor' => (string) $payload['sub'],
+        'created_by' => (string) $payload['sub'], 'updated_by' => (string) $payload['sub'],
     ]);
     $row = svp_event_find($db, $id);
     svp_insert_audit($db, (string) $payload['sub'], 'create', 'event', $id, null, $row);
