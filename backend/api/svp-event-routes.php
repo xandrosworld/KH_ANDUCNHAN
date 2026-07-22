@@ -82,6 +82,7 @@ function svp_ensure_events_schema(PDO $db): void
       cta_label VARCHAR(180) DEFAULT NULL,
       banner_url VARCHAR(1000) DEFAULT NULL,
       content_json LONGTEXT DEFAULT NULL,
+      content_revision INT UNSIGNED NOT NULL DEFAULT 1,
       status ENUM('draft','published','hidden','archived') NOT NULL DEFAULT 'draft',
       registration_status ENUM('open','closed') NOT NULL DEFAULT 'open',
       published_at DATETIME DEFAULT NULL,
@@ -122,11 +123,29 @@ function svp_ensure_events_schema(PDO $db): void
         // The column already exists on current installations.
     }
 
+    try {
+        $db->exec("ALTER TABLE svp_events ADD COLUMN content_revision INT UNSIGNED NOT NULL DEFAULT 1 AFTER content_json");
+    } catch (Throwable $e) {
+        // The column already exists on current installations.
+    }
+
     $stmt = $db->prepare("INSERT INTO svp_events
-      (id, slug, title, eyebrow, summary, speaker_name, speaker_title, format_label, schedule_label, cta_label, banner_url, content_json, status, registration_status)
+      (id, slug, title, eyebrow, summary, speaker_name, speaker_title, format_label, schedule_label, cta_label, banner_url, content_json, content_revision, status, registration_status)
       VALUES
-      ('event_lam_nghe_moi_gioi_dung_luat', 'lam-nghe-moi-gioi-dung-luat', :title, :eyebrow, :summary, :speaker, :speaker_title, :format_label, :schedule_label, :cta, :banner, :content, 'draft', 'open')
-      ON DUPLICATE KEY UPDATE slug = VALUES(slug)");
+      ('event_lam_nghe_moi_gioi_dung_luat', 'lam-nghe-moi-gioi-dung-luat', :title, :eyebrow, :summary, :speaker, :speaker_title, :format_label, :schedule_label, :cta, :banner, :content, 2, 'draft', 'open')
+      ON DUPLICATE KEY UPDATE
+        slug = VALUES(slug),
+        title = IF(content_revision < VALUES(content_revision), VALUES(title), title),
+        eyebrow = IF(content_revision < VALUES(content_revision), VALUES(eyebrow), eyebrow),
+        summary = IF(content_revision < VALUES(content_revision), VALUES(summary), summary),
+        speaker_name = IF(content_revision < VALUES(content_revision), VALUES(speaker_name), speaker_name),
+        speaker_title = IF(content_revision < VALUES(content_revision), VALUES(speaker_title), speaker_title),
+        format_label = IF(content_revision < VALUES(content_revision), VALUES(format_label), format_label),
+        schedule_label = IF(content_revision < VALUES(content_revision), VALUES(schedule_label), schedule_label),
+        cta_label = IF(content_revision < VALUES(content_revision), VALUES(cta_label), cta_label),
+        banner_url = IF(content_revision < VALUES(content_revision), VALUES(banner_url), banner_url),
+        content_json = IF(content_revision < VALUES(content_revision), VALUES(content_json), content_json),
+        content_revision = GREATEST(content_revision, VALUES(content_revision))");
     $stmt->execute([
         'title' => 'Làm Nghề Môi Giới Đúng Luật - Thu Nhập Cao - Phát Triển Bền Vững',
         'eyebrow' => 'Sự kiện chia sẻ online hoàn toàn miễn phí',

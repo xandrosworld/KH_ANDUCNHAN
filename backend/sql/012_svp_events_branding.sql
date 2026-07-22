@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `svp_events` (
   `cta_label` VARCHAR(180) DEFAULT NULL,
   `banner_url` VARCHAR(1000) DEFAULT NULL,
   `content_json` LONGTEXT DEFAULT NULL,
+  `content_revision` INT UNSIGNED NOT NULL DEFAULT 1,
   `status` ENUM('draft','published','hidden','archived') NOT NULL DEFAULT 'draft',
   `registration_status` ENUM('open','closed') NOT NULL DEFAULT 'open',
   `published_at` DATETIME DEFAULT NULL,
