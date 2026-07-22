@@ -992,6 +992,16 @@ test.describe('V1 core workflows', () => {
     await expectUsablePage(page, testInfo, 'workflow-login');
   });
 
+  test('role routes reject dashboards outside the active role', async ({ page }) => {
+    await installMocks(page, 'chuyen_gia', true, ['chuyen_gia']);
+    await page.goto('/quan-tri/su-kien');
+    await expect(page).toHaveURL('/chuyen-gia');
+
+    await page.goto('/chuyen-vien');
+    await expect(page).toHaveURL('/chuyen-gia');
+    await expect(page.getByRole('heading').first()).toBeVisible();
+  });
+
   test('admin-only account can select operational roles for QA', async ({ page }, testInfo) => {
     await installMocks(page, 'admin', true, ['admin']);
     await page.goto('/select-role', { waitUntil: 'networkidle' });

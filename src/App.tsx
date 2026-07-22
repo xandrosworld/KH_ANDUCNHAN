@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider } from './contexts/AuthContext';
 import { BrandingProvider } from './contexts/BrandingContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleRoute from './components/RoleRoute';
 import AppLayout from './components/AppLayout';
 
 const LoadingScreen = () => (
@@ -67,6 +68,9 @@ const AdminCustomers = lazy(() => import('./pages/admin/CustomersPage'));
 const AdminConfig = lazy(() => import('./pages/admin/ConfigPage'));
 const AdminAudit = lazy(() => import('./pages/admin/AuditPage'));
 const AdminEvents = lazy(() => import('./pages/admin/EventsPage'));
+
+const MANAGEMENT_ROLES = ['admin_tong', 'admin', 'giam_doc', 'truong_phong', 'pho_phong', 'giam_doc_khoi', 'pho_giam_doc_khoi', 'pho_giam_doc_khu_vuc', 'giam_doc_dieu_hanh', 'pho_giam_doc_dieu_hanh', 'tro_ly', 'thu_ky'] as const;
+const EVENT_ADMIN_ROLES = ['admin_tong', 'admin'] as const;
 
 const routePrefetchers = [
   () => import('./pages/RegisterPage'),
@@ -136,46 +140,64 @@ function AppRoutes() {
             <Route path="/ai" element={<AiAssistantPage />} />
             <Route path="/tro-ly-ai" element={<AiAssistantPage />} />
 
-            <Route path="/chu-nha" element={<OwnerDashboard />} />
-            <Route path="/chu-nha/gui-ban" element={<OwnerSubmitProperty />} />
-            <Route path="/chu-nha/nha-cua-toi" element={<OwnerMyProperties />} />
+            <Route element={<RoleRoute roles={['chu_nha']} />}>
+              <Route path="/chu-nha" element={<OwnerDashboard />} />
+              <Route path="/chu-nha/gui-ban" element={<OwnerSubmitProperty />} />
+              <Route path="/chu-nha/nha-cua-toi" element={<OwnerMyProperties />} />
+            </Route>
 
-            <Route path="/khach-mua" element={<BuyerDashboard />} />
-            <Route path="/khach-mua/tim-nha" element={<BuyerSearch />} />
-            <Route path="/khach-mua/yeu-thich" element={<BuyerFavorites />} />
+            <Route element={<RoleRoute roles={['khach_mua']} />}>
+              <Route path="/khach-mua" element={<BuyerDashboard />} />
+              <Route path="/khach-mua/tim-nha" element={<BuyerSearch />} />
+              <Route path="/khach-mua/yeu-thich" element={<BuyerFavorites />} />
+            </Route>
 
-            <Route path="/hoc-vien" element={<StudentDashboard />} />
-            <Route path="/hoc-vien/viec-can-lam" element={<StudentDashboard />} />
-            <Route path="/hoc-vien/dao-tao" element={<StudentDashboard />} />
+            <Route element={<RoleRoute roles={['hoc_vien']} />}>
+              <Route path="/hoc-vien" element={<StudentDashboard />} />
+              <Route path="/hoc-vien/viec-can-lam" element={<StudentDashboard />} />
+              <Route path="/hoc-vien/dao-tao" element={<StudentDashboard />} />
+            </Route>
 
-            <Route path="/chuyen-gia" element={<ExpertDashboard />} />
-            <Route path="/chuyen-gia/dang-nha" element={<ExpertAddProperty />} />
-            <Route path="/chuyen-gia/kho-nha" element={<Navigate to="/chuyen-gia/kho-nha-rieng" replace />} />
-            <Route path="/chuyen-gia/kho-nha-tong" element={<ExpertMyProperties scope="all" />} />
-            <Route path="/chuyen-gia/kho-nha-rieng" element={<ExpertMyProperties scope="mine" />} />
-            <Route path="/chuyen-gia/nha/:id" element={<ExpertPropertyDetail />} />
+            <Route element={<RoleRoute roles={['chuyen_gia']} />}>
+              <Route path="/chuyen-gia" element={<ExpertDashboard />} />
+              <Route path="/chuyen-gia/dang-nha" element={<ExpertAddProperty />} />
+              <Route path="/chuyen-gia/kho-nha" element={<Navigate to="/chuyen-gia/kho-nha-rieng" replace />} />
+              <Route path="/chuyen-gia/kho-nha-tong" element={<ExpertMyProperties scope="all" />} />
+              <Route path="/chuyen-gia/kho-nha-rieng" element={<ExpertMyProperties scope="mine" />} />
+              <Route path="/chuyen-gia/nha/:id" element={<ExpertPropertyDetail />} />
+            </Route>
 
-            <Route path="/chuyen-vien" element={<SpecialistDashboard />} />
-            <Route path="/chuyen-vien/khach-hang" element={<SpecialistCustomers />} />
-            <Route path="/chuyen-vien/them-khach" element={<SpecialistAddCustomer />} />
-            <Route path="/chuyen-vien/tim-nha" element={<SpecialistSearchProperty />} />
-            <Route path="/chuyen-vien/lich-xem" element={<SpecialistSchedule />} />
+            <Route element={<RoleRoute roles={['chuyen_vien']} />}>
+              <Route path="/chuyen-vien" element={<SpecialistDashboard />} />
+              <Route path="/chuyen-vien/khach-hang" element={<SpecialistCustomers />} />
+              <Route path="/chuyen-vien/them-khach" element={<SpecialistAddCustomer />} />
+              <Route path="/chuyen-vien/tim-nha" element={<SpecialistSearchProperty />} />
+              <Route path="/chuyen-vien/lich-xem" element={<SpecialistSchedule />} />
+            </Route>
 
-            <Route path="/ctv" element={<CollabDashboard />} />
-            <Route path="/ctv/cong-viec" element={<CollabWork />} />
+            <Route element={<RoleRoute roles={['ctv_khach', 'ctv_nguon']} />}>
+              <Route path="/ctv" element={<CollabDashboard />} />
+              <Route path="/ctv/cong-viec" element={<CollabWork />} />
+            </Route>
 
-            <Route path="/nguoi-gioi-thieu" element={<ReferrerDashboard />} />
-            <Route path="/nguoi-gioi-thieu/ma-gioi-thieu" element={<ReferrerCode />} />
-            <Route path="/ma-gioi-thieu" element={<ReferrerCode />} />
+            <Route element={<RoleRoute roles={['nguoi_gioi_thieu', 'doi_tac']} />}>
+              <Route path="/nguoi-gioi-thieu" element={<ReferrerDashboard />} />
+              <Route path="/nguoi-gioi-thieu/ma-gioi-thieu" element={<ReferrerCode />} />
+              <Route path="/ma-gioi-thieu" element={<ReferrerCode />} />
+            </Route>
 
-            <Route path="/quan-tri" element={<AdminDashboard />} />
-            <Route path="/quan-tri/nguoi-dung" element={<AdminUsers />} />
-            <Route path="/quan-tri/duyet-vai-tro" element={<AdminRoleApprovals />} />
-            <Route path="/quan-tri/nha" element={<AdminProperties />} />
-            <Route path="/quan-tri/khach-hang" element={<AdminCustomers />} />
-            <Route path="/quan-tri/cau-hinh" element={<AdminConfig />} />
-            <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
-            <Route path="/quan-tri/su-kien" element={<AdminEvents />} />
+            <Route element={<RoleRoute roles={MANAGEMENT_ROLES} />}>
+              <Route path="/quan-tri" element={<AdminDashboard />} />
+              <Route path="/quan-tri/nguoi-dung" element={<AdminUsers />} />
+              <Route path="/quan-tri/duyet-vai-tro" element={<AdminRoleApprovals />} />
+              <Route path="/quan-tri/nha" element={<AdminProperties />} />
+              <Route path="/quan-tri/khach-hang" element={<AdminCustomers />} />
+              <Route path="/quan-tri/cau-hinh" element={<AdminConfig />} />
+              <Route path="/quan-tri/nhat-ky" element={<AdminAudit />} />
+              <Route element={<RoleRoute roles={EVENT_ADMIN_ROLES} />}>
+                <Route path="/quan-tri/su-kien" element={<AdminEvents />} />
+              </Route>
+            </Route>
           </Route>
         </Route>
 
