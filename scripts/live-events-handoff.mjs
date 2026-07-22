@@ -48,10 +48,12 @@ const accounts = existingSecrets?.accounts || {
 };
 accounts.existingRegistrant ||= { key: 'existingRegistrant', fullName: `QA-${runTag} Người dùng hiện hữu`, email: qaEmail('existing'), phone: phone(8), password: randomPassword(), roles: ['hoc_vien'], source: 'register' };
 const staleEmails = existingSecrets?.staleEmails || [];
+const persistedRuntime = { infoResetPassword: existingSecrets?.infoResetPassword || '' };
 
 fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
 function saveRuntime(extra = {}) {
-  fs.writeFileSync(runtimePath, `${JSON.stringify({ runId, accounts, staleEmails, ...extra }, null, 2)}\n`, { mode: 0o600 });
+  Object.assign(persistedRuntime, extra);
+  fs.writeFileSync(runtimePath, `${JSON.stringify({ runId, accounts, staleEmails, ...persistedRuntime }, null, 2)}\n`, { mode: 0o600 });
 }
 saveRuntime();
 
@@ -276,9 +278,11 @@ async function previewPublishAndBrand(ownerPage) {
   await preview.close();
 
   await ownerPage.locator('label').filter({ hasText: 'Hiển thị' }).locator('select').selectOption('published');
-  const responsePromise = ownerPage.waitForResponse((response) => response.url().includes('/api/svp/admin/events/') && response.request().method() === 'PUT');
-  await ownerPage.getByRole('button', { name: 'Lưu' }).click();
-  assert((await responsePromise).status() === 200, 'Không công khai được sự kiện');
+  const [response] = await Promise.all([
+    ownerPage.waitForResponse((item) => item.url().includes('/api/svp/admin/events/') && item.request().method() === 'PUT'),
+    ownerPage.getByRole('button', { name: 'Lưu', exact: true }).click(),
+  ]);
+  assert(response.status() === 200, 'Không công khai được sự kiện');
   await ownerPage.getByText('Đã lưu sự kiện.').waitFor();
 
   const { context, page } = await newPage();
@@ -402,7 +406,7 @@ async function testEventAdmin(ownerPage) {
   await api(`/api/svp/admin/events/${event.id}`, { token: ownerToken, method: 'PUT', body: { ...event, registrationStatus: 'open' } });
 
   const qaEvent = await api('/api/svp/admin/events', { token: ownerToken, method: 'POST', body: {
-    slug: `qa-${runTag}-event`, title: `QA-${runTag} Sự kiện kiểm thử`, eyebrow: 'QA', summary: 'Dữ liệu kiểm thử sẽ được lưu trữ.', sections: [], disclaimer: 'QA', bannerUrl: '/assets/events/lam-nghe-moi-gioi-dung-luat.png',
+    slug: `qa-${runTag}-${Date.now()}`, title: `QA-${runTag} Sự kiện kiểm thử`, eyebrow: 'QA', summary: 'Dữ liệu kiểm thử sẽ được lưu trữ.', sections: [], disclaimer: 'QA', bannerUrl: '/assets/events/lam-nghe-moi-gioi-dung-luat.png',
   } });
   qaEventId = qaEvent.item.id;
   await api(`/api/svp/admin/events/${qaEventId}`, { token: ownerToken, method: 'PUT', body: { ...qaEvent.item, status: 'archived', registrationStatus: 'closed' } });
@@ -424,46 +428,63 @@ async function testRegularAdminRestrictions() {
   try {
     await loginPage(page, accounts.regularAdmin.email, accounts.regularAdmin.password, '/quan-tri');
     await page.goto(`${BASE_URL}/quan-tri/cau-hinh`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/Chỉ Admin tổng mới được thay logo/).waitFor();
+    await page.getByText(/Chỉ Admin tổng mới có quyền tải/).waitFor();
     assert(await page.locator('input[type="file"]').count() === 0, 'Admin thường vẫn thấy nút tải thương hiệu');
     await screenshot(page, '17-admin-thuong-bi-gioi-han');
   } finally { await context.close(); }
 }
 
-function imapCommand(socket, tag, command, state) {
+function imapCommand(socket, tag, command, state, timeoutMs = 25_000) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`IMAP timeout: ${command.split(' ')[0]}`)), 25_000);
-    state.pending = { tag, chunks: [], resolve: (value) => { clearTimeout(timer); resolve(value); }, reject };
+    const timer = setTimeout(() => reject(new Error(`IMAP timeout: ${command.split(' ')[0]}`)), timeoutMs);
+    state.pending = { tag, command: command.split(' ')[0], chunks: [], resolve: (value) => { clearTimeout(timer); resolve(value); }, reject: (error) => { clearTimeout(timer); reject(error); } };
     socket.write(`${tag} ${command}\r\n`);
   });
+}
+
+function passwordForMailbox(email) {
+  if (email === mailbox.INFO_EMAIL) return mailbox.INFO_PASSWORD || mailbox.MAILBOX_PASSWORD;
+  if (email === mailbox.HOTRO_EMAIL) return mailbox.HOTRO_PASSWORD || mailbox.MAILBOX_PASSWORD;
+  return mailbox.MAILBOX_PASSWORD;
 }
 
 async function readMailbox(email, password) {
   const state = { buffer: '', pending: null, greeting: null };
   const socket = tls.connect({ host: 'mail.hocvienvanphuc.edu.vn', port: 993, rejectUnauthorized: false });
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('IMAP connect timeout')), 20_000);
-    socket.once('secureConnect', () => { clearTimeout(timer); resolve(); });
-    socket.once('error', reject);
-  });
   socket.on('data', (chunk) => {
     const text = chunk.toString('utf8');
     if (!state.pending) { state.buffer += text; return; }
     state.pending.chunks.push(text);
     const combined = state.pending.chunks.join('');
-    if (new RegExp(`(?:^|\\r?\\n)${state.pending.tag} (?:OK|NO|BAD)`, 'm').test(combined)) {
-      const pending = state.pending; state.pending = null; pending.resolve(combined);
+    const tagged = combined.match(new RegExp(`(?:^|\\r?\\n)${state.pending.tag} (OK|NO|BAD)`, 'm'));
+    if (tagged) {
+      const pending = state.pending; state.pending = null;
+      if (tagged[1] === 'OK') pending.resolve(combined);
+      else pending.reject(new Error(`IMAP ${pending.command} bị máy chủ từ chối (${tagged[1]}).`));
     }
   });
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const quote = (value) => `"${String(value).replace(/([\\"])/g, '\\$1')}"`;
-  await imapCommand(socket, 'a1', `LOGIN ${quote(email)} ${quote(password)}`, state);
-  await imapCommand(socket, 'a2', 'SELECT INBOX', state);
-  const search = await imapCommand(socket, 'a3', 'SEARCH ALL', state);
-  const ids = (search.match(/\* SEARCH ([\d ]+)/)?.[1] || '').trim().split(/\s+/).filter(Boolean).slice(-30);
-  const body = ids.length ? await imapCommand(socket, 'a4', `FETCH ${ids.join(',')} BODY.PEEK[]`, state) : '';
-  await imapCommand(socket, 'a5', 'LOGOUT', state).catch(() => undefined);
-  socket.end();
+  socket.on('error', (error) => {
+    if (!state.pending) return;
+    const pending = state.pending; state.pending = null; pending.reject(error);
+  });
+  let body = '';
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('IMAP connect timeout')), 20_000);
+      socket.once('secureConnect', () => { clearTimeout(timer); resolve(); });
+      socket.once('error', reject);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const quote = (value) => `"${String(value).replace(/([\\"])/g, '\\$1')}"`;
+    await imapCommand(socket, 'a1', `LOGIN ${quote(email)} ${quote(password)}`, state);
+    await imapCommand(socket, 'a2', 'SELECT INBOX', state);
+    const search = await imapCommand(socket, 'a3', 'SEARCH ALL', state);
+    const ids = (search.match(/\* SEARCH ([\d ]+)/)?.[1] || '').trim().split(/\s+/).filter(Boolean).slice(-5);
+    body = ids.length ? await imapCommand(socket, 'a4', `FETCH ${ids.join(',')} BODY.PEEK[]`, state, 60_000) : '';
+    await imapCommand(socket, 'a5', 'LOGOUT', state).catch(() => undefined);
+  } finally {
+    socket.destroy();
+  }
   const decoded = body.replace(/=\r?\n/g, '').replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
   const base64Parts = [...body.matchAll(/Content-Transfer-Encoding:\s*base64\s*\r?\n\r?\n([A-Za-z0-9+/=\r\n]+)/gi)].map((match) => {
     try { return Buffer.from(match[1].replace(/\s/g, ''), 'base64').toString('utf8'); } catch { return ''; }
@@ -484,7 +505,7 @@ async function requestResetViaUi(email, screenshotName) {
 
 async function waitForResetLink(email) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const inbox = await readMailbox(email, mailbox.MAILBOX_PASSWORD);
+    const inbox = await readMailbox(email, passwordForMailbox(email));
     const normalized = inbox.replace(/&amp;/g, '&');
     const links = normalized.match(/https:\/\/sodovanphuc\.vn\/(?:reset-password|dat-lai-mat-khau)\?[^"'<>\s]+/g) || [];
     if (links.length) return links.at(-1);
@@ -511,7 +532,7 @@ async function screenshotMailbox() {
   try {
     await page.goto('https://webmail.hocvienvanphuc.edu.vn', { waitUntil: 'domcontentloaded' });
     await page.locator('#user').fill(mailbox.HOTRO_EMAIL);
-    await page.locator('#pass').fill(mailbox.MAILBOX_PASSWORD);
+    await page.locator('#pass').fill(passwordForMailbox(mailbox.HOTRO_EMAIL));
     await page.locator('#login_submit').click();
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2500);
@@ -634,17 +655,20 @@ try {
     await requestResetViaUi(mailbox.INFO_EMAIL, '18-quen-mat-khau-info');
     await requestResetViaUi(mailbox.HOTRO_EMAIL, '19-quen-mat-khau-hotro');
   });
-  await step('Mở email thật và đặt lại mật khẩu cho hai tài khoản', async () => {
+  await step('Mở email thật và đặt lại mật khẩu tài khoản info', async () => {
     const infoLink = await waitForResetLink(mailbox.INFO_EMAIL);
-    const hotroLink = await waitForResetLink(mailbox.HOTRO_EMAIL);
     const infoNewPassword = randomPassword();
-    const hotroNewPassword = randomPassword();
     await resetViaUi(infoLink, infoNewPassword, '21-dat-lai-mat-khau-info');
-    await resetViaUi(hotroLink, hotroNewPassword, '22-dat-lai-mat-khau-hotro');
     await loginApi(mailbox.INFO_EMAIL, infoNewPassword);
+    saveRuntime({ infoResetPassword: infoNewPassword });
+  });
+  await step('Mở email thật và đặt lại mật khẩu tài khoản hotro', async () => {
+    const hotroLink = await waitForResetLink(mailbox.HOTRO_EMAIL);
+    const hotroNewPassword = randomPassword();
+    await resetViaUi(hotroLink, hotroNewPassword, '22-dat-lai-mat-khau-hotro');
     await loginApi(mailbox.HOTRO_EMAIL, hotroNewPassword);
     accounts.specialist.password = hotroNewPassword;
-    saveRuntime({ infoResetPassword: infoNewPassword });
+    saveRuntime();
     await screenshotMailbox();
   });
 

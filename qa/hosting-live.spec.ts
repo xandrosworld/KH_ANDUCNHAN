@@ -309,22 +309,25 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     await page.getByRole('button', { name: /Kiểm tra trùng/i }).click();
     await expect(page.locator('body')).toContainText(/Không trùng|Nhà có dấu hiệu trùng|Nhà đã trùng/i);
 
-    const createResponsePromise = page.waitForResponse((res) =>
-      /\/api\/svp\/properties$/.test(new URL(res.url()).pathname) && res.request().method() === 'POST',
-    );
-    await page.getByRole('button', { name: /Đăng nhà/i }).click();
-    const createResponse = await createResponsePromise;
-    const createJson = await createResponse.json().catch(() => null);
-    const createdId = createJson?.data?.item?.id || createJson?.item?.id;
+    let createdId = '';
+    try {
+      const createResponsePromise = page.waitForResponse((res) =>
+        /\/api\/svp\/properties$/.test(new URL(res.url()).pathname) && res.request().method() === 'POST',
+      );
+      await page.getByRole('button', { name: /Đăng nhà/i }).click();
+      const createResponse = await createResponsePromise;
+      const createJson = await createResponse.json().catch(() => null);
+      createdId = createJson?.data?.item?.id || createJson?.item?.id || '';
 
-    await page.waitForURL(/\/chuyen-gia\/kho-nha$/, { timeout: 20_000 });
-    await expect(page.locator('body')).toContainText(`LIVE-QA-${stamp}`);
-
-    if (createdId) {
-      const token = await page.evaluate(() => localStorage.getItem('svp_token'));
-      await page.request.delete(`/api/svp/properties/${encodeURIComponent(createdId)}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      await page.waitForURL(/\/chuyen-gia\/kho-nha-rieng$/, { timeout: 20_000 });
+      await expect(page.locator('body')).toContainText(`LIVE-QA-${stamp}`);
+    } finally {
+      if (createdId) {
+        const token = await page.evaluate(() => localStorage.getItem('svp_token'));
+        await page.request.delete(`/api/svp/properties/${encodeURIComponent(createdId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+      }
     }
 
     await assertHealthyPage(page, '/chuyen-gia/dang-nha-live-write');
