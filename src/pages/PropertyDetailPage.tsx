@@ -4,6 +4,7 @@ import { ArrowLeft, Bath, BedDouble, Compass, Home, MapPin, MessageCircle, Phone
 import { useAuth } from '../contexts/AuthContext';
 import { svpAxios as api } from '../services/svpAxios';
 import { areaText, formatVndShort } from '../utils/svpFormat';
+import { SUPPORT_HOTLINE } from '../config/support';
 
 interface PropertyComment {
   id: string;
@@ -69,8 +70,8 @@ export default function PropertyDetailPage() {
   if (!prop) return <PublicPropertyNotFound onBack={() => navigate(-1)} />;
 
   const extra = prop.extra || {};
-  const contactPhoneRaw = String(prop.ownerPhone || prop.owner_phone || prop.contactPhone || prop.contact_phone || '0912886794');
-  const contactPhoneDigits = contactPhoneRaw.replace(/\D/g, '') || '0912886794';
+  const contactPhoneRaw = String(prop.ownerPhone || prop.owner_phone || prop.contactPhone || prop.contact_phone || SUPPORT_HOTLINE);
+  const contactPhoneDigits = contactPhoneRaw.replace(/\D/g, '') || SUPPORT_HOTLINE;
   const zaloMessage = encodeURIComponent(`Chào Sổ Đỏ Vạn Phúc, tôi cần tư vấn nguồn nhà ${prop.code || prop.title || id || ''}.`);
   const canManageComment = (comment: PropertyComment) => {
     if (!user) return false;

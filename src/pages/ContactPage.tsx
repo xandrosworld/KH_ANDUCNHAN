@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { FormEvent } from 'react';
-import { Phone, Mail, Send, CheckCircle } from 'lucide-react';
+import { Phone, Send, CheckCircle } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import PhoneInput from '../components/PhoneInput';
+import { SvpFacebookIcon, SvpZaloIcon } from '../components/SvpIcons';
+import {
+  SUPPORT_FACEBOOK_LABEL,
+  SUPPORT_FACEBOOK_URL,
+  SUPPORT_HOTLINE,
+  SUPPORT_HOTLINE_LABEL,
+  SUPPORT_ZALO_LABEL,
+  SUPPORT_ZALO_URL,
+} from '../config/support';
 import { inquiryService } from '../services/inquiryService';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -83,10 +92,10 @@ export default function ContactPage() {
       </section>
 
       {/* Direct contact cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 min-w-0">
         {/* Hotline */}
         <a
-          href="tel:0912886794"
+          href={`tel:${SUPPORT_HOTLINE}`}
           className="bg-[#15151D] rounded-xl border border-white/[0.085] p-5 flex items-center gap-4 hover:border-[#B88717]/40 transition-colors group min-w-0"
         >
           <div className="w-12 h-12 rounded-full bg-[#B88717]/10 flex items-center justify-center shrink-0">
@@ -97,25 +106,47 @@ export default function ContactPage() {
               Hotline
             </p>
             <p className="text-[#F5F0E6] font-semibold text-lg group-hover:text-[#F6D37A] transition-colors break-words">
-              0912 886 794
+              {SUPPORT_HOTLINE_LABEL}
             </p>
           </div>
         </a>
 
-        {/* Email */}
+        {/* Zalo */}
         <a
-          href="mailto:info@hocvienvanphuc.edu.vn"
+          href={SUPPORT_ZALO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="bg-[#15151D] rounded-xl border border-white/[0.085] p-5 flex items-center gap-4 hover:border-[#B88717]/40 transition-colors group min-w-0"
         >
           <div className="w-12 h-12 rounded-full bg-[#B88717]/10 flex items-center justify-center shrink-0">
-            <Mail className="w-5 h-5 text-[#B88717]" />
+            <SvpZaloIcon className="w-5 h-5" />
           </div>
           <div className="min-w-0">
             <p className="text-[#7D8291] text-[13px] font-medium mb-0.5">
-              Email
+              Zalo
             </p>
             <p className="text-[#F5F0E6] font-semibold text-sm sm:text-base group-hover:text-[#F6D37A] transition-colors break-words">
-              info@hocvienvanphuc.edu.vn
+              {SUPPORT_ZALO_LABEL}
+            </p>
+          </div>
+        </a>
+
+        {/* Facebook */}
+        <a
+          href={SUPPORT_FACEBOOK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-[#15151D] rounded-xl border border-white/[0.085] p-5 flex items-center gap-4 hover:border-[#B88717]/40 transition-colors group min-w-0"
+        >
+          <div className="w-12 h-12 rounded-full bg-[#B88717]/10 flex items-center justify-center shrink-0">
+            <SvpFacebookIcon className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[#7D8291] text-[13px] font-medium mb-0.5">
+              Facebook
+            </p>
+            <p className="text-[#F5F0E6] font-semibold text-sm group-hover:text-[#F6D37A] transition-colors break-words">
+              {SUPPORT_FACEBOOK_LABEL}
             </p>
           </div>
         </a>
@@ -124,18 +155,29 @@ export default function ContactPage() {
       {/* CTA Buttons */}
       <div className="flex flex-col sm:flex-row gap-3 mb-10 min-w-0">
         <a
-          href="tel:0912886794"
+          href={`tel:${SUPPORT_HOTLINE}`}
           className="flex-1 flex items-center justify-center gap-2 bg-[#B88717] hover:bg-[#D4A020] text-[#030405] font-semibold py-3.5 px-6 rounded-xl transition-colors text-center min-w-0"
         >
           <Phone className="w-4 h-4 flex-shrink-0" />
           {t('contact.callNow')}
         </a>
         <a
-          href="mailto:info@hocvienvanphuc.edu.vn"
+          href={SUPPORT_ZALO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex-1 flex items-center justify-center gap-2 bg-[#15151D] border border-[#B88717]/40 hover:border-[#B88717] text-[#F6D37A] font-semibold py-3.5 px-6 rounded-xl transition-colors text-center min-w-0"
         >
-          <Mail className="w-4 h-4 flex-shrink-0" />
-          {t('contact.emailUs')}
+          <SvpZaloIcon className="w-4 h-4 flex-shrink-0" />
+          {lang === 'vi' ? 'Nhắn Zalo' : 'Message on Zalo'}
+        </a>
+        <a
+          href={SUPPORT_FACEBOOK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-2 bg-[#15151D] border border-[#B88717]/40 hover:border-[#B88717] text-[#F6D37A] font-semibold py-3.5 px-6 rounded-xl transition-colors text-center min-w-0"
+        >
+          <SvpFacebookIcon className="w-4 h-4 flex-shrink-0" />
+          Facebook
         </a>
       </div>
 

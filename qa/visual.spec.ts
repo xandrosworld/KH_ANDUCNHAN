@@ -712,9 +712,10 @@ test.describe('V1 core workflows', () => {
     await page.getByTestId('auth-support-toggle').click();
     const supportMenu = page.getByTestId('auth-support-menu');
     await expect(supportMenu).toBeVisible();
-    await expect(supportMenu.getByRole('link', { name: /Goi hotline|Gọi hotline/i })).toHaveAttribute('href', 'tel:0912886794');
-    await expect(supportMenu.getByRole('link', { name: /Nhan Zalo|Nhắn Zalo/i })).toHaveAttribute('href', 'https://zalo.me/0912886794');
-    await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveAttribute('href', /mailto:info@hocvienvanphuc\.edu\.vn/);
+    await expect(supportMenu.getByRole('link', { name: /Goi hotline|Gọi hotline/i })).toHaveAttribute('href', 'tel:0366699899');
+    await expect(supportMenu.getByRole('link', { name: /Nhan Zalo|Nhắn Zalo/i })).toHaveAttribute('href', 'https://zalo.me/0906037688');
+    await expect(supportMenu.getByRole('link', { name: /Trang Facebook/i })).toHaveAttribute('href', 'https://facebook.com/sodovanphuc');
+    await expect(supportMenu.getByRole('link', { name: /Gui email|Gửi email/i })).toHaveCount(0);
 
     await expectUsablePage(page, testInfo, 'workflow-auth-support-social');
   });

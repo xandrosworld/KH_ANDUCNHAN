@@ -33,6 +33,14 @@ import {
   SvpZaloIcon,
 } from './SvpIcons';
 import { getApiBase } from '../services/apiClient';
+import {
+  SUPPORT_FACEBOOK_LABEL,
+  SUPPORT_FACEBOOK_URL,
+  SUPPORT_HOTLINE,
+  SUPPORT_HOTLINE_LABEL,
+  SUPPORT_ZALO_LABEL,
+  SUPPORT_ZALO_URL,
+} from '../config/support';
 
 type AuthPanel = 'login' | 'register';
 
@@ -156,10 +164,6 @@ const benefits = [
   { title: 'Hiệu quả', desc: 'Kết nối đúng người, chốt giao dịch tốt hơn', icon: SvpTargetIcon, color: 'text-orange-600 bg-orange-50' },
 ];
 
-const SUPPORT_PHONE = '0912886794';
-const SUPPORT_PHONE_LABEL = '0912 886 794';
-const SUPPORT_EMAIL = 'info@hocvienvanphuc.edu.vn';
-const SUPPORT_ZALO_URL = `https://zalo.me/${SUPPORT_PHONE}`;
 const BRAND_TITLE_FONT = '"UTM Avo", "SVN-Avo", "Avo", "Montserrat", "Inter", "Arial", sans-serif';
 
 const SOCIAL_LOGIN_PROVIDERS = [
@@ -551,9 +555,9 @@ export default function AuthLanding({ initialPanel = 'login', registrationOnly =
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <SupportLink href={`tel:${SUPPORT_PHONE}`} icon={<SvpPhoneIcon className="h-5 w-5" />} title="Gọi hotline" desc={SUPPORT_PHONE_LABEL} />
-                    <SupportLink href={SUPPORT_ZALO_URL} icon={<SvpZaloIcon className="h-5 w-5" />} title="Nhắn Zalo" desc={SUPPORT_PHONE_LABEL} external />
-                    <SupportLink href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Cần hỗ trợ tài khoản Sổ Đỏ Vạn Phúc')}`} icon={<SvpMailIcon className="h-5 w-5" />} title="Gửi email" desc={SUPPORT_EMAIL} />
+                    <SupportLink href={`tel:${SUPPORT_HOTLINE}`} icon={<SvpPhoneIcon className="h-5 w-5" />} title="Gọi hotline" desc={SUPPORT_HOTLINE_LABEL} />
+                    <SupportLink href={SUPPORT_ZALO_URL} icon={<SvpZaloIcon className="h-5 w-5" />} title="Nhắn Zalo" desc={SUPPORT_ZALO_LABEL} external />
+                    <SupportLink href={SUPPORT_FACEBOOK_URL} icon={<SvpFacebookIcon className="h-5 w-5" />} title="Trang Facebook" desc={SUPPORT_FACEBOOK_LABEL} external />
                   </div>
                 </div>
               ) : null}

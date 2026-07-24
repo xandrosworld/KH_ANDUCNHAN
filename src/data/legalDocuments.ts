@@ -87,7 +87,7 @@ export const legalDocuments: Record<LegalDocumentType, LegalDocument> = {
       {
         title: '10. Liên hệ',
         body:
-          'Nếu cần hỗ trợ về tài khoản, dữ liệu hoặc điều khoản sử dụng, vui lòng liên hệ đội vận hành Sổ Đỏ Vạn Phúc qua email info@hocvienvanphuc.edu.vn hoặc hotline được công bố trên hệ thống.',
+          'Nếu cần hỗ trợ về tài khoản, dữ liệu hoặc điều khoản sử dụng, vui lòng liên hệ đội vận hành Sổ Đỏ Vạn Phúc qua hotline 0366 699 899 hoặc trang facebook.com/sodovanphuc.',
       },
     ],
   },
@@ -167,7 +167,7 @@ export const legalDocuments: Record<LegalDocumentType, LegalDocument> = {
       {
         title: '10. Liên hệ về dữ liệu cá nhân',
         body:
-          'Mọi yêu cầu liên quan đến dữ liệu cá nhân hoặc bảo mật vui lòng gửi về info@hocvienvanphuc.edu.vn hoặc kênh hỗ trợ được công bố trên hệ thống.',
+          'Mọi yêu cầu liên quan đến dữ liệu cá nhân hoặc bảo mật vui lòng liên hệ hotline 0366 699 899 hoặc trang facebook.com/sodovanphuc.',
       },
     ],
   },

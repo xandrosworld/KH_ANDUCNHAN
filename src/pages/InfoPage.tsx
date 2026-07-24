@@ -1,5 +1,7 @@
-import { Mail, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import PageShell from '../components/PageShell';
+import { SvpFacebookIcon } from '../components/SvpIcons';
+import { SUPPORT_FACEBOOK_URL } from '../config/support';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface InfoPageProps {
@@ -40,10 +42,12 @@ const InfoPage = ({ heading, description, headingKey, descriptionKey, features }
             {descriptionText}
           </p>
           <a
-            href="mailto:info@hocvienvanphuc.edu.vn"
+            href={SUPPORT_FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-full bg-[#B88717] hover:bg-[#D4A020] text-[#030405] font-semibold text-[13px] sm:text-[14px] transition-colors shadow-[0_10px_28px_rgba(184,135,23,0.3)]"
           >
-            <Mail className="h-4 w-4 flex-shrink-0" />
+            <SvpFacebookIcon className="h-4 w-4 flex-shrink-0" />
             <span>{t('info.contact')}</span>
             <ArrowRight className="h-4 w-4 flex-shrink-0" />
           </a>
