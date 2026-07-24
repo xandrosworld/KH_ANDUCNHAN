@@ -9,6 +9,11 @@ import { recruitmentApi, type RecruitmentSource } from '../services/recruitmentA
 import { RECRUITMENT_POSITIONS, type RecruitmentPositionSlug, type RecruitmentPost } from '../types/recruitment';
 
 const recruitmentBannerFallback = '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg';
+const recruitmentHrBanner = '/assets/recruitment/ctv-tuyen-dung-nhan-su.jpg';
+
+function getRecruitmentBannerFallback(slug: string) {
+  return slug === 'congtacvientuyendung' ? recruitmentHrBanner : recruitmentBannerFallback;
+}
 
 export default function PublicRecruitmentDetailPage() {
   const { slug = '' } = useParams();
@@ -44,7 +49,7 @@ export default function PublicRecruitmentDetailPage() {
       <PublicPageHeader />
       {post.status !== 'published' ? <div className="bg-amber-100 px-4 py-2 text-center text-sm font-black text-amber-900">Bản xem trước dành cho quản trị viên - bài tuyển dụng chưa công khai</div> : null}
       <section className="relative overflow-hidden bg-[#211d20] text-white">
-        <ResilientImage src={post.bannerUrl} fallbackSrc={recruitmentBannerFallback} alt="Đội ngũ môi giới bất động sản Sổ Đỏ Vạn Phúc" className="absolute inset-0 h-full w-full object-cover opacity-50" />
+        <ResilientImage src={post.bannerUrl} fallbackSrc={getRecruitmentBannerFallback(post.slug)} alt="Đội ngũ môi giới bất động sản Sổ Đỏ Vạn Phúc" className="absolute inset-0 h-full w-full object-cover opacity-50" />
         <div className="absolute inset-0 bg-black/60" />
         <div className="relative mx-auto flex min-h-[560px] max-w-6xl items-end px-4 py-12 sm:px-6 sm:py-16 lg:min-h-[630px]">
           <div className="max-w-4xl">
@@ -66,7 +71,7 @@ export default function PublicRecruitmentDetailPage() {
               <div key={section.key || index} className="space-y-9">
                 <article className={index === 0 ? '' : 'border-t border-red-100 pt-8'}>
                   <div className="mb-4 flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#c40012] text-sm font-black text-white">{String(index + 1).padStart(2, '0')}</span><h2 className="text-2xl font-black leading-tight sm:text-3xl">{section.title}</h2></div>
-                  {section.imageUrl ? <ResilientImage src={section.imageUrl} fallbackSrc={recruitmentBannerFallback} alt={section.title} className="mb-5 aspect-[16/9] w-full rounded-lg border border-red-100 object-cover" /> : null}
+                  {section.imageUrl ? <ResilientImage src={section.imageUrl} fallbackSrc={getRecruitmentBannerFallback(post.slug)} alt={section.title} className="mb-5 aspect-[16/9] w-full rounded-lg border border-red-100 object-cover" /> : null}
                   {section.body ? <p className="whitespace-pre-line text-base font-medium leading-8 text-[#5f5962]">{section.body}</p> : null}
                   {section.items?.length ? <ul className="mt-5 grid gap-3 sm:grid-cols-2">{section.items.map((item) => <li key={item} className="flex items-start gap-3 border-l-2 border-[#c40012] bg-white px-4 py-3 text-sm font-semibold leading-6 text-[#514b54]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />{item}</li>)}</ul> : null}
                 </article>

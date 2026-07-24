@@ -153,6 +153,14 @@ function svp_ensure_recruitment_schema(PDO $db): void
     ]);
 }
 
+function svp_recruitment_banner_url(array $row): string
+{
+    $banner = trim((string) ($row['banner_url'] ?? ''));
+    if ($banner !== '') return $banner;
+    if (($row['slug'] ?? '') === 'congtacvientuyendung') return '/assets/recruitment/ctv-tuyen-dung-nhan-su.jpg';
+    return '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg';
+}
+
 function svp_recruitment_post_response(array $row): array
 {
     $content = svp_json_decode($row['content_json'] ?? null, []);
@@ -160,7 +168,7 @@ function svp_recruitment_post_response(array $row): array
         'id' => (string) $row['id'], 'slug' => (string) $row['slug'], 'title' => (string) $row['title'],
         'eyebrow' => (string) ($row['eyebrow'] ?? ''), 'summary' => (string) ($row['summary'] ?? ''),
         'recruiterName' => (string) ($row['recruiter_name'] ?? ''), 'recruiterTitle' => (string) ($row['recruiter_title'] ?? ''),
-        'ctaLabel' => (string) ($row['cta_label'] ?? 'Ứng tuyển ngay'), 'bannerUrl' => trim((string) ($row['banner_url'] ?? '')) ?: '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg',
+        'ctaLabel' => (string) ($row['cta_label'] ?? 'Ứng tuyển ngay'), 'bannerUrl' => svp_recruitment_banner_url($row),
         'sections' => is_array($content['sections'] ?? null) ? $content['sections'] : [],
         'disclaimer' => (string) ($content['disclaimer'] ?? ''), 'status' => (string) ($row['status'] ?? 'draft'),
         'applicationStatus' => (string) ($row['application_status'] ?? 'open'), 'publishedAt' => $row['published_at'] ?? null,

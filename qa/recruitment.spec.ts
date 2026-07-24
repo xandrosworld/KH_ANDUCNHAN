@@ -37,14 +37,15 @@ test('recruitment list presents the real campaign and generated banner', async (
 });
 
 test('recruitment list replaces a blank banner without showing a broken image', async ({ page }) => {
+  const hrPost = { ...post, slug: 'congtacvientuyendung', title: 'Tuyển dụng Cộng tác viên tuyển dụng nhân sự', bannerUrl: '' };
   await page.route('**/api/svp/recruitment', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ ok: true, data: { items: [{ ...post, bannerUrl: '' }], total: 1 } }),
+    body: JSON.stringify({ ok: true, data: { items: [hrPost], total: 1 } }),
   }));
   await page.goto('/tuyen-dung');
-  const banner = page.getByRole('img', { name: new RegExp(post.title) });
-  await expect(banner).toHaveAttribute('src', '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg');
+  const banner = page.getByRole('img', { name: new RegExp(hrPost.title) });
+  await expect(banner).toHaveAttribute('src', '/assets/recruitment/ctv-tuyen-dung-nhan-su.jpg');
   await expect.poll(() => banner.evaluate((image) => image instanceof HTMLImageElement ? image.naturalWidth : 0)).toBeGreaterThan(0);
 });
 

@@ -32,6 +32,7 @@ function svp_ensure_media_schema(PDO $db): void
         ['media_seed_auth_banner','/assets/svp-auth-hero.png','svp-auth-hero.png','Banner trang đăng nhập','Không gian bất động sản Sổ Đỏ Vạn Phúc','image/png','branding_banner'],
         ['media_seed_event_banner','/assets/events/lam-nghe-moi-gioi-dung-luat.png','lam-nghe-moi-gioi-dung-luat.png','Banner sự kiện môi giới đúng luật','Sự kiện làm nghề môi giới đúng luật','image/png','event_banner'],
         ['media_seed_recruitment_banner','/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg','tuyen-dung-moi-gioi-van-phuc.jpg','Banner tuyển dụng Vạn Phúc','Đội ngũ môi giới bất động sản Vạn Phúc','image/jpeg','recruitment_banner'],
+        ['media_seed_recruitment_hr_banner','/assets/recruitment/ctv-tuyen-dung-nhan-su.jpg','ctv-tuyen-dung-nhan-su.jpg','Banner cộng tác viên tuyển dụng nhân sự','Phỏng vấn ứng viên tại văn phòng Vạn Phúc','image/jpeg','recruitment_banner'],
     ] as $row) {
         $seed->execute([
             'id' => $row[0], 'url' => $row[1], 'original_name' => $row[2], 'title' => $row[3],
