@@ -36,6 +36,18 @@ test('recruitment list presents the real campaign and generated banner', async (
   await expect(page).toHaveURL(`/tuyen-dung/${post.slug}`);
 });
 
+test('recruitment list replaces a blank banner without showing a broken image', async ({ page }) => {
+  await page.route('**/api/svp/recruitment', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ ok: true, data: { items: [{ ...post, bannerUrl: '' }], total: 1 } }),
+  }));
+  await page.goto('/tuyen-dung');
+  const banner = page.getByRole('img', { name: new RegExp(post.title) });
+  await expect(banner).toHaveAttribute('src', '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg');
+  await expect.poll(() => banner.evaluate((image) => image instanceof HTMLImageElement ? image.naturalWidth : 0)).toBeGreaterThan(0);
+});
+
 test('recruitment detail displays complete forms at top middle and end', async ({ page }) => {
   await page.goto(`/tuyen-dung/${post.slug}`);
   await expect(page.getByRole('heading', { name: post.title })).toBeVisible();

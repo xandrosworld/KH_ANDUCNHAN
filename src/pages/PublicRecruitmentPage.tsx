@@ -2,8 +2,11 @@ import { ArrowRight, BriefcaseBusiness, Loader2, PhoneCall, UsersRound } from 'l
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import PublicPageHeader from '../components/PublicPageHeader';
+import ResilientImage from '../components/ResilientImage';
 import { recruitmentApi } from '../services/recruitmentApi';
 import type { RecruitmentPost } from '../types/recruitment';
+
+const recruitmentBannerFallback = '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg';
 
 export default function PublicRecruitmentPage() {
   const [search] = useSearchParams();
@@ -38,7 +41,7 @@ export default function PublicRecruitmentPage() {
             const href = `/tuyen-dung/${post.slug}${query ? `?${query}` : ''}`;
             return (
               <article key={post.id} className="overflow-hidden rounded-lg border border-red-100 bg-white shadow-[0_14px_38px_rgba(84,29,25,0.08)]">
-                <Link to={href} className="block overflow-hidden"><img src={post.bannerUrl} alt={`Tuyển dụng ${post.title}`} className="aspect-[16/9] w-full object-cover transition duration-500 hover:scale-[1.025]" /></Link>
+                <Link to={href} className="block aspect-[16/9] overflow-hidden bg-[#f3f0ef]"><ResilientImage src={post.bannerUrl} fallbackSrc={recruitmentBannerFallback} alt={`Tuyển dụng ${post.title}`} className="h-full w-full object-cover transition duration-500 hover:scale-[1.025]" /></Link>
                 <div className="p-5 sm:p-6">
                   <div className="text-xs font-black uppercase text-[#c40012]">{post.eyebrow}</div>
                   <h2 className="mt-2 text-2xl font-black leading-tight"><Link to={href}>{post.title}</Link></h2>

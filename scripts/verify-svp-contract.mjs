@@ -128,6 +128,7 @@ const databaseVerify = read('backend', 'sql', 'database_verify.sql');
 const routes = read('backend', 'api', 'svp-routes.php');
 const authRoutes = read('backend', 'api', 'svp-auth-routes.php');
 const eventRoutes = read('backend', 'api', 'svp-event-routes.php');
+const recruitmentRoutes = read('backend', 'api', 'svp-recruitment-routes.php');
 const mediaRoutes = read('backend', 'api', 'svp-media-routes.php');
 const routerIndex = read('backend', 'api', 'index.php');
 const uploadLib = read('backend', 'lib', 'Upload.php');
@@ -1232,6 +1233,7 @@ assert(countMatches(eventRoutes, /u\.full_name LIKE :q_name OR u\.email LIKE :q_
 assert(countMatches(eventRoutes, /u\.full_name LIKE :q OR u\.email LIKE :q OR u\.phone LIKE :q/g) === 0, 'event registration search does not reuse named PDO placeholders');
 assertIncludes(eventRoutes, "'draft', 'open', :created_by, :updated_by", 'event creation uses unique PDO placeholders for audit actors');
 assert(!eventRoutes.includes("'draft', 'open', :actor, :actor"), 'event creation does not reuse the actor PDO placeholder');
+assertIncludes(recruitmentRoutes, "trim((string) ($row['banner_url'] ?? '')) ?: '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg'", 'recruitment API supplies a banner fallback for legacy blank records');
 assertIncludes(adminEventsPage, 'setRegistrations([]); setMessage(e.message)', 'event registration UI clears stale rows when filtering fails');
 assertIncludes(eventApi, 'window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)', 'event Excel export keeps its object URL alive until browser download starts');
 assertIncludes(hostingSmoke, 'AUTO-SMOKE', 'write workflow marks generated records');
