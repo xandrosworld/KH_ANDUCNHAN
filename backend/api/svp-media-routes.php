@@ -18,7 +18,7 @@ function svp_ensure_media_schema(PDO $db): void
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL,
-      UNIQUE KEY uq_svp_media_library_url (url),
+      UNIQUE KEY uq_svp_media_library_url (url(191)),
       INDEX idx_svp_media_library_created (deleted_at, created_at),
       INDEX idx_svp_media_library_source (source_context, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");

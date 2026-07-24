@@ -309,6 +309,7 @@ assertColumn(schema, 'svp_media_library', 'source_context', 'VARCHAR(80)');
 assertColumn(schema, 'svp_media_library', 'deleted_at', 'DATETIME');
 assertIncludes(mediaLibraryMigration, 'CREATE TABLE IF NOT EXISTS `svp_media_library`', 'media migration creates the shared media library');
 assertIncludes(mediaLibraryMigration, 'ON DUPLICATE KEY UPDATE', 'media migration seeds known assets idempotently');
+assertIncludes(mediaLibraryMigration, 'UNIQUE KEY `uq_svp_media_library_url` (`url`(191))', 'media URL uniqueness stays within shared-hosting index limits');
 
 const mediaBlock = tableBlock(schema, 'svp_property_media');
 for (const mediaType of ['image', 'video', 'document', 'other']) {
