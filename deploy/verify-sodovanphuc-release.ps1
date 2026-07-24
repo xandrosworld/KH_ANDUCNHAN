@@ -163,6 +163,8 @@ function Assert-SqlImportBundleFile {
     Assert-TextContentContains $text 'CREATE TABLE IF NOT EXISTS `bank_transfers`' "$MessagePrefix contains bank transfers schema"
     Assert-TextContentContains $text '-- ===== 07b base property image uniqueness: 009_property_image_unique.sql =====' "$MessagePrefix has property image uniqueness section marker"
     Assert-TextContentContains $text "index_name = 'uq_property_image_url'" "$MessagePrefix contains idempotent property image unique migration"
+    Assert-TextContentContains $text '-- ===== 07e media library: 014_svp_media_library.sql =====' "$MessagePrefix has media library migration marker"
+    Assert-TextContentContains $text 'CREATE TABLE IF NOT EXISTS `svp_media_library`' "$MessagePrefix contains media library schema"
     Assert-TextContentContains $text '-- ===== 08 base seed: seed.sql =====' "$MessagePrefix has base seed section marker"
     Assert-TextContentContains $text 'INSERT INTO `properties`' "$MessagePrefix contains base property seed"
     Assert-TextContentContains $text '-- ===== 09 SVP schema: sodovanphuc_schema.sql =====' "$MessagePrefix has SVP schema section marker"
@@ -187,6 +189,8 @@ function Assert-SqlImportBundleFile {
         'CREATE TABLE IF NOT EXISTS `users`',
         '-- ===== 07b base property image uniqueness: 009_property_image_unique.sql =====',
         "index_name = 'uq_property_image_url'",
+        '-- ===== 07e media library: 014_svp_media_library.sql =====',
+        'CREATE TABLE IF NOT EXISTS `svp_media_library`',
         '-- ===== 08 base seed: seed.sql =====',
         'INSERT INTO `properties`',
         '-- ===== 09 SVP schema: sodovanphuc_schema.sql =====',
@@ -277,6 +281,9 @@ foreach ($sqlFile in @(
     '007_add_expiry_notified.sql',
     '008_bank_transfers.sql',
     '009_property_image_unique.sql',
+    '012_svp_events_branding.sql',
+    '013_svp_recruitment.sql',
+    '014_svp_media_library.sql',
     'seed.sql',
     'sodovanphuc_import_all.sql',
     'sodovanphuc_schema.sql',
@@ -512,6 +519,9 @@ foreach ($required in @(
     'public_html/backend/sql/007_add_expiry_notified.sql',
     'public_html/backend/sql/008_bank_transfers.sql',
     'public_html/backend/sql/009_property_image_unique.sql',
+    'public_html/backend/sql/012_svp_events_branding.sql',
+    'public_html/backend/sql/013_svp_recruitment.sql',
+    'public_html/backend/sql/014_svp_media_library.sql',
     'public_html/backend/sql/seed.sql',
     'public_html/backend/sql/sodovanphuc_import_all.sql',
     'public_html/backend/sql/sodovanphuc_schema.sql',

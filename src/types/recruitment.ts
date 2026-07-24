@@ -3,6 +3,7 @@ export interface RecruitmentSection {
   title: string;
   body?: string;
   items?: string[];
+  imageUrl?: string;
 }
 
 export interface RecruitmentPost {

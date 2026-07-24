@@ -519,6 +519,7 @@ function svp_health_payload(): array
         'svp_notifications',
         'svp_events',
         'svp_event_registrations',
+        'svp_media_library',
     ];
 
     $requiredSeedGroups = [
@@ -540,6 +541,9 @@ function svp_health_payload(): array
         }
         if (function_exists('svp_ensure_recruitment_schema')) {
             svp_ensure_recruitment_schema($db);
+        }
+        if (function_exists('svp_ensure_media_schema')) {
+            svp_ensure_media_schema($db);
         }
 
         $missing = [];
@@ -1705,8 +1709,19 @@ $router->add('POST', '/api/uploads', function () {
         }
     }
 
+    $imageMetadata = [];
+    if (!empty($_FILES['images']) && function_exists('svp_media_upload_metadata')) {
+        $imageMetadata = svp_media_upload_metadata($_FILES['images']);
+    }
     if (!empty($_FILES['images'])) {
         $urls = Upload::handleUpload($_FILES['images']);
+    }
+    if ($urls && function_exists('svp_media_register_upload')) {
+        $db = Database::getInstance();
+        $actorId = function_exists('svp_actor_id') ? svp_actor_id() : null;
+        foreach ($urls as $index => $url) {
+            svp_media_register_upload($db, $url, $actorId, 'admin_upload', $imageMetadata[$index] ?? []);
+        }
     }
 
     $videoUrl = null;
@@ -1775,6 +1790,19 @@ $router->add('DELETE', '/api/uploads', function () use ($input) {
 
     if (!unlink($targetPath)) {
         Response::error('Failed to delete upload file', 500);
+    }
+    if (function_exists('svp_ensure_media_schema')) {
+        $db = Database::getInstance();
+        svp_ensure_media_schema($db);
+        $mediaStmt = $db->prepare('SELECT * FROM svp_media_library WHERE url=:url AND deleted_at IS NULL LIMIT 1');
+        $mediaStmt->execute(['url' => $url]);
+        $mediaItem = $mediaStmt->fetch(PDO::FETCH_ASSOC);
+        if ($mediaItem) {
+            $db->prepare('UPDATE svp_media_library SET deleted_at=NOW() WHERE id=:id')->execute(['id' => $mediaItem['id']]);
+            if (function_exists('svp_insert_audit')) {
+                svp_insert_audit($db, function_exists('svp_actor_id') ? svp_actor_id() : null, 'delete', 'media_library', (string) $mediaItem['id'], $mediaItem, ['fileDeleted' => true]);
+            }
+        }
     }
 
     Response::json([
@@ -3921,6 +3949,7 @@ $router->add('PATCH', '/api/bank-transfers/{id}/status', function ($params) use 
 require_once __DIR__ . '/svp-routes.php';
 require_once __DIR__ . '/svp-auth-v1-routes.php';
 require_once __DIR__ . '/svp-auth-routes.php';
+require_once __DIR__ . '/svp-media-routes.php';
 require_once __DIR__ . '/svp-event-routes.php';
 require_once __DIR__ . '/svp-recruitment-routes.php';
 

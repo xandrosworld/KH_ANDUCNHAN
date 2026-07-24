@@ -73,8 +73,8 @@ WHERE table_schema = DATABASE()
 
 SELECT
   '00_svp_tables' AS check_name,
-  IF(COUNT(DISTINCT table_name) = 19, 'PASS', 'FAIL') AS status,
-  CONCAT(COUNT(DISTINCT table_name), '/19 SVP tables present') AS details
+  IF(COUNT(DISTINCT table_name) = 23, 'PASS', 'FAIL') AS status,
+  CONCAT(COUNT(DISTINCT table_name), '/23 SVP tables present') AS details
 FROM information_schema.tables
 WHERE table_schema = DATABASE()
   AND table_name IN (
@@ -94,9 +94,13 @@ WHERE table_schema = DATABASE()
     'svp_transactions',
     'svp_finance_entries',
     'svp_recruitment_candidates',
+    'svp_recruitment_posts',
     'svp_training_contents',
     'svp_reputation_scores',
-    'svp_notifications'
+    'svp_notifications',
+    'svp_events',
+    'svp_event_registrations',
+    'svp_media_library'
   );
 
 SELECT

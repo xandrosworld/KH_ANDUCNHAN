@@ -484,10 +484,21 @@ $router->add('POST', '/api/svp/admin/branding/upload', function () {
     $kind = (string) ($_POST['kind'] ?? 'logo');
     if (!in_array($kind, ['logo','banner'], true)) Response::error('Loại ảnh thương hiệu không hợp lệ.', 400);
     if (empty($_FILES['image'])) Response::error('Vui lòng chọn ảnh JPG, PNG hoặc WebP.', 400);
+    $dimensions = @getimagesize($_FILES['image']['tmp_name']);
+    $uploadMetadata = [
+        'originalName' => (string) $_FILES['image']['name'],
+        'mimeType' => (string) (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['image']['tmp_name']),
+        'fileSize' => (int) $_FILES['image']['size'],
+        'width' => is_array($dimensions) ? (int) $dimensions[0] : null,
+        'height' => is_array($dimensions) ? (int) $dimensions[1] : null,
+    ];
     $urls = Upload::handleUpload(['name' => [$_FILES['image']['name']], 'type' => [$_FILES['image']['type']], 'tmp_name' => [$_FILES['image']['tmp_name']], 'error' => [$_FILES['image']['error']], 'size' => [$_FILES['image']['size']]]);
     $url = $urls[0] ?? '';
     if ($url === '') Response::error('Không lưu được ảnh thương hiệu.', 500);
     $db = Database::getInstance(); svp_ensure_site_display_config($db);
+    if (function_exists('svp_media_register_upload')) {
+        svp_media_register_upload($db, $url, (string) $payload['sub'], 'branding_' . $kind, $uploadMetadata);
+    }
     $optionId = $kind === 'logo' ? 'site_logo_url' : 'site_banner_url';
     $stmt = $db->prepare('SELECT * FROM svp_config_options WHERE id=:id'); $stmt->execute(['id' => $optionId]); $old = $stmt->fetch(PDO::FETCH_ASSOC);
     $db->prepare('UPDATE svp_config_options SET value=:url WHERE id=:id')->execute(['url' => $url, 'id' => $optionId]);

@@ -63,6 +63,7 @@ export default function PublicRecruitmentDetailPage() {
               <div key={section.key || index} className="space-y-9">
                 <article className={index === 0 ? '' : 'border-t border-red-100 pt-8'}>
                   <div className="mb-4 flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#c40012] text-sm font-black text-white">{String(index + 1).padStart(2, '0')}</span><h2 className="text-2xl font-black leading-tight sm:text-3xl">{section.title}</h2></div>
+                  {section.imageUrl ? <img src={section.imageUrl} alt={section.title} className="mb-5 aspect-[16/9] w-full rounded-lg border border-red-100 object-cover" /> : null}
                   {section.body ? <p className="whitespace-pre-line text-base font-medium leading-8 text-[#5f5962]">{section.body}</p> : null}
                   {section.items?.length ? <ul className="mt-5 grid gap-3 sm:grid-cols-2">{section.items.map((item) => <li key={item} className="flex items-start gap-3 border-l-2 border-[#c40012] bg-white px-4 py-3 text-sm font-semibold leading-6 text-[#514b54]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />{item}</li>)}</ul> : null}
                 </article>

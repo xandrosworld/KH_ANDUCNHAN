@@ -399,3 +399,24 @@ CREATE TABLE IF NOT EXISTS `svp_event_registrations` (
   INDEX `idx_svp_event_reg_status` (`event_id`, `care_status`, `created_at`),
   INDEX `idx_svp_event_reg_utm` (`utm_source`, `utm_campaign`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `svp_media_library` (
+  `id` VARCHAR(64) NOT NULL,
+  `url` VARCHAR(1000) NOT NULL,
+  `original_name` VARCHAR(255) DEFAULT NULL,
+  `title` VARCHAR(255) DEFAULT NULL,
+  `alt_text` VARCHAR(500) DEFAULT NULL,
+  `mime_type` VARCHAR(100) DEFAULT NULL,
+  `file_size` BIGINT UNSIGNED DEFAULT NULL,
+  `width` INT UNSIGNED DEFAULT NULL,
+  `height` INT UNSIGNED DEFAULT NULL,
+  `source_context` VARCHAR(80) NOT NULL DEFAULT 'media_library',
+  `created_by` VARCHAR(64) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_svp_media_library_url` (`url`),
+  INDEX `idx_svp_media_library_created` (`deleted_at`, `created_at`),
+  INDEX `idx_svp_media_library_source` (`source_context`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -69,6 +69,7 @@ assertFile(['backend', 'sql', '007_add_coordinates.sql'], 'Base property coordin
 assertFile(['backend', 'sql', '007_add_expiry_notified.sql'], 'Base expiry notification migration exists');
 assertFile(['backend', 'sql', '008_bank_transfers.sql'], 'Base bank transfers migration exists');
 assertFile(['backend', 'sql', '009_property_image_unique.sql'], 'Base property image uniqueness migration exists');
+assertFile(['backend', 'sql', '014_svp_media_library.sql'], 'Media library migration exists');
 assertFile(['backend', 'sql', 'seed.sql'], 'Base seed file exists');
 assertFile(['backend', 'sql', 'sodovanphuc_schema.sql'], 'SVP schema file exists');
 assertFile(['backend', 'sql', 'sodovanphuc_seed.sql'], 'SVP seed file exists');
@@ -76,6 +77,7 @@ assertFile(['backend', 'sql', 'sodovanphuc_verify.sql'], 'SVP post-import SQL ve
 assertFile(['backend', 'sql', 'database_verify.sql'], 'Full database SQL verifier exists');
 assertFile(['backend', 'api', 'svp-routes.php'], 'SVP route file exists');
 assertFile(['backend', 'api', 'index.php'], 'PHP router entry exists');
+assertFile(['backend', 'api', 'svp-media-routes.php'], 'Media library route file exists');
 assert(!existsSync(rel('backend', 'api', 'debug_test.php')), 'backend debug_test.php is absent from source');
 assertFile(['backend', 'config', 'config.example.php'], 'Backend config example exists');
 assert(!existsSync(rel('backend', 'config', 'config.php')), 'real backend config.php is absent from source');
@@ -118,6 +120,7 @@ const coordinatesMigration = read('backend', 'sql', '007_add_coordinates.sql');
 const expiryMigration = read('backend', 'sql', '007_add_expiry_notified.sql');
 const bankTransfersMigration = read('backend', 'sql', '008_bank_transfers.sql');
 const imageUniqueMigration = read('backend', 'sql', '009_property_image_unique.sql');
+const mediaLibraryMigration = read('backend', 'sql', '014_svp_media_library.sql');
 const schema = read('backend', 'sql', 'sodovanphuc_schema.sql');
 const seed = read('backend', 'sql', 'sodovanphuc_seed.sql');
 const sqlVerify = read('backend', 'sql', 'sodovanphuc_verify.sql');
@@ -125,6 +128,7 @@ const databaseVerify = read('backend', 'sql', 'database_verify.sql');
 const routes = read('backend', 'api', 'svp-routes.php');
 const authRoutes = read('backend', 'api', 'svp-auth-routes.php');
 const eventRoutes = read('backend', 'api', 'svp-event-routes.php');
+const mediaRoutes = read('backend', 'api', 'svp-media-routes.php');
 const routerIndex = read('backend', 'api', 'index.php');
 const uploadLib = read('backend', 'lib', 'Upload.php');
 const databaseLib = read('backend', 'lib', 'Database.php');
@@ -174,6 +178,11 @@ const adminEventsPage = read('src', 'pages', 'admin', 'EventsPage.tsx');
 const adminSchedulesPage = read('src', 'pages', 'admin', 'SchedulesPage.tsx');
 const adminReferralsPage = read('src', 'pages', 'admin', 'ReferralsPage.tsx');
 const adminUsersPage = read('src', 'pages', 'admin', 'UsersPage.tsx');
+const adminMediaPage = read('src', 'pages', 'admin', 'MediaLibraryPage.tsx');
+const mediaField = read('src', 'components', 'admin', 'MediaField.tsx');
+const mediaApi = read('src', 'services', 'mediaApi.ts');
+const appRoutes = read('src', 'App.tsx');
+const sidebar = read('src', 'components', 'Sidebar.tsx');
 const adminExport = read('src', 'utils', 'adminExport.ts');
 const envExample = read('.env.example');
 const gitignore = read('.gitignore');
@@ -216,9 +225,13 @@ const requiredTables = [
   'svp_transactions',
   'svp_finance_entries',
   'svp_recruitment_candidates',
+  'svp_recruitment_posts',
   'svp_training_contents',
   'svp_reputation_scores',
   'svp_notifications',
+  'svp_events',
+  'svp_event_registrations',
+  'svp_media_library',
 ];
 
 for (const table of ['properties', 'property_images', 'inquiries', 'reports', 'schedules']) {
@@ -291,6 +304,11 @@ assertColumn(schema, 'svp_property_media', 'id', 'VARCHAR(64)');
 assertColumn(schema, 'svp_property_media', 'property_id', 'VARCHAR(64)');
 assertColumn(schema, 'svp_property_media', 'media_type', 'ENUM');
 assertColumn(schema, 'svp_property_media', 'caption', 'VARCHAR(500)');
+assertColumn(schema, 'svp_media_library', 'url', 'VARCHAR(1000)');
+assertColumn(schema, 'svp_media_library', 'source_context', 'VARCHAR(80)');
+assertColumn(schema, 'svp_media_library', 'deleted_at', 'DATETIME');
+assertIncludes(mediaLibraryMigration, 'CREATE TABLE IF NOT EXISTS `svp_media_library`', 'media migration creates the shared media library');
+assertIncludes(mediaLibraryMigration, 'ON DUPLICATE KEY UPDATE', 'media migration seeds known assets idempotently');
 
 const mediaBlock = tableBlock(schema, 'svp_property_media');
 for (const mediaType of ['image', 'video', 'document', 'other']) {
@@ -375,6 +393,22 @@ const requiredRoutes = [
 for (const [method, route] of requiredRoutes) assertRoute(routes, method, route);
 
 assertIncludes(routerIndex, "require_once __DIR__ . '/svp-routes.php';", 'main PHP router loads SVP routes');
+assertIncludes(routerIndex, "require_once __DIR__ . '/svp-media-routes.php';", 'main PHP router loads media library routes');
+assertRoute(mediaRoutes, 'GET', '/api/svp/admin/media');
+assertRoute(mediaRoutes, 'POST', '/api/svp/admin/media');
+assertRoute(mediaRoutes, 'PATCH', '/api/svp/admin/media/{id}');
+assertRoute(mediaRoutes, 'DELETE', '/api/svp/admin/media/{id}');
+assertIncludes(mediaRoutes, "svp_require_role('admin_tong', 'admin')", 'media browsing and upload allow both administrator roles');
+assertIncludes(mediaRoutes, "svp_require_role('admin_tong')", 'only owner admin can hide media');
+assertIncludes(mediaRoutes, 'Upload::handleUpload($files)', 'media upload uses the central secure image validator');
+assertIncludes(mediaRoutes, 'SET deleted_at=NOW()', 'media removal is a non-destructive soft hide');
+assertIncludes(routerIndex, "svp_media_register_upload($db, $url, $actorId, 'admin_upload'", 'legacy admin image uploads also enter the shared media library');
+assertIncludes(routerIndex, "UPDATE svp_media_library SET deleted_at=NOW()", 'legacy admin upload cleanup also hides the deleted file from the media library');
+assertIncludes(mediaApi, "body.append('images[]', file)", 'frontend media upload sends multiple image files');
+assertIncludes(mediaField, 'MediaPickerModal', 'shared image field can select from the media library');
+assertIncludes(adminMediaPage, 'Kho Media', 'admin media library page is implemented');
+assertIncludes(appRoutes, 'path="/quan-tri/kho-media"', 'media library admin route is registered');
+assertIncludes(sidebar, "path: '/quan-tri/kho-media'", 'media library appears in the admin sidebar');
 assertIncludes(routerIndex, "$router->add('GET', '/api/svp/health'", 'SVP health route is registered');
 assertIncludes(routerIndex, "$router->add('POST', '/api/auth/avatar'", 'avatar upload route is registered');
 assertIncludes(routerIndex, 'Upload::handleAvatarUpload($_FILES[\'avatar\'])', 'avatar upload route uses centralized upload validation');

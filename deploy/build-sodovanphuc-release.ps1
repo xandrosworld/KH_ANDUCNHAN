@@ -91,6 +91,7 @@ $bankTransfersSqlSource = Join-Path $backendDir 'sql\008_bank_transfers.sql'
 $imageUniqueSqlSource = Join-Path $backendDir 'sql\009_property_image_unique.sql'
 $eventsSqlSource = Join-Path $backendDir 'sql\012_svp_events_branding.sql'
 $recruitmentSqlSource = Join-Path $backendDir 'sql\013_svp_recruitment.sql'
+$mediaLibrarySqlSource = Join-Path $backendDir 'sql\014_svp_media_library.sql'
 $baseSeedSqlSource = Join-Path $backendDir 'sql\seed.sql'
 $schemaSqlSource = Join-Path $backendDir 'sql\sodovanphuc_schema.sql'
 $seedSqlSource = Join-Path $backendDir 'sql\sodovanphuc_seed.sql'
@@ -111,6 +112,7 @@ $sqlSourceFiles = @(
     $imageUniqueSqlSource,
     $eventsSqlSource,
     $recruitmentSqlSource,
+    $mediaLibrarySqlSource,
     $baseSeedSqlSource,
     $schemaSqlSource,
     $seedSqlSource,
@@ -134,6 +136,7 @@ $sqlBundleSections = @(
     @{ Marker = '07b base property image uniqueness: 009_property_image_unique.sql'; Path = $imageUniqueSqlSource },
     @{ Marker = '07c events and branding: 012_svp_events_branding.sql'; Path = $eventsSqlSource },
     @{ Marker = '07d recruitment: 013_svp_recruitment.sql'; Path = $recruitmentSqlSource },
+    @{ Marker = '07e media library: 014_svp_media_library.sql'; Path = $mediaLibrarySqlSource },
     @{ Marker = '08 base seed: seed.sql'; Path = $baseSeedSqlSource },
     @{ Marker = '09 SVP schema: sodovanphuc_schema.sql'; Path = $schemaSqlSource },
     @{ Marker = '10 SVP seed: sodovanphuc_seed.sql'; Path = $seedSqlSource },
@@ -418,6 +421,7 @@ public_html/backend/sql/008_bank_transfers.sql
 public_html/backend/sql/009_property_image_unique.sql
 public_html/backend/sql/012_svp_events_branding.sql
 public_html/backend/sql/013_svp_recruitment.sql
+public_html/backend/sql/014_svp_media_library.sql
 public_html/backend/sql/seed.sql
 public_html/backend/sql/sodovanphuc_import_all.sql
 public_html/backend/sql/sodovanphuc_schema.sql
@@ -510,6 +514,7 @@ backend/sql/008_bank_transfers.sql
 backend/sql/009_property_image_unique.sql
 backend/sql/012_svp_events_branding.sql
 backend/sql/013_svp_recruitment.sql
+backend/sql/014_svp_media_library.sql
 backend/sql/seed.sql
 backend/sql/sodovanphuc_schema.sql
 backend/sql/sodovanphuc_seed.sql

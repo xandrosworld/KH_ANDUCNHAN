@@ -73,6 +73,7 @@ const AdminConfig = lazy(() => import('./pages/admin/ConfigPage'));
 const AdminAudit = lazy(() => import('./pages/admin/AuditPage'));
 const AdminEvents = lazy(() => import('./pages/admin/EventsPage'));
 const AdminRecruitment = lazy(() => import('./pages/admin/RecruitmentPage'));
+const AdminMediaLibrary = lazy(() => import('./pages/admin/MediaLibraryPage'));
 
 const MANAGEMENT_ROLES = ['admin_tong', 'admin', 'giam_doc', 'truong_phong', 'pho_phong', 'giam_doc_khoi', 'pho_giam_doc_khoi', 'pho_giam_doc_khu_vuc', 'giam_doc_dieu_hanh', 'pho_giam_doc_dieu_hanh', 'tro_ly', 'thu_ky'] as const;
 const EVENT_ADMIN_ROLES = ['admin_tong', 'admin'] as const;
@@ -207,6 +208,7 @@ function AppRoutes() {
               <Route element={<RoleRoute roles={EVENT_ADMIN_ROLES} />}>
                 <Route path="/quan-tri/su-kien" element={<AdminEvents />} />
                 <Route path="/quan-tri/tuyen-dung" element={<AdminRecruitment />} />
+                <Route path="/quan-tri/kho-media" element={<AdminMediaLibrary />} />
               </Route>
             </Route>
           </Route>

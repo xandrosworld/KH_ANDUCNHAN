@@ -290,8 +290,8 @@ const publicRoutes = [
 ];
 
 const roleRoutes = [
-  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/tuyen-dung', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
-  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/tuyen-dung', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'admin_tong', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/su-kien', '/quan-tri/tuyen-dung', '/quan-tri/kho-media', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
+  { role: 'admin', paths: ['/quan-tri', '/quan-tri/nguoi-dung', '/quan-tri/duyet-vai-tro', '/quan-tri/su-kien', '/quan-tri/tuyen-dung', '/quan-tri/kho-media', '/quan-tri/nha', '/quan-tri/khach-hang', '/quan-tri/lich-xem', '/quan-tri/gioi-thieu', '/quan-tri/cau-hinh', '/quan-tri/nhat-ky', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chu_nha', paths: ['/chu-nha', '/chu-nha/gui-ban', '/chu-nha/nha-cua-toi', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'khach_mua', paths: ['/khach-mua', '/khach-mua/tim-nha', '/khach-mua/yeu-thich', '/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
   { role: 'chuyen_gia', paths: ['/chuyen-gia', '/chuyen-gia/dang-nha', '/chuyen-gia/kho-nha-tong', '/chuyen-gia/kho-nha-rieng', '/chuyen-gia/nha/prop_1', '/xay-dung-he-thong', '/ai', '/profile', '/notifications'] },
@@ -402,6 +402,36 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
       indirectReferralCount: 1,
     });
 
+    const mediaItem = {
+      id: 'media_seed_event_banner',
+      url: '/assets/events/lam-nghe-moi-gioi-dung-luat.png',
+      originalName: 'lam-nghe-moi-gioi-dung-luat.png',
+      title: 'Banner sự kiện môi giới đúng luật',
+      altText: 'Sự kiện làm nghề môi giới đúng luật',
+      mimeType: 'image/png',
+      fileSize: 248000,
+      width: 1600,
+      height: 900,
+      sourceContext: 'event_banner',
+      createdBy: 'user_admin',
+      createdByName: 'Admin QA',
+      createdAt: '2026-07-24 09:00:00',
+      updatedAt: '2026-07-24 09:00:00',
+    };
+    if (path === '/admin/media' && method === 'GET') return ok(route, {
+      items: [mediaItem],
+      total: 1,
+      page: 1,
+      limit: 36,
+      sources: [{ value: 'event_banner', total: 1 }],
+    });
+    if (path === '/admin/media' && method === 'POST') return ok(route, { items: [mediaItem], total: 1 }, 201);
+    if (/^\/admin\/media\/[^/]+$/.test(path) && method === 'PATCH') {
+      const body = request.postDataJSON?.() as { title?: string; altText?: string } | undefined;
+      return ok(route, { item: { ...mediaItem, title: body?.title || mediaItem.title, altText: body?.altText || mediaItem.altText } });
+    }
+    if (/^\/admin\/media\/[^/]+$/.test(path) && method === 'DELETE') return ok(route, { deleted: true, id: mediaItem.id });
+
     if (path === '/admin/dashboard') {
       return ok(route, {
         totalUsers: 12,
@@ -480,6 +510,27 @@ async function installMocks(page: Page, role = 'admin', authenticated = true, ro
     }
     if (path === '/admin/viewing-schedules' && method === 'GET') return ok(route, { items: schedules, total: schedules.length });
     if (path === '/admin/referrals' && method === 'GET') return ok(route, { items: referrals, total: referrals.length });
+    if (path === '/admin/events' && method === 'GET') return ok(route, {
+      items: [{
+        id: 'event_legal_broker',
+        slug: 'lam-nghe-moi-gioi-dung-luat',
+        title: 'Làm Nghề Môi Giới Đúng Luật - Thu Nhập Cao - Phát Triển Bền Vững',
+        eyebrow: 'Sự kiện chia sẻ online hoàn toàn miễn phí',
+        summary: 'Bí quyết xây dựng sự nghiệp môi giới trong thời đại mới.',
+        speakerName: 'Mr Ân Đức Nhân',
+        speakerTitle: 'Giám đốc Phát triển Nhân lực',
+        formatLabel: 'Online qua Zoom - Miễn phí',
+        scheduleLabel: 'Thông báo trong nhóm Zalo',
+        ctaLabel: 'Đăng ký tham dự miễn phí',
+        bannerUrl: '/assets/events/lam-nghe-moi-gioi-dung-luat.png',
+        sections: [{ key: 'intro', title: 'Giới thiệu', body: 'Nội dung sự kiện.', imageUrl: '' }],
+        disclaimer: 'Nội dung mang tính chia sẻ.',
+        status: 'published',
+        registrationStatus: 'open',
+        registrationCount: 2,
+      }],
+      total: 1,
+    });
     if (path === '/admin/recruitment-posts' && method === 'GET') return ok(route, {
       items: [{
         id: 'recruitment_van_phuc_01', slug: 'tuyen-dung-moi-gioi-van-phuc', title: 'Tuyen dung moi gioi Van Phuc', eyebrow: 'Co hoi nghe nghiep', summary: 'Nhan su lien he truc tiep.', recruiterName: 'Mr An Duc Nhan', recruiterTitle: 'Giam doc Phat trien Nhan luc', ctaLabel: 'Ung tuyen ngay', bannerUrl: '/assets/recruitment/tuyen-dung-moi-gioi-van-phuc.jpg', sections: [{ key: 'intro', title: 'Vi tri dang tuyen', body: 'Chuyen vien, chuyen gia va truong phong.' }], disclaimer: 'Thong tin tuyen dung.', status: 'published', applicationStatus: 'open', candidateCount: 2,
@@ -1257,6 +1308,41 @@ test.describe('V1 core workflows', () => {
     await page.goto('/notifications', { waitUntil: 'networkidle' });
     await expect(page.locator('body')).toContainText(/Thong bao noi bo|Thông báo nội bộ/i);
     await expectUsablePage(page, testInfo, 'workflow-notifications');
+  });
+
+  test('admin can manage and reuse images from the shared media library', async ({ page }, testInfo) => {
+    await installMocks(page, 'admin_tong');
+
+    await page.goto('/quan-tri/kho-media', { waitUntil: 'networkidle' });
+    await expect(page.getByRole('heading', { name: 'Kho Media' })).toBeVisible();
+    await expect(page.locator('article')).toHaveCount(1);
+    await page.locator('article').first().getByRole('button').first().click();
+    const detailDialog = page.getByRole('dialog', { name: 'Thông tin ảnh' });
+    await expect(detailDialog).toBeVisible();
+    await detailDialog.getByLabel('Tên ảnh').fill('Banner sự kiện đã cập nhật');
+    await detailDialog.getByRole('button', { name: 'Lưu thông tin' }).click();
+    await expect(page.locator('body')).toContainText('Đã lưu tên và mô tả ảnh.');
+    await detailDialog.getByRole('button', { name: 'Đóng' }).click();
+    await expectUsablePage(page, testInfo, 'workflow-admin-media-library');
+
+    await page.goto('/quan-tri/su-kien', { waitUntil: 'networkidle' });
+    await page.getByText('Làm Nghề Môi Giới Đúng Luật - Thu Nhập Cao - Phát Triển Bền Vững', { exact: true }).click();
+    const eventMedia = page.getByTestId('media-field-event_banner').first();
+    await eventMedia.getByRole('button', { name: 'Chọn từ kho' }).click();
+    const eventPicker = page.getByRole('dialog', { name: 'Chọn ảnh từ Kho Media' });
+    await expect(eventPicker).toBeVisible();
+    await eventPicker.getByRole('button', { name: /Banner sự kiện môi giới đúng luật/ }).click();
+    await expect(eventMedia.locator('input[type="text"], input:not([type])').first()).toHaveValue('/assets/events/lam-nghe-moi-gioi-dung-luat.png');
+    await expectUsablePage(page, testInfo, 'workflow-admin-event-media-picker');
+
+    await page.goto('/quan-tri/tuyen-dung', { waitUntil: 'networkidle' });
+    await page.getByText('Tuyen dung moi gioi Van Phuc', { exact: true }).click();
+    const recruitmentMedia = page.getByTestId('media-field-recruitment_banner').first();
+    await recruitmentMedia.getByRole('button', { name: 'Chọn từ kho' }).click();
+    const recruitmentPicker = page.getByRole('dialog', { name: 'Chọn ảnh từ Kho Media' });
+    await recruitmentPicker.getByRole('button', { name: /Banner sự kiện môi giới đúng luật/ }).click();
+    await expect(recruitmentMedia.locator('input[type="text"], input:not([type])').first()).toHaveValue('/assets/events/lam-nghe-moi-gioi-dung-luat.png');
+    await expectUsablePage(page, testInfo, 'workflow-admin-recruitment-media-picker');
   });
 
   test('property comments can be added and removed by authenticated users', async ({ page }, testInfo) => {

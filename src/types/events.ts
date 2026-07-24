@@ -3,6 +3,7 @@ export interface EventSection {
   title: string;
   body?: string;
   items?: string[];
+  imageUrl?: string;
 }
 
 export interface SvpEvent {

@@ -8,8 +8,8 @@ SELECT '00_database' AS check_name, DATABASE() AS detail, 'INFO' AS status;
 SELECT
   '01_required_tables' AS check_name,
   COUNT(*) AS actual,
-  19 AS expected,
-  IF(COUNT(*) = 19, 'PASS', 'FAIL') AS status
+  23 AS expected,
+  IF(COUNT(*) = 23, 'PASS', 'FAIL') AS status
 FROM information_schema.tables
 WHERE table_schema = DATABASE()
   AND table_name IN (
@@ -29,9 +29,13 @@ WHERE table_schema = DATABASE()
     'svp_transactions',
     'svp_finance_entries',
     'svp_recruitment_candidates',
+    'svp_recruitment_posts',
     'svp_training_contents',
     'svp_reputation_scores',
-    'svp_notifications'
+    'svp_notifications',
+    'svp_events',
+    'svp_event_registrations',
+    'svp_media_library'
   );
 
 SELECT
@@ -54,9 +58,13 @@ FROM (
   SELECT 'svp_transactions' UNION ALL
   SELECT 'svp_finance_entries' UNION ALL
   SELECT 'svp_recruitment_candidates' UNION ALL
+  SELECT 'svp_recruitment_posts' UNION ALL
   SELECT 'svp_training_contents' UNION ALL
   SELECT 'svp_reputation_scores' UNION ALL
-  SELECT 'svp_notifications'
+  SELECT 'svp_notifications' UNION ALL
+  SELECT 'svp_events' UNION ALL
+  SELECT 'svp_event_registrations' UNION ALL
+  SELECT 'svp_media_library'
 ) AS required_tables
 LEFT JOIN information_schema.tables AS actual_tables
   ON actual_tables.table_schema = DATABASE()
