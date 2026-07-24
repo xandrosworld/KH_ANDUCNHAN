@@ -178,6 +178,30 @@ test.describe('So Do Van Phuc live hosting smoke', () => {
     });
   }
 
+  test('live support menu exposes the approved contact channels', async ({ page }) => {
+    const failures = watchRuntimeFailures(page);
+    const response = await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    expect(response?.status(), '/ should return HTTP 200').toBe(200);
+    await waitForLiveApp(page);
+    await page.getByTestId('auth-support-toggle').click();
+
+    const supportMenu = page.getByTestId('auth-support-menu');
+    await expect(supportMenu).toBeVisible();
+    await expect(supportMenu.getByRole('link', { name: /Gọi hotline/i })).toHaveAttribute('href', 'tel:0366699899');
+    await expect(supportMenu.getByRole('link', { name: /Nhắn Zalo/i })).toHaveAttribute('href', 'https://zalo.me/0906037688');
+    await expect(supportMenu.getByRole('link', { name: /Trang Facebook/i })).toHaveAttribute('href', 'https://facebook.com/sodovanphuc');
+    await expect(supportMenu.getByRole('link', { name: /Gửi email/i })).toHaveCount(0);
+
+    const fitsViewport = await supportMenu.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= window.innerWidth && element.scrollWidth <= element.clientWidth + 1;
+    });
+    expect(fitsViewport, 'support menu should fit within the viewport').toBe(true);
+    await assertHealthyPage(page, '/support-menu');
+    expect(failures, 'support menu should not throw runtime, asset, or HTTP failures').toEqual([]);
+  });
+
   for (const path of PROTECTED_REDIRECT_ROUTES) {
     test(`${path} redirects anonymous visitors to the V1 sign-in screen`, async ({ page }) => {
       const failures = watchRuntimeFailures(page);
