@@ -2557,9 +2557,6 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         Response::json([
             'description' => svp_ai_description_fallback(is_array($input) ? $input : []),
             'fallback' => true,
-            'credentialLength' => strlen($aiGeminiKey),
-            'credentialFingerprint' => substr(hash('sha256', $aiGeminiKey), 0, 16),
-            'authTransport' => 'query-and-header',
             'providerAttempts' => $providerAttempts,
         ]);
     }
@@ -2670,9 +2667,6 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
         Response::json([
             'reply' => svp_ai_chat_fallback(is_array($input) ? $input : [], $lang),
             'fallback' => true,
-            'credentialLength' => strlen($aiGeminiKey),
-            'credentialFingerprint' => substr(hash('sha256', $aiGeminiKey), 0, 16),
-            'authTransport' => 'query-and-header',
             'providerAttempts' => $providerAttempts,
         ]);
     }

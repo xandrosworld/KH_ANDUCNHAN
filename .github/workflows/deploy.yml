@@ -228,12 +228,6 @@ jobs:
             .filter(([, value]) => value)
             .map(([key, value]) => `${key}=${JSON.stringify(value)}`);
           fs.writeFileSync('.ai-env', `${lines.join('\n')}\n`);
-          const fingerprint = require('crypto')
-            .createHash('sha256')
-            .update(values.AI_GEMINI_KEY)
-            .digest('hex')
-            .slice(0, 16);
-          console.log(`Gemini runner secret length=${values.AI_GEMINI_KEY.length} fingerprint=${fingerprint}`);
           NODE
 
           ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
@@ -248,35 +242,6 @@ jobs:
             mv '$REMOTE_WEBROOT/backend/.env.tmp' '$REMOTE_WEBROOT/backend/.env'
             chmod 644 '$REMOTE_WEBROOT/backend/.env'
           " < .ai-env
-          printf 'Gemini local env fingerprint='
-          sha256sum .ai-env | cut -d' ' -f1
-          printf 'Gemini remote env fingerprint='
-          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "grep -E '^AI_GEMINI_(KEY|MODEL)=' '$REMOTE_WEBROOT/backend/.env' | sha256sum | cut -d' ' -f1"
-
-      - name: Diagnose Gemini from VPS
-        run: |
-          set -euo pipefail
-          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "REMOTE_WEBROOT='$REMOTE_WEBROOT' bash -s" <<'BASH'
-          set -euo pipefail
-          key_value="$(grep '^AI_GEMINI_KEY=' "$REMOTE_WEBROOT/backend/.env" | tail -n 1 | cut -d= -f2-)"
-          model_value="$(grep '^AI_GEMINI_MODEL=' "$REMOTE_WEBROOT/backend/.env" | tail -n 1 | cut -d= -f2-)"
-          key_value="${key_value#\"}"
-          key_value="${key_value%\"}"
-          model_value="${model_value#\"}"
-          model_value="${model_value%\"}"
-          api_url="https://generativelanguage.googleapis.com/v1beta/models/${model_value}:generateContent"
-          payload='{"contents":[{"parts":[{"text":"Return OK"}]}],"generationConfig":{"maxOutputTokens":128}}'
-          header_status="$(curl -sS -o /tmp/svp-gemini-header.json -w '%{http_code}' \
-            -X POST -H 'Content-Type: application/json' -H "X-Goog-Api-Key: $key_value" \
-            --data "$payload" "$api_url")"
-          query_status="$(curl -sS -o /tmp/svp-gemini-query.json -w '%{http_code}' \
-            -X POST -H 'Content-Type: application/json' \
-            --data "$payload" "${api_url}?key=${key_value}")"
-          echo "Gemini VPS header status=$header_status query status=$query_status"
-          rm -f /tmp/svp-gemini-header.json /tmp/svp-gemini-query.json
-          BASH
 
       - name: Fix permissions and smoke test
         run: |
@@ -306,3 +271,12 @@ jobs:
           curl -fsS https://sodovanphuc.vn/api/svp/health
           env_status="$(curl -sS -o /dev/null -w '%{http_code}' https://sodovanphuc.vn/backend/.env)"
           test "$env_status" != "200"
+          ai_response="$(curl -fsS -X POST https://sodovanphuc.vn/api/ai/chat \
+            -H 'Content-Type: application/json' \
+            --data '{"lang":"vi","messages":[{"sender":"me","text":"Tra loi mot cau ngan de kiem tra he thong."}]}')"
+          AI_RESPONSE="$ai_response" node -e "
+            const body = JSON.parse(process.env.AI_RESPONSE);
+            const payload = body.data || body;
+            if (!payload.reply || payload.fallback === true || !payload.model) process.exit(1);
+            console.log('Production Gemini smoke test passed for ' + payload.model);
+          "
