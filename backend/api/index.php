@@ -68,6 +68,11 @@ require_once $configPath;
 
 function gfz_config_string(string $constantName, ?string $envName = null): string
 {
+    $envValue = getenv($envName ?: $constantName);
+    if (is_string($envValue) && trim($envValue) !== '') {
+        return trim($envValue);
+    }
+
     if (defined($constantName)) {
         $constantValue = constant($constantName);
         if (is_string($constantValue) && trim($constantValue) !== '') {
@@ -75,8 +80,7 @@ function gfz_config_string(string $constantName, ?string $envName = null): strin
         }
     }
 
-    $envValue = getenv($envName ?: $constantName);
-    return is_string($envValue) ? trim($envValue) : '';
+    return '';
 }
 
 // ─── Load Libraries ──────────────────────────────────────────────────────────
@@ -2439,7 +2443,13 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         . "Ghi chú thêm: {$notes}";
 
     // Try Gemini API
-    $models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    $configuredModel = gfz_config_string('AI_GEMINI_MODEL');
+    $models = array_values(array_unique(array_filter([
+        $configuredModel,
+        'gemini-3.5-flash',
+        'gemini-flash-latest',
+        'gemini-3.1-flash-lite',
+    ])));
     $description = null;
 
     foreach ($models as $model) {
@@ -2550,7 +2560,13 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
         Response::error('At least one user message is required', 400);
     }
 
-    $models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    $configuredModel = gfz_config_string('AI_GEMINI_MODEL');
+    $models = array_values(array_unique(array_filter([
+        $configuredModel,
+        'gemini-3.5-flash',
+        'gemini-flash-latest',
+        'gemini-3.1-flash-lite',
+    ])));
     $reply = null;
     foreach ($models as $model) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . rawurlencode($aiGeminiKey);

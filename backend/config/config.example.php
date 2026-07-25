@@ -100,6 +100,7 @@ define('UPLOAD_AVATAR_ALLOWED_TYPES', [
 // AI description/chat endpoints, optional.
 // Leave empty here and set AI_GEMINI_KEY in the environment/.env, or paste the key here on hosting.
 define('AI_GEMINI_KEY', getenv('AI_GEMINI_KEY') ?: '');
+define('AI_GEMINI_MODEL', getenv('AI_GEMINI_MODEL') ?: 'gemini-3.5-flash');
 
 // Email notifications
 define('MAIL_FROM', 'contact@sodovanphuc.vn');

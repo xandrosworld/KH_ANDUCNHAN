@@ -42,6 +42,8 @@ jobs:
       SVP_SMTP_USER: ${{ secrets.SVP_SMTP_USER }}
       SVP_SMTP_PASS: ${{ secrets.SVP_SMTP_PASS }}
       SVP_SMTP_SECURE: ${{ secrets.SVP_SMTP_SECURE }}
+      SVP_AI_GEMINI_KEY: ${{ secrets.SVP_AI_GEMINI_KEY }}
+      SVP_AI_GEMINI_MODEL: ${{ secrets.SVP_AI_GEMINI_MODEL }}
 
     steps:
       - name: Checkout
@@ -212,6 +214,34 @@ jobs:
             node .patch-mail-config.mjs
             ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat > '$REMOTE_WEBROOT/backend/config/config.php' && chmod 600 '$REMOTE_WEBROOT/backend/config/config.php' || true" < .remote-config.php
           fi
+
+      - name: Sync Gemini AI secret
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const values = {
+            AI_GEMINI_KEY: process.env.SVP_AI_GEMINI_KEY || '',
+            AI_GEMINI_MODEL: process.env.SVP_AI_GEMINI_MODEL || 'gemini-3.5-flash',
+          };
+          const lines = Object.entries(values)
+            .filter(([, value]) => value)
+            .map(([key, value]) => `${key}=${JSON.stringify(value)}`);
+          fs.writeFileSync('.ai-env', `${lines.join('\n')}\n`);
+          NODE
+
+          ssh -i ~/.ssh/sodovanphuc_deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+            set -e
+            mkdir -p '$REMOTE_WEBROOT/backend'
+            if [ -f '$REMOTE_WEBROOT/backend/.env' ]; then
+              grep -v -E '^AI_GEMINI_(KEY|MODEL)=' '$REMOTE_WEBROOT/backend/.env' > '$REMOTE_WEBROOT/backend/.env.tmp' || true
+            else
+              : > '$REMOTE_WEBROOT/backend/.env.tmp'
+            fi
+            cat >> '$REMOTE_WEBROOT/backend/.env.tmp'
+            mv '$REMOTE_WEBROOT/backend/.env.tmp' '$REMOTE_WEBROOT/backend/.env'
+            chmod 600 '$REMOTE_WEBROOT/backend/.env' || true
+          " < .ai-env
 
       - name: Fix permissions and smoke test
         run: |
