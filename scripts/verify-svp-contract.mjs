@@ -484,7 +484,9 @@ assertIncludes(routerIndex, 'function gfz_gemini_response_text', 'backend parses
 assertIncludes(routerIndex, "'fallback' => false, 'model' => $usedModel", 'backend identifies successful live Gemini responses');
 assertIncludes(routerIndex, "'providerAttempts' => $providerAttempts", 'backend exposes safe upstream status diagnostics only when Gemini falls back');
 assert(!routerIndex.includes('if (getenv($key) === false)'), 'backend reloads rotated secrets from the protected environment file on every request');
-assert(routerIndex.indexOf('getenv($envName ?: $constantName)') < routerIndex.indexOf('if (defined($constantName))'), 'backend environment secrets override stale config constants');
+assertIncludes(routerIndex, "$GLOBALS['gfz_runtime_env'][$key] = $value", 'backend remembers protected environment file values independently of PHP-FPM state');
+assertIncludes(routerIndex, "$GLOBALS['gfz_runtime_env'][$resolvedEnvName]", 'backend prioritizes protected environment file values over stale PHP-FPM variables');
+assert(routerIndex.indexOf('getenv($resolvedEnvName)') < routerIndex.indexOf('if (defined($constantName))'), 'backend environment secrets override stale config constants');
 assertIncludes(deployWorkflow, 'SVP_AI_GEMINI_KEY: ${{ secrets.SVP_AI_GEMINI_KEY }}', 'production workflow reads the Gemini key from GitHub Secrets');
 assertIncludes(deployWorkflow, 'AI_GEMINI_KEY: process.env.SVP_AI_GEMINI_KEY', 'production workflow syncs the Gemini key into backend environment');
 assertIncludes(deployWorkflow, "grep -v -E '^AI_GEMINI_(KEY|MODEL)='", 'production workflow replaces stale Gemini environment values');

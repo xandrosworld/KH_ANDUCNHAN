@@ -45,6 +45,7 @@ function gfz_load_env_file(string $path): void
         putenv($key . '=' . $value);
         $_ENV[$key] = $value;
         $_SERVER[$key] = $value;
+        $GLOBALS['gfz_runtime_env'][$key] = $value;
     }
 }
 
@@ -66,7 +67,13 @@ require_once $configPath;
 
 function gfz_config_string(string $constantName, ?string $envName = null): string
 {
-    $envValue = getenv($envName ?: $constantName);
+    $resolvedEnvName = $envName ?: $constantName;
+    $loadedValue = $GLOBALS['gfz_runtime_env'][$resolvedEnvName] ?? null;
+    if (is_string($loadedValue) && trim($loadedValue) !== '') {
+        return trim($loadedValue);
+    }
+
+    $envValue = getenv($resolvedEnvName);
     if (is_string($envValue) && trim($envValue) !== '') {
         return trim($envValue);
     }
