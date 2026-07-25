@@ -2527,7 +2527,7 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
         $result = gfz_http_json_post($url, [
             'Content-Type: application/json',
-            'x-goog-api-key: ' . $aiGeminiKey,
+            'X-Goog-Api-Key: ' . $aiGeminiKey,
         ], [
             'contents' => [['parts' => [['text' => $prompt]]]],
         ]);
@@ -2638,7 +2638,7 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
         $result = gfz_http_json_post($url, [
             'Content-Type: application/json',
-            'x-goog-api-key: ' . $aiGeminiKey,
+            'X-Goog-Api-Key: ' . $aiGeminiKey,
         ], ['contents' => $contents]);
         $text = gfz_gemini_response_text($result['json']);
         $providerAttempts[] = [
