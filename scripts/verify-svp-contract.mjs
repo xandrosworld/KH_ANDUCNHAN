@@ -478,7 +478,8 @@ assertIncludes(routerIndex, "'gemini-3.5-flash'", 'backend AI proxy uses the val
 assertIncludes(routerIndex, "gfz_config_string('AI_GEMINI_MODEL')", 'backend AI proxy supports a configured Gemini model');
 assertIncludes(routerIndex, 'function gfz_http_json_post', 'backend AI proxy has a resilient server-side HTTP client');
 assertIncludes(routerIndex, "'X-Goog-Api-Key: ' . $aiGeminiKey", 'backend sends the Gemini key through a protected request header');
-assert(!routerIndex.includes('generateContent?key='), 'backend does not place the Gemini key in request URLs');
+assertIncludes(routerIndex, 'generateContent?key=', 'backend supports query authentication for shared-hosting PHP compatibility');
+assertIncludes(routerIndex, 'rawurlencode($aiGeminiKey)', 'backend safely encodes the Gemini query credential');
 assertIncludes(routerIndex, 'function gfz_gemini_response_text', 'backend parses all non-thinking Gemini response parts');
 assertIncludes(routerIndex, "'fallback' => false, 'model' => $usedModel", 'backend identifies successful live Gemini responses');
 assertIncludes(routerIndex, "'providerAttempts' => $providerAttempts", 'backend exposes safe upstream status diagnostics only when Gemini falls back');
