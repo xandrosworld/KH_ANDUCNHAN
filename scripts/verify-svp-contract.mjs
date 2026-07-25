@@ -481,6 +481,7 @@ assertIncludes(routerIndex, "'x-goog-api-key: ' . $aiGeminiKey", 'backend sends 
 assert(!routerIndex.includes('generateContent?key='), 'backend does not place the Gemini key in request URLs');
 assertIncludes(routerIndex, 'function gfz_gemini_response_text', 'backend parses all non-thinking Gemini response parts');
 assertIncludes(routerIndex, "'fallback' => false, 'model' => $usedModel", 'backend identifies successful live Gemini responses');
+assertIncludes(routerIndex, "'providerAttempts' => $providerAttempts", 'backend exposes safe upstream status diagnostics only when Gemini falls back');
 assert(!routerIndex.includes('if (getenv($key) === false)'), 'backend reloads rotated secrets from the protected environment file on every request');
 assert(routerIndex.indexOf('getenv($envName ?: $constantName)') < routerIndex.indexOf('if (defined($constantName))'), 'backend environment secrets override stale config constants');
 assertIncludes(deployWorkflow, 'SVP_AI_GEMINI_KEY: ${{ secrets.SVP_AI_GEMINI_KEY }}', 'production workflow reads the Gemini key from GitHub Secrets');

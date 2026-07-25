@@ -2521,6 +2521,7 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
     ])));
     $description = null;
     $usedModel = '';
+    $providerAttempts = [];
 
     foreach ($models as $model) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
@@ -2531,6 +2532,11 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
             'contents' => [['parts' => [['text' => $prompt]]]],
         ]);
         $text = gfz_gemini_response_text($result['json']);
+        $providerAttempts[] = [
+            'model' => $model,
+            'status' => (int) $result['status'],
+            'errorStatus' => (string) ($result['json']['error']['status'] ?? ''),
+        ];
         if ($text !== '') {
             $description = $text;
             $usedModel = $model;
@@ -2543,6 +2549,7 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         Response::json([
             'description' => svp_ai_description_fallback(is_array($input) ? $input : []),
             'fallback' => true,
+            'providerAttempts' => $providerAttempts,
         ]);
     }
 
@@ -2626,6 +2633,7 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
     ])));
     $reply = null;
     $usedModel = '';
+    $providerAttempts = [];
     foreach ($models as $model) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
         $result = gfz_http_json_post($url, [
@@ -2633,6 +2641,11 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
             'x-goog-api-key: ' . $aiGeminiKey,
         ], ['contents' => $contents]);
         $text = gfz_gemini_response_text($result['json']);
+        $providerAttempts[] = [
+            'model' => $model,
+            'status' => (int) $result['status'],
+            'errorStatus' => (string) ($result['json']['error']['status'] ?? ''),
+        ];
         if ($text !== '') {
             $reply = $text;
             $usedModel = $model;
@@ -2645,6 +2658,7 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
         Response::json([
             'reply' => svp_ai_chat_fallback(is_array($input) ? $input : [], $lang),
             'fallback' => true,
+            'providerAttempts' => $providerAttempts,
         ]);
     }
 
