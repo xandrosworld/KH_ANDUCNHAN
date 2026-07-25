@@ -16,7 +16,7 @@ concurrency:
 jobs:
   deploy:
     name: Build and deploy to Mắt Bão VPS
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       SSH_HOST: ${{ secrets.MATBAO_SSH_HOST }}
       SSH_PORT: ${{ secrets.MATBAO_SSH_PORT || '22' }}
