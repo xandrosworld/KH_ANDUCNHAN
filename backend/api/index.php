@@ -83,6 +83,77 @@ function gfz_config_string(string $constantName, ?string $envName = null): strin
     return '';
 }
 
+function gfz_http_json_post(string $url, array $headers, array $payload, int $timeoutSeconds = 60): array
+{
+    $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($body === false) {
+        return ['status' => 0, 'json' => null, 'error' => 'Could not encode request body'];
+    }
+
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => $timeoutSeconds,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $body,
+        ]);
+        $raw = curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
+        if ($raw === false) {
+            return ['status' => $status, 'json' => null, 'error' => $error ?: 'HTTP request failed'];
+        }
+        return ['status' => $status, 'json' => json_decode((string) $raw, true), 'error' => ''];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $headers),
+            'content' => $body,
+            'timeout' => $timeoutSeconds,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $raw = @file_get_contents($url, false, $context);
+    $status = 0;
+    foreach (($http_response_header ?? []) as $headerLine) {
+        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $headerLine, $matches)) {
+            $status = (int) $matches[1];
+            break;
+        }
+    }
+    if ($raw === false) {
+        return ['status' => $status, 'json' => null, 'error' => 'HTTP request failed'];
+    }
+    return ['status' => $status, 'json' => json_decode((string) $raw, true), 'error' => ''];
+}
+
+function gfz_gemini_response_text($data): string
+{
+    $parts = is_array($data) ? ($data['candidates'][0]['content']['parts'] ?? []) : [];
+    if (!is_array($parts)) {
+        return '';
+    }
+
+    $texts = [];
+    foreach ($parts as $part) {
+        if (!is_array($part) || ($part['thought'] ?? false) === true) {
+            continue;
+        }
+        $text = trim((string) ($part['text'] ?? ''));
+        if ($text !== '') {
+            $texts[] = $text;
+        }
+    }
+    return trim(implode("\n", $texts));
+}
+
 // ─── Load Libraries ──────────────────────────────────────────────────────────
 require_once __DIR__ . '/../lib/Response.php';
 require_once __DIR__ . '/../lib/Database.php';
@@ -2451,35 +2522,23 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         'gemini-3.1-flash-lite',
     ])));
     $description = null;
+    $usedModel = '';
 
     foreach ($models as $model) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . rawurlencode($aiGeminiKey);
-        $body = json_encode([
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+        $result = gfz_http_json_post($url, [
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $aiGeminiKey,
+        ], [
             'contents' => [['parts' => [['text' => $prompt]]]],
         ]);
-
-        $opts = [
-            'http' => [
-                'method'  => 'POST',
-                'header'  => "Content-Type: application/json\r\n",
-                'content' => $body,
-                'timeout' => 30,
-                'ignore_errors' => true,
-            ],
-        ];
-        $ctx = stream_context_create($opts);
-        $response = @file_get_contents($url, false, $ctx);
-
-        if ($response === false) {
-            continue;
-        }
-
-        $data = json_decode($response, true);
-        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        if ($text) {
+        $text = gfz_gemini_response_text($result['json']);
+        if ($text !== '') {
             $description = $text;
+            $usedModel = $model;
             break;
         }
+        error_log('Gemini description request failed for model ' . $model . ' with HTTP status ' . (int) $result['status']);
     }
 
     if (!$description) {
@@ -2489,7 +2548,7 @@ $router->add('POST', '/api/ai/description', function () use ($input) {
         ]);
     }
 
-    Response::json(['description' => $description]);
+    Response::json(['description' => $description, 'fallback' => false, 'model' => $usedModel]);
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -2568,30 +2627,20 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
         'gemini-3.1-flash-lite',
     ])));
     $reply = null;
+    $usedModel = '';
     foreach ($models as $model) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . rawurlencode($aiGeminiKey);
-        $body = json_encode(['contents' => $contents]);
-        $opts = [
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $body,
-                'timeout' => 30,
-                'ignore_errors' => true,
-            ],
-        ];
-        $ctx = stream_context_create($opts);
-        $response = @file_get_contents($url, false, $ctx);
-        if ($response === false) {
-            continue;
-        }
-
-        $data = json_decode($response, true);
-        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        if ($text) {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+        $result = gfz_http_json_post($url, [
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $aiGeminiKey,
+        ], ['contents' => $contents]);
+        $text = gfz_gemini_response_text($result['json']);
+        if ($text !== '') {
             $reply = $text;
+            $usedModel = $model;
             break;
         }
+        error_log('Gemini chat request failed for model ' . $model . ' with HTTP status ' . (int) $result['status']);
     }
 
     if (!$reply) {
@@ -2601,7 +2650,7 @@ $router->add('POST', '/api/ai/chat', function () use ($input) {
         ]);
     }
 
-    Response::json(['reply' => $reply]);
+    Response::json(['reply' => $reply, 'fallback' => false, 'model' => $usedModel]);
 });
 
 // --- Register ---

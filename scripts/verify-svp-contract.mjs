@@ -476,6 +476,11 @@ assertIncludes(seoManager, "setMeta('property', 'og:url', currentUrl)", 'runtime
 assertIncludes(routerIndex, "POST', '/api/ai/chat'", 'backend exposes AI chat proxy route');
 assertIncludes(routerIndex, "'gemini-3.5-flash'", 'backend AI proxy uses the validated Gemini Flash model');
 assertIncludes(routerIndex, "gfz_config_string('AI_GEMINI_MODEL')", 'backend AI proxy supports a configured Gemini model');
+assertIncludes(routerIndex, 'function gfz_http_json_post', 'backend AI proxy has a resilient server-side HTTP client');
+assertIncludes(routerIndex, "'x-goog-api-key: ' . $aiGeminiKey", 'backend sends the Gemini key through a protected request header');
+assert(!routerIndex.includes('generateContent?key='), 'backend does not place the Gemini key in request URLs');
+assertIncludes(routerIndex, 'function gfz_gemini_response_text', 'backend parses all non-thinking Gemini response parts');
+assertIncludes(routerIndex, "'fallback' => false, 'model' => $usedModel", 'backend identifies successful live Gemini responses');
 assert(routerIndex.indexOf('getenv($envName ?: $constantName)') < routerIndex.indexOf('if (defined($constantName))'), 'backend environment secrets override stale config constants');
 assertIncludes(deployWorkflow, 'SVP_AI_GEMINI_KEY: ${{ secrets.SVP_AI_GEMINI_KEY }}', 'production workflow reads the Gemini key from GitHub Secrets');
 assertIncludes(deployWorkflow, 'AI_GEMINI_KEY: process.env.SVP_AI_GEMINI_KEY', 'production workflow syncs the Gemini key into backend environment');
