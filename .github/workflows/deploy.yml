@@ -246,7 +246,7 @@ jobs:
             fi
             cat >> '$REMOTE_WEBROOT/backend/.env.tmp'
             mv '$REMOTE_WEBROOT/backend/.env.tmp' '$REMOTE_WEBROOT/backend/.env'
-            chmod 600 '$REMOTE_WEBROOT/backend/.env' || true
+            chmod 644 '$REMOTE_WEBROOT/backend/.env'
           " < .ai-env
           printf 'Gemini local env fingerprint='
           sha256sum .ai-env | cut -d' ' -f1
@@ -304,3 +304,5 @@ jobs:
           PHP
           curl -fsS "https://sodovanphuc.vn/$reset_file"
           curl -fsS https://sodovanphuc.vn/api/svp/health
+          env_status="$(curl -sS -o /dev/null -w '%{http_code}' https://sodovanphuc.vn/backend/.env)"
+          test "$env_status" != "200"
